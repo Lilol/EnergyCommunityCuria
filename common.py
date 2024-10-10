@@ -37,7 +37,7 @@ nf = len(fs)
 # number of day-types (index j)
 # NOTE : j : 0 - work-days (monday-friday)
 #            1 - saturdays
-#            2 - sundays and holydays
+#            2 - sundays and holidays
 nj = np.size(arera, axis=0)
 js = list(range(nj))
 # number of time-steps during each day (index i)
@@ -74,8 +74,9 @@ col_dayweek = 'day_week'  # number of day in the week (1-Monday, ...)
 
 # ----------------------------------------------------------------------------
 # Reference year
+#TODO: config file
 ref_year = 2019
-df_year = pd.read_csv("years_list.csv", sep=';')
+df_year = pd.read_csv("years_list.csv", sep=';', index_col=0, header=0, parse_dates=True, date_format="%d/%m/%Y")
 labels_ref = []
 nds_ref = []
 for im, m in enumerate(ms):
@@ -86,5 +87,5 @@ for im, m in enumerate(ms):
     ls = df_year[((df_year[col_year] == ref_year) &
                   (df_year[col_month] == m))][col_daytype].astype(int).values
     labels_ref.append([l+im*nj for l in ls])
-labels_ref = np.concatenate(labels_ref)
+
 nds_ref = np.array(nds_ref)
