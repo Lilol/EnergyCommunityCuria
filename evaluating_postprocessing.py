@@ -213,10 +213,10 @@ for user, user_setup in rec_setup.items():
     generators = []
     loads = []
     for generator in user_setup['generators']:
-        power = pd.read_csv("Generators//{}.csv".format(generator), sep=';').values
+        power = pd.read_csv(f"Generators//{generator}.csv", sep=';').values
         generators.append(Generator(id=generator, production=power))
     for load in user_setup['loads']:
-        power = pd.read_csv("Loads//{}.csv".format(load), sep=';').values
+        power = pd.read_csv(f"Loads//{load}.csv", sep=';').values
         loads.append(Load(id=load, consumption=power))
     users.append(User(user, generators=generators, loads=loads))
 rec = REC(*users)

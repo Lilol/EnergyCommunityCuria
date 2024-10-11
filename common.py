@@ -15,6 +15,8 @@ INFO
 Author : G. Lorenti (gianmarco.lorenti@polito.it)
 Date : 17.11.2022 (last update : 18.11.2022)
 """
+from os.path import join
+
 # ----------------------------------------------------------------------------
 # Libs, packages, modules
 import numpy as np
@@ -48,7 +50,7 @@ nh = arera.size
 h_switch_arera = list(
     np.where(np.diff(np.insert(arera.flatten(), -1, arera[0,0])) != 0)[0])
 # reference profiles from GSE
-y_ref_gse = pd.read_csv("Common\\y_ref_gse.csv", sep=';', index_col=0)
+y_ref_gse = pd.read_csv(join("Common", "y_ref_gse.csv"), sep=';', index_col=0)
 y_ref_gse = {i: row.values
              for i, row in y_ref_gse.set_index(['type', 'month']).iterrows()}
 

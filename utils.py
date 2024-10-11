@@ -93,10 +93,10 @@ def eval_y_flat(x, nd):
     # check consistency of data
     # division of 'x' into tariff time-slots
     assert (size := x.size) == nf, \
-        "'x' must have size {}, not {}.".format(nf, size)
+        f"'x' must have size {nf}, not {size}."
     # division of 'nd' into day-types
     assert (size := nd.size) == nj, \
-        "'nd' must have size {}, not {}.".format(nj, size)
+        f"'nd' must have size {nj}, not {size}."
     # ------------------------------------
     # evaluate load profiles
     # count hours of each tariff time-slot in each day-type

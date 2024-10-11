@@ -56,8 +56,8 @@ def evaluate(bills, nds, pod_type, bill_type):
                         sum([np.count_nonzero(arera[j] == f) * nd[j] for j in js])
                 if (np.abs(eval_x(y_scale, nd) - bill) > 0.1).any():
                     print("While correcting total consumption:")
-                    print("True:{}".format(bill))
-                    print("Corr:{}".format(eval_x(y_scale, nd)))
+                    print(f"True:{bill}")
+                    print(f"Corr:{eval_x(y_scale, nd)}")
         y.append(y_scale)
     #
     return np.array(y)

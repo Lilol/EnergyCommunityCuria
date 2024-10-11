@@ -69,13 +69,13 @@ def scale_gse(x, nd, y_ref):
     # check consistency of data
     # division of 'x' into tariff time slots
     assert (size := x.size) == nf, \
-        "'x' must have size {}, not {}.".format(nf, size)
+        f"'x' must have size {nf}, not {size}."
     # division of 'n_days' into day-types
     assert (size := nd.size) == nj, \
-        "'nd' must have size {}, not {}.".format(nj, size)
+        f"'nd' must have size {nj}, not {size}."
     # total number of time-steps in 'y_ref'
     assert (size := np.size(y_ref)) == ni*nj, \
-        "'y_ref' must have size {}, not {}.".format(ni*nj, size)
+        f"'y_ref' must have size {ni * nj}, not {size}."
     # ------------------------------------
     # scale reference profiles
     # evaluate the monthly consumption associated with the reference profile
@@ -139,13 +139,13 @@ def scale_seteq(x, nd, y_ref):
     # check consistency of data
     # division of 'x' into tariff time slots
     assert (size := x.size) == nf, \
-        "'x' must have size {}, not {}.".format(nf, size)
+        f"'x' must have size {nf}, not {size}."
     # division of 'n_days' into day-types
     assert (size := nd.size) == nj, \
-        "'nd' must have size {}, not {}.".format(nj, size)
+        f"'nd' must have size {nj}, not {size}."
     # total number of time-steps in 'y_ref'
     assert (size := np.size(y_ref)) == ni*nj, \
-        "'y_ref' must have size {}, not {}.".format(ni*nj, size)
+        f"'y_ref' must have size {ni * nj}, not {size}."
     # ------------------------------------
     # evaluate scaling factors to get load profiles
     y_ref = y_ref.reshape(nj, ni)
@@ -239,13 +239,13 @@ def scale_qopt(x, nd, y_ref,
     # check consistency of data
     # division of 'x' into tariff time slots
     assert (size := x.size) == nf, \
-        "'x' must have size {}, not {}.".format(nf, size)
+        f"'x' must have size {nf}, not {size}."
     # division of 'nd' into day-types
     assert (size := nd.size) == nj, \
-        "'nd' must have size {}, not {}.".format(nj, size)
+        f"'nd' must have size {nj}, not {size}."
     # total number of time-steps in 'y_ref'
     assert (size := np.size(y_ref)) == ni*nj, \
-        "'y_ref' must have size {}, not {}.".format(ni*nj, size)
+        f"'y_ref' must have size {ni * nj}, not {size}."
     # ------------------------------------
     # total consumption in the reference profile in the month
     # x_ref = np.array([
@@ -281,8 +281,7 @@ def scale_qopt(x, nd, y_ref,
     # objective function
     # NOTE : objective is written as min 0.5*<<x.T, p>, x> + <q.T, x>
     assert obj in (objs := list(range(2))), \
-        "If given, 'obj' must be in: {}."\
-            .format(', '.join([str(it) for it in objs]))
+        f"If given, 'obj' must be in: {', '.join([str(it) for it in objs])}."
     # if obj == 0:
     # p = np.eye(nh)
     p = np.diag(np.repeat(nd/nd.sum(), ni))
@@ -359,11 +358,11 @@ if __name__ == "__main__":
     # print ("Scale, set_eq {}: ".format(ref), stat)
     # method 'scale_seteq'
     y_seteq, stat = scale_seteq(x, nd, y_ref)
-    print ("Scale, set_eq {}: ".format(ref), stat)
+    print (f"Scale, set_eq {ref}: ", stat)
     # method 'scale_qopt'
     y_qopt, stat = scale_qopt(x, nd, y_ref, y_max=y_max,
                                     obj=qopt_obj, obj_reg=qopt_obj_reg)
-    print ("Scale, q_opt {}: ".format(ref), stat)
+    print (f"Scale, q_opt {ref}: ", stat)
     # ------------------------------------
     # plot
     # figure settings

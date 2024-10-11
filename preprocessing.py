@@ -7,7 +7,7 @@ import os
 import numpy as np
 # Plotting
 from matplotlib import pyplot as plt
-from pandas import to_datetime, DataFrame, concat, read_csv, date_range
+from pandas import to_datetime, DataFrame, concat, read_csv, date_range, timedelta_range
 
 #
 import common as cm
@@ -109,6 +109,10 @@ def create_yearly_profile(df_plants_year, user_name=None):
         user_name = user
 
     df_profile = profile.copy()
+
+    if type(df_profile) != DataFrame:
+        df_profile = DataFrame(df_profile, columns=timedelta_range(start="0 Days", freq="1h", periods=df_profile.shape[1]))
+
     df_profile.index= date_range(start=f"{cm.ref_year}-01-01", end=f"{cm.ref_year}-12-31", freq="d")
     cols = [cm.col_year, cm.col_month, cm.col_day, cm.col_season, cm.col_week, cm.col_dayweek,
                                       cm.col_daytype]
@@ -260,7 +264,7 @@ for user, data_bills in data_users_bills.groupby(cm.col_user):
 # Load profiles of a single family
 assert path_municipality != "", "'path_municipality' must be set."
 
-bill = read_csv(os.path.join(path_municipality, 'bollette_domestici.csv'), sep=';')[['f1', 'f2', 'f3']].values
+bill = read_csv(os.path.join(path_municipality, 'bollette_domestici.csv'), sep=';', usecols=['f1', 'f2', 'f3'])
 profiles = eval_profiles_gse(bill, cm.nds_ref, pod_type='dom', bill_type='tou')
 profiles = profiles.reshape(cm.nj * cm.nm, cm.ni)
 

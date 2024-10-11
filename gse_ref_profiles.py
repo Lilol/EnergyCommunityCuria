@@ -45,7 +45,7 @@ for user_type in user_types:
                 ['day_type','hour'])
         yref_user.append(df_gse_groupd.mean()[user_type].values)
     df_yref_user = pd.DataFrame(yref_user,
-                                columns=['y_j{}_i{}'.format(j, i).replace(' ', '0')
+                                columns=[f'y_j{j}_i{i}'.replace(' ', '0')
                                          for j in range(3) for i in range(24)])
     df_yref_user.insert(0, 'month', df_gse_user['month'].unique())
     df_yref_user.insert(0, 'type', [user_types[user_type]]*len(df_yref_user))

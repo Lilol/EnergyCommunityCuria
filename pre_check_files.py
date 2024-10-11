@@ -93,7 +93,7 @@ check_bills = [
 def test_check(series, check, **kwargs):
 
     assert isinstance(series, pd.Series), \
-        "Can only check a series object, not {}.".format(type(series))
+        f"Can only check a series object, not {type(series)}."
 
     if check == 'are_notnull':
         return ~series.isnull()
@@ -110,7 +110,7 @@ def test_check(series, check, **kwargs):
     if check == 'are_notneg':
         return series >= 0
 
-    raise ValueError("Invalid check '{}.".format(check))
+    raise ValueError(f"Invalid check '{check}.")
 
 # ----------------------------------------------------------------------------
 # Data checking
@@ -157,7 +157,7 @@ check_bills.append(
 # check PODs file
 for col, fmt, check in check_pods:
     # make sure 'col' is in DataFrame
-    assert col in df_pods, "Column to check not in DataFrame: {}.".format(col)
+    assert col in df_pods, f"Column to check not in DataFrame: {col}."
     # test
     test = test_check(df_pods[col], **check)
     # select rows that do not pass the test
@@ -171,7 +171,7 @@ for col, fmt, check in check_pods:
 # check bills file
 for col, fmt, check in check_bills:
     # make sure 'col' is in DataFrame
-    assert col in df_bills, "Column to check not in DataFrame: {}.".format(col)
+    assert col in df_bills, f"Column to check not in DataFrame: {col}."
     # test
     test = test_check(df_bills[col], **check)
     # select rows that do not pass the test
@@ -256,7 +256,7 @@ cols_dict_pods = {col_pod: col for col_pod, col in zip(df_pods.columns, cols)}
 rows_dict_pods = {i: row for i, row in zip(df_pods.index, range(2, len(df_pods)+2))}
 # remap cells to format
 cells_fmt_pods = {
-    '{}{}'.format(cols_dict_pods[col], rows_dict_pods[row]): fmt
+    f'{cols_dict_pods[col]}{rows_dict_pods[row]}': fmt
     for (col, row), fmt in cells_fmt_pods.items()}
 
 # save non-formatted file
@@ -284,7 +284,7 @@ cols_dict_bills = {col_bill: col for col_bill, col in zip(df_bills.columns, cols
 rows_dict_bills = {i: row for i, row in zip(df_bills.index, range(2, len(df_bills)+2))}
 # remap cells to format
 cells_fmt_bills = {
-    '{}{}'.format(cols_dict_bills[col], rows_dict_bills[row]): fmt
+    f'{cols_dict_bills[col]}{rows_dict_bills[row]}': fmt
     for (col, row), fmt in cells_fmt_bills.items()}
 
 # save non-formatted file
