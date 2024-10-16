@@ -7,7 +7,7 @@ import os
 import numpy as np
 # Plotting
 from matplotlib import pyplot as plt
-from pandas import to_datetime, DataFrame, concat, read_csv, date_range, timedelta_range
+from pandas import DataFrame, concat, read_csv, date_range, timedelta_range
 
 #
 import common as cm
@@ -19,6 +19,8 @@ from utils import eval_x, eval_y_from_year
 # ----------------------------------------------------------------------------
 # Useful functions
 
+# TODO: option for final time resolution!!!
+# TODO: option for data processing methodology (will be more in the future)
 
 # Reshape array of one-year data by days
 def reshape_array_by_year(array, year):
@@ -90,9 +92,8 @@ col_production = 'Grid Export '  # 'Immissione in rete '  # hourly production of
 # Data loading
 
 # Years calendar
-f_year_col = lambda year, month, day, col: \
-cm.df_year[((cm.df_year[cm.col_year] == year) & (cm.df_year[cm.col_month] == month) & (cm.df_year[cm.col_day] == day))][
-    col]
+f_year_col = lambda year, month, day, col: cm.df_year[
+    ((cm.df_year[cm.col_year] == year) & (cm.df_year[cm.col_month] == month) & (cm.df_year[cm.col_day] == day))][col]
 
 # Initialize empty datasets
 data_users = DataFrame()  # list of the end users
@@ -111,11 +112,11 @@ def create_yearly_profile(df_plants_year, user_name=None):
     df_profile = profile.copy()
 
     if type(df_profile) != DataFrame:
-        df_profile = DataFrame(df_profile, columns=timedelta_range(start="0 Days", freq="1h", periods=df_profile.shape[1]))
+        df_profile = DataFrame(df_profile,
+                               columns=timedelta_range(start="0 Days", freq="1h", periods=df_profile.shape[1]))
 
-    df_profile.index= date_range(start=f"{cm.ref_year}-01-01", end=f"{cm.ref_year}-12-31", freq="d")
-    cols = [cm.col_year, cm.col_month, cm.col_day, cm.col_season, cm.col_week, cm.col_dayweek,
-                                      cm.col_daytype]
+    df_profile.index = date_range(start=f"{cm.ref_year}-01-01", end=f"{cm.ref_year}-12-31", freq="d")
+    cols = [cm.col_year, cm.col_month, cm.col_day, cm.col_season, cm.col_week, cm.col_dayweek, cm.col_daytype]
     df_profile[cm.col_user] = user_name
     df_profile[cols] = cm.df_year.loc[df_profile.index, cols]
     df_plants_year = concat((df_plants_year, df_profile), axis=0)
@@ -131,10 +132,14 @@ for municipality in municipalities:
     path_municipality = os.path.join(directory_data, municipality)
 
     # Load and add the list of photovoltaic plants
+
+    # TODO: create method for this line
     path_plants = os.path.join(path_municipality,
                                (file_plants if file_plants.endswith('.csv') else file_plants + '.csv'))
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    df_plants = read_csv(path_plants, sep=';').rename(columns=cols_plants)[cols_plants.values()]
+
+    # TODO: Drop unnecessary cols; maybe cols checking
+    df_plants = read_csv(path_plants, sep=';').rename(columns=cols_plants)[
+        cols_plants.values()]  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     df_plants.insert(1, cm.col_municipality, municipality)  # add municipality
     data_plants = concat((data_plants, df_plants), axis=0)  # concatenate
 
@@ -172,7 +177,8 @@ for municipality in municipalities:
         else:
             raise ValueError()
         days = df_production[col_production].groupby(df_production.index.dayofyear)
-        profile = DataFrame([items.values for g, items in days], index=days.groups.keys(), columns=days.groups[1]-days.groups[1][0])
+        profile = DataFrame([items.values for g, items in days], index=days.groups.keys(),
+                            columns=days.groups[1] - days.groups[1][0])
         # profile = reshape_array_by_year(profile, cm.ref_year)  # group by day
         df_profile, df_plants_year = create_yearly_profile(df_plants_year)
 
@@ -249,6 +255,12 @@ for user, data_bills in data_users_bills.groupby(cm.col_user):
 
     nds = np.array(nds)
     bills = data_bills[bills_cols].values
+    # scale typical profiles according to bills
+    # TODO: option to profile estimation
+    # in the future:
+    # -function inputs can change
+    # -different columns
+    # -instead of monthly data, use daily data
     profiles = eval_profiles_gse(bills, nds, pod_type, bill_type)
 
     # Make yearly profile

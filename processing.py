@@ -6,10 +6,12 @@ import os
 
 # Visualization
 import matplotlib.pyplot as plt
-# Data processing
-import numpy as np
 
+# TODO: absolutely NOT
 from common import *  # common variables
+
+
+# Data processing
 
 
 # ----------------------------------------------------------------------------
@@ -72,11 +74,12 @@ def find_n_fam(sc, n_fam_max, p_plants, p_users, p_fam, step=25):
     # Evaluate point that can be reached
     n_fam_high = n_fam_max
     sc_high = eval_sc(n_fam_high)
-    if sc_high - sc <= 0:  # Check if requirement cannot be satisfied
+    if sc_high - sc <= 0:  # Check if requirement is satisfied
         print("Requirement cannot be satisfied!")
         return n_fam_high, sc_high
 
     # Loop to find best value
+    # TODO: kill it with fire
     while True:
 
         # Stopping criterion (considering that n_fam is integer)
@@ -111,6 +114,7 @@ directory_data = 'DatiProcessati'
 # Names of the files to loadhttps://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
 # file_plants = "data_plants.csv"  # list of plants
 # file_users = "data_users.csv"  # list of end users
+# TODO: filenames always into config
 file_plants_tou = "data_plants_tou.csv"  # monthly production data
 file_users_tou = "data_users_tou.csv"  # monthly consumption data
 file_fam_tou = "data_fam_tou.csv"  # monthly family consumption data
@@ -226,7 +230,6 @@ def sc_lim_tou(n_fam):
 # Function to evaluate SC with different aggregation in time
 def aggregated_sc(groupby, n_fam):
     """Evaluate SC with given temporal aggregation and number of families."""
-
     # Get values
     cols = ['production', 'consumption', 'family']
     prod, cons, fam = df_hours.groupby(groupby).sum()[cols].values.T
@@ -241,19 +244,16 @@ def aggregated_sc(groupby, n_fam):
 
 # Setup to aggregate in time
 groupbys = dict(sc_year=col_year, sc_season=col_season, sc_month=col_month, sc_week=col_week,
-    sc_day=[col_month, col_day], sc_hour=[col_month, col_day, col_hour])
+                sc_day=[col_month, col_day], sc_hour=[col_month, col_day, col_hour])
 
 results = {label: [] for label in groupbys.keys()}
 results['sc_tou'] = []
 
 # for n_fam, sc in zip(n_fams, scs):
 for n_fam in n_fams:
-
     results['sc_tou'].append(sc_lim_tou(n_fam))
-
     for label, groupby in groupbys.items():
         sc = aggregated_sc(groupby, n_fam)
-
         results[label].append(sc)
 
 plt.figure()
@@ -326,6 +326,8 @@ for i, n_fam in enumerate(n_fams):
 
 scenarios = pd.DataFrame(scenarios)
 
+
+# TODO: use lambda or kill it with fire
 # Add limit SC
 # sc_target = {n_fam: met_targets[i] for i, n_fam in enumerate(n_fams)}
 sc_tou = {n_fam: results['sc_tou'][i] for i, n_fam in enumerate(n_fams)}

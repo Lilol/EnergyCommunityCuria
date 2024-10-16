@@ -1,0 +1,26 @@
+{
+    "parrocchia1": {
+        "generators": [
+            "IT001E04397577_20"
+        ],
+        "loads": [
+            "IT001E04397577"
+        ]
+    },
+    "parrocchia2": {
+        "generators": [],
+        "loads": [
+            "IT001E04170238",
+            "IT001E04170234",
+            "IT001E01660522",
+            "IT001E01658228",
+            "IT001E00793931"
+        ]
+    },
+    "famiglie": {
+        "generators": [],
+        "loads": [
+            "famiglie_30"
+        ]
+    }
+}
