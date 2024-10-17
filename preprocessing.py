@@ -12,181 +12,13 @@ from pandas import DataFrame, concat, read_csv, date_range, timedelta_range
 #
 import common as cm
 from approach_gse import evaluate as eval_profiles_gse
+from input.definitions import directory_data, directory_out, file_plants, directory_production, file_users, \
+    file_users_bills, fig_check, cols_plants, cols_users, cols_user_bills, col_production
 #
 from utils import eval_x, eval_y_from_year
 
-
 # ----------------------------------------------------------------------------
-# Useful functions
 
-# TODO: option for final time resolution!!!
-# TODO: option for data processing methodology (will be more in the future)
-
-# Reshape array of one-year data by days
-def reshape_array_by_year(array, year):
-    """Reshapes an array to (number of days in the year, k), accounting for
-    leap years."""
-
-    # Check if the given year is a leap year
-    is_leap_year = ((year % 4 == 0) and (year % 100 != 0)) or (year % 400 == 0)
-
-    # Get the number of days in the year based on whether it's a leap year
-    num_days_in_year = 366 if is_leap_year else 365
-
-    # Calculate k based on the size of the array
-    k = len(array) // num_days_in_year
-
-    # Assert that k is an integer
-    assert isinstance(k, int), "The calculated value of k must be an integer."
-
-    # Reshape the array based on the number of days in the year and k
-    reshaped_array = np.reshape(array, (num_days_in_year, k))
-
-    return reshaped_array
-
-
-# ----------------------------------------------------------------------------
-# Setup
-
-# TODO: config file
-# Define the main directory that contains all the municipality folders
-directory_data = "DatiComuni"
-
-# Define the name of the directory for the output files
-directory_out = "DatiProcessati"
-
-# Define the names of the files to load for each municipality folder
-file_plants = "lista_impianti.csv"  # file with list of plants
-directory_production = "PVSOL"  # "PVGIS"  #  # folder with the hourly production data
-file_users = "lista_pod.csv"  # file with list of end-users
-file_users_bills = "dati_bollette.csv"  # file with monthly consumption data
-
-# Perform graphical check of the profiles
-fig_check = True
-
-# Name of the relevant columns in the files
-cols_plants = {  # code or name of the associated end user
-    'pod': cm.col_user,  # description of the associated end user
-    'descrizione': cm.col_description,  # address of the end user
-    'indirizzo': cm.col_address,  # size of the plant (kW)
-    'pv_size': cm.col_size,  # annual energy produced (kWh)
-    'produzione annua [kWh]': cm.col_energy,  # specific annual production (kWh/kWp)
-    'rendita specifica [kWh/kWp]': cm.col_yield, }
-
-cols_users = {  # code or name of the end user
-    'pod': cm.col_user,  # description of the end user
-    'descrizione': cm.col_description,  # address of the end user
-    'indirizzo': cm.col_address,  # type of end user
-    'tipo': cm.col_type,  # maximum available power of the end-user (kW)
-    'potenza': cm.col_size, }
-
-cols_user_bills = {'pod': cm.col_user,  # year
-                   'anno': cm.col_year,  # number of the month
-                   'mese': cm.col_month,  # ToU monthly consumption (kWh)
-                   **{key: value for key, value in zip(('f0', 'f1', 'f2', 'f3'), cm.cols_tou_energy)},
-                   'totale': cm.col_energy, }
-
-col_production = 'Grid Export '  # 'Immissione in rete '  # hourly production of the plants (kW)
-
-# ----------------------------------------------------------------------------
-# Data loading
-
-# Years calendar
-f_year_col = lambda year, month, day, col: cm.df_year[
-    ((cm.df_year[cm.col_year] == year) & (cm.df_year[cm.col_month] == month) & (cm.df_year[cm.col_day] == day))][col]
-
-# Initialize empty datasets
-data_users = DataFrame()  # list of the end users
-data_plants = DataFrame()  # list of the plants
-data_users_bills = DataFrame()  # list of the end user's bills
-data_plants_year = DataFrame()  # list of the plants hourly production
-
-# Get the list of municipality folders in the main directory
-municipalities = os.listdir(directory_data)
-
-
-def create_yearly_profile(df_plants_year, user_name=None):
-    if user_name is None:
-        user_name = user
-
-    df_profile = profile.copy()
-
-    if type(df_profile) != DataFrame:
-        df_profile = DataFrame(df_profile,
-                               columns=timedelta_range(start="0 Days", freq="1h", periods=df_profile.shape[1]))
-
-    df_profile.index = date_range(start=f"{cm.ref_year}-01-01", end=f"{cm.ref_year}-12-31", freq="d")
-    cols = [cm.col_year, cm.col_month, cm.col_day, cm.col_season, cm.col_week, cm.col_dayweek, cm.col_daytype]
-    df_profile[cm.col_user] = user_name
-    df_profile[cols] = cm.df_year.loc[df_profile.index, cols]
-    df_plants_year = concat((df_plants_year, df_profile), axis=0)
-    return df_profile, df_plants_year
-
-
-path_municipality = ""
-df_plants_year = DataFrame()
-
-# Iterate over each municipality folder
-for municipality in municipalities:
-    # Create the complete path to the municipality folder
-    path_municipality = os.path.join(directory_data, municipality)
-
-    # Load and add the list of photovoltaic plants
-
-    # TODO: create method for this line
-    path_plants = os.path.join(path_municipality,
-                               (file_plants if file_plants.endswith('.csv') else file_plants + '.csv'))
-
-    # TODO: Drop unnecessary cols; maybe cols checking
-    df_plants = read_csv(path_plants, sep=';').rename(columns=cols_plants)[
-        cols_plants.values()]  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    df_plants.insert(1, cm.col_municipality, municipality)  # add municipality
-    data_plants = concat((data_plants, df_plants), axis=0)  # concatenate
-
-    # Load and add the list of electric end user in the municipality
-    path_users = os.path.join(path_municipality, (file_users if file_users.endswith('.csv') else file_users + '.csv'))
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    df_users = read_csv(path_users, sep=';').rename(columns=cols_users)[cols_users.values()]
-    df_users.insert(1, cm.col_municipality, municipality)  # add muncipality
-    data_users = concat((data_users, df_users.dropna(axis=1)), axis=0)
-
-    # Load monthly electricity consumption for each end user
-    path_users_bills = os.path.join(path_municipality, (
-        file_users_bills if file_users_bills.endswith('.csv') else file_users_bills + '.csv'))
-    # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    df_users_bills = read_csv(path_users_bills, sep=';').rename(columns=cols_user_bills)[cols_user_bills.values()]
-    data_users_bills = concat((data_users_bills, df_users_bills), axis=0)  # concatenate
-
-    # Load and add hourly electricity production for each plant
-
-    # N.B. Here, more operations are required because:
-    # - a single file must be opened for each plant
-    # - the file contains multiple columns, only one is needed
-    # - the file contains hourly data for one year, they must be
-    # - reorganized by days config
-    for user in df_plants[cm.col_user]:
-        path_production = os.path.join(path_municipality, directory_production,
-                                       (user if user.endswith('csv') else f'{user}.csv'))
-        if directory_production == 'PVSOL':
-            df_production = read_csv(path_production, sep=';', decimal=',', low_memory=False, skiprows=range(1, 17),
-                                     index_col=0, header=0, parse_dates=True, date_format="%d.%m. %H:%M",
-                                     usecols=["Time", col_production])
-        elif directory_production == 'PVGIS':
-            df_production = read_csv(path_production, sep=';', index_col=0, parse_dates=True,
-                                     date_format="%d/%m/%Y %H:%M")
-        else:
-            raise ValueError()
-        days = df_production[col_production].groupby(df_production.index.dayofyear)
-        profile = DataFrame([items.values for g, items in days], index=days.groups.keys(),
-                            columns=days.groups[1] - days.groups[1][0])
-        # profile = reshape_array_by_year(profile, cm.ref_year)  # group by day
-        df_profile, df_plants_year = create_yearly_profile(df_plants_year)
-
-    data_plants_year = concat((data_plants_year, df_plants_year), axis=0)  # concatenate
-
-# Reset indices after concatenation
-for data in [data_plants, data_users, data_users_bills, data_plants_year]:
-    data.reset_index(drop=True, inplace=True)
 
 # ----------------------------------------------------------------------------
 # Check loaded data
@@ -351,6 +183,7 @@ if cm.col_type not in data_plants:
     data_plants[cm.col_type] = 'pv'
 else:
     data_plants[cm.col_type] = data_plants[cm.col_type].fillna('pv')
+
 
 # ----------------------------------------------------------------------------
 # %% Graphical check

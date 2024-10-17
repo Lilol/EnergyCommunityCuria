@@ -4,6 +4,7 @@ from os import getcwd
 from os.path import join, dirname
 from sys import argv
 
+from input.definitions import PvDataSource
 
 logger = logging.getLogger(__name__)
 
@@ -13,16 +14,16 @@ class ConfigurationManager:
         self.__config = RawConfigParser(allow_no_value=True, interpolation=ExtendedInterpolation())
         self.__config.read_file(open(config_filename))
         self._registered_entries = {
-            "data":
-                {"eval_sample_count": self._process_eval_sample_count},
+            "production":
+                {"estimator": self._process_pv_estimator},
         }
 
-    def _process_eval_sample_count(self):
-        sample_count = self.__config.get("data", "eval_sample_count")
+    def _process_pv_estimator(self):
+        pv_data_source = self.__config.get("production", "estimator")
         try:
-            return int(sample_count)
+            return PvDataSource(pv_data_source)
         except ValueError:
-            return sample_count
+            return pv_data_source
 
     def get(self, section, key, fallback=None):
         if section not in self._registered_entries or key not in self._registered_entries[section]:
