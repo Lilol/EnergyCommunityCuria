@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from os.path import join
 from typing import List
 
 import numpy as np
@@ -34,7 +35,8 @@ class Unit:
 class Load(Unit):
     p_produced: float = 0
 
-    def __init__(self, power):
+    def __init__(self, id, power):
+        self.id = id
         self.p_consumed = power
 
 
@@ -42,7 +44,8 @@ class Load(Unit):
 class Generator(Unit):
     p_consumed: float = 0
 
-    def __init__(self, power):
+    def __init__(self, id, power):
+        self.id = id
         self.p_produced = power
 
 
@@ -69,47 +72,36 @@ class User(Unit):
 
 @dataclass
 class REC(User):
-    pass
+    @classmethod
+    def build(cls, rec_structure):
+        # Create units, users and REC
+        rec = cls(id="Renewable Energy Community")
+        for user_id, user_setup in rec_setup.items():
+            user = User()
+            for generator in user_setup['generators']:
+                power = pd.read_csv(join("generators", f"{generator}.csv"), sep=';').values
+                user.add_unit(Generator(id=generator, power=power))
+            for load in user_setup['loads']:
+                power = pd.read_csv(join("loads", f"{load}.csv"), sep=';').values
+                user.add_unit(Load(id=load, power=power))
+            rec.add_unit(user)
+        return rec
 
-# ----------------------------------------------------------------------------
+    def write_out(self):
+        # Store results
+        results = pd.DataFrame(index=[u.id for u in self.units] + ["rec", ],
+                               columns=["e_produced", "e_consumed", "e_self_consumed", "e_injected", "e_withdrawn"])
 
-# Setup of the REC
-# TODO: into input file
-# TODO: think about a good input file structure for this (table works fine)
-rec_setup = json.loads(configuration.config.get("rec", "setup_file"))
+        for user in self.units:
+            results.loc[user.id, :] = np.sum(user.p_produced), np.sum(user.p_consumed), np.sum(
+                user.p_self_consumed), np.sum(user.p_injected), np.sum(user.p_withdrawn)
 
-# Create units, users and REC
-users = []
-for user, user_setup in rec_setup.items():
-    generators = []
-    loads = []
-    for generator in user_setup['generators']:
-        power = pd.read_csv(f"Generators//{generator}.csv", sep=';').values
-        generators.append(Generator(id=generator, production=power))
-    for load in user_setup['loads']:
-        power = pd.read_csv(f"Loads//{load}.csv", sep=';').values
-        loads.append(Load(id=load, consumption=power))
-    users.append(User(user, generators=generators, loads=loads))
-rec = REC(*users)
+        results.loc["rec", :] = results.sum(axis="rows")
+        results.to_csv(join(configuration.config.get("path", "output"), "results.csv"), sep=';')
 
-# Evaluate REC
-rec.evaluate()
 
-# Store results
-results = pd.DataFrame()
-
-for user in rec._users:
-    results_users = pd.DataFrame({'e_produced': np.sum(user.p_produced), 'e_consumed': np.sum(user.p_consumed),
-                                  'e_self_consumed': np.sum(user.p_self_consumed),
-                                  'e_injected': np.sum(user.p_injected), 'e_withdrawn': np.sum(user.p_withdrawn), },
-                                 index=[user.id])
-    results = pd.concat((results, results_users), axis=0)
-
-results_rec = results.sum().to_frame().T
-results_rec['p_shared'] = np.sum(rec.p_shared)
-results_rec['p_to_grid'] = np.sum(rec.p_to_grid)
-results_rec['p_from_grid'] = np.sum(rec.p_from_grid)
-results_rec.index = ['rec']
-
-results = pd.concat((results, results_rec), axis=0)
-results.to_csv("results.csv", sep=';')
+if __name__ == "__main__":
+    rec_setup = json.loads(open(configuration.config.get("rec", "setup_file")).read())
+    rec = REC.build(rec_setup)
+    rec.evaluate()
+    rec.write_out()

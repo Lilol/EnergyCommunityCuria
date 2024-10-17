@@ -348,14 +348,14 @@ for i, col in enumerate(cm.cols_tou_energy):
 
 # Add column with type of plant !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 if cm.col_type not in data_plants:
-    data_plants[cm.col_type] = np.nan
-data_plants[cm.col_type] = data_plants[cm.col_type].fillna('pv')
+    data_plants[cm.col_type] = 'pv'
+else:
+    data_plants[cm.col_type] = data_plants[cm.col_type].fillna('pv')
 
 # ----------------------------------------------------------------------------
 # %% Graphical check
 
-if fig_check:
-
+def vis_profiles():
     # Families profiles
     # By month
     plt.figure()
@@ -377,7 +377,10 @@ if fig_check:
     plt.ylabel('Power, kW')
     plt.title('Families profiles')
     plt.show()
+    plt.close()
 
+
+def by_month_profiles():
     # Production profiles
     # By month
     plt.figure()
@@ -399,7 +402,10 @@ if fig_check:
     plt.ylabel('Power, kW')
     plt.title('Production profiles')
     plt.show()
+    plt.close()
 
+
+def consumption_profiles():
     # Consumption profiles
     for filter in ['bta', 'ip']:
         data = data_users_year.loc[
@@ -425,6 +431,7 @@ if fig_check:
         plt.ylabel('Power, kW')
         plt.title(f'Consumption profiles {filter.upper()}')
         plt.show()
+        plt.close()
 
         # Monthly consumption
         plt.figure()
@@ -437,6 +444,13 @@ if fig_check:
         plt.xlabel('Energy, kWh')
         plt.title(f'Yearly consumption {filter.upper()}')
         plt.show()
+        plt.close()
+
+
+if fig_check:
+    vis_profiles()
+    by_month_profiles()
+    consumption_profiles()
 
 # ----------------------------------------------------------------------------
 # %% Save data
