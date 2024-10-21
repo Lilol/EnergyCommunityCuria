@@ -1,11 +1,13 @@
+import logging
 import os
 from os.path import join
 
 from pandas import DataFrame, concat, read_csv, timedelta_range, to_datetime, date_range
 
 import configuration
-from input.definitions import InputColumn, col_production, PvDataSource
-from input.utility import create_yearly_profile
+from input.definitions import InputColumn, PvDataSource
+
+logger = logging.getLogger(__name__)
 
 
 class Reader:
@@ -27,8 +29,6 @@ class Reader:
 
 
 class ProductionDataReader(Reader):
-    production_column_name = 'Grid Export '  # hourly production of the plants (kW)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -47,12 +47,20 @@ class PvgisReader(ProductionDataReader):
 
 
 class PvsolReader(ProductionDataReader):
+    production_column_name = 'Grid Export '  # hourly production of the plants (kW)
+
     def read(self, *args, **kwargs):
         municipality = kwargs.pop("municipality", "")
         user = kwargs.pop("user", "")
-        return read_csv(join(self._directory, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
-                        decimal=',', low_memory=False, skiprows=range(1, 17), index_col=0, header=0, parse_dates=True,
-                        date_format="%d.%m. %H:%M", usecols=["Time", self.production_column_name])
+        production = read_csv(join(self._directory, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
+                              decimal=',', low_memory=False, skiprows=range(1, 17), index_col=0, header=0,
+                              parse_dates=True, date_format="%d.%m. %H:%M",
+                              usecols=["Time", self.production_column_name])
+
+        days = production[self.production_column_name].groupby(production.index.dayofyear)
+        production = DataFrame(data=[items.values for g, items in days], index=days.groups.keys(),
+                               columns=days.groups[1] - days.groups[1][0])
+        return production
 
 
 class PvPlantReader(Reader):
@@ -77,16 +85,13 @@ class PvPlantReader(Reader):
         super().read(*args, **kwargs)
         for user in self._data[InputColumn.USER].unique():
             production = self._production_data_reader.read(municipality=municipality, user=user)
-            days = production[col_production].groupby(production.index.dayofyear)
-            production = DataFrame(data=[items.values for g, items in days], index=days.groups.keys(),
-                                   columns=days.groups[1] - days.groups[1][0])
-            self._production_data = create_yearly_profile(production, self._production_data, user)
+            self._production_data = self.create_yearly_profile(production, self._production_data, user)
 
     @classmethod
     def create_yearly_profile(cls, profile, all_profiles, user_name=None):
         profile = DataFrame(data=profile, columns=timedelta_range(start="0 Days", freq="1h", periods=profile.shape[1]))
 
-        ref_year = configuration.config.getint("global", "year")
+        ref_year = configuration.config.getint("time", "year")
         profile.index = to_datetime(date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"))
         profile[InputColumn.USER] = user_name
         profile[InputColumn.YEAR] = profile.index.year
@@ -111,9 +116,6 @@ class UsersReader(Reader):
         self._directory = "DatiCommuni"
         self._filename = "lista_pod.csv"  # list of end-users
 
-    def read(self, *args, **kwargs):
-        pass
-
 
 class BillsReader(Reader):
     column_names = {'pod': InputColumn.USER,  # code or name of the end user
@@ -130,11 +132,8 @@ class BillsReader(Reader):
         self._filename = "dati_bollette.csv"  # monthly consumption data
 
     def read(self, *args, **kwargs):
-        pass
-
-
-df_plants_year = DataFrame()
-
-# Iterate over each municipality folder
-for municipality in configuration.config.get("global", "municipalities"):
-    data_plants_year = concat((data_plants_year, df_plants_year), axis=0)  # concatenate
+        super().read(*args, **kwargs)
+        # Check that each user has exactly 12 rows in the bills dataframe
+        if not (self._data[InputColumn.USER].value_counts() == 12).all():
+            logger.warning(
+                "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less rows.")

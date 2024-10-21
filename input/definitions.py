@@ -1,7 +1,5 @@
 from enum import Enum
 
-import configuration
-
 
 class InputColumn(Enum):
     USER = 'user'
