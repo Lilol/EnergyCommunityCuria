@@ -1,11 +1,17 @@
 from calendar import weekday
 
 import holidays
+from pandas import date_range
 
-weekday_name = {0: "Mon", 1: "Tue", 2:"Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-weekday_long_name = {0: "Monday", 1: "Tuesday", 2: "Wednesday",  3:"Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
+import configuration
+
+weekday_name = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+weekday_long_name = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
 weekdays = (0, 1, 2, 3, 4)
 weekend = (5, 6)
+
+year = configuration.config.getint("time", "year")
+reference_year = date_range(start=f"{year}-01-01", end=f"{year}-12-31")
 
 
 def get_weekday_code(day):

@@ -19,7 +19,7 @@ import numpy.linalg as lin
 
 # common variables
 from common import arera, fs, nf, nj, nh, ni
-# utilities
+
 from utils import eval_x
 
 
@@ -172,7 +172,7 @@ def scale_seteq(x, nd, y_ref):
 # problem, where the sum of the deviations over subsequent time steps is to be
 # minimised. The total consumption is set as a constraint. 
 # Moreover, other constraints can be added.
-def scale_qopt(x, nd, y_ref, y_max=None, obj=0, obj_reg=None, cvxopt={}):
+def scale_qopt(x, nd, y_ref, y_max=None, obj=0, obj_reg=None, cvxopt=None):
     """
     Function 'scale_qopt'
     ____________
@@ -236,6 +236,8 @@ def scale_qopt(x, nd, y_ref, y_max=None, obj=0, obj_reg=None, cvxopt={}):
     assert (size := nd.size) == nj, f"'nd' must have size {nj}, not {size}."
     # total number of time-steps in 'y_ref'
     assert (size := np.size(y_ref)) == ni * nj, f"'y_ref' must have size {ni * nj}, not {size}."
+    if cvxopt is None:
+        cvxopt = {}
     # ------------------------------------
     # total consumption in the reference profile in the month
     # x_ref = np.array([

@@ -13,7 +13,6 @@ Date : 29.11.2022
 # ----------------------------------------------------------------------------
 # Import
 # python libs, packages, modules
-import numpy as np
 # common variables
 from common import *
 # ----------------------------------------------------------------------------
@@ -37,13 +36,13 @@ def eval_x(y, nd):
         day.
     nd : np.ndarray
         Number of days of each day-type in the month
-        Array of shape (nj,) where 'nj' is the number of day-types
+        Array of shape (nj, ) where 'nj' is the number of day-types
         (according to ARERA's subdivision into day-types).
     _______
     RETURNS
     x : np.ndarray
         Monthly electricity consumption divided into tariff time-slots 
-        Array of shape (nf,) where 'nf' is the number of tariff time-slots.
+        Array of shape (nf, ) where 'nf' is the number of tariff time-slots.
     _____
     INFO
     Author : G. Lorenti (gianmarco.lorenti@polito.it)
@@ -73,10 +72,10 @@ def eval_y_flat(x, nd):
     PARAMETERS
     x : np.ndarray
         Monthly electricity consumption divided into tariff time-slots
-        Array of shape (nf,) where 'nf' is the number of tariff time-slots.
+        Array of shape (nf, ) where 'nf' is the number of tariff time-slots.
     nd : np.ndarray
         Number of days of each day-type in the month
-        Array of shape (nj,) where 'nj' is the number of day-types
+        Array of shape (nj, ) where 'nj' is the number of day-types
         (according to ARERA's subdivision into day-types).
     ________
     RETURNS
@@ -116,7 +115,7 @@ def eval_y_flat(x, nd):
 
 
 # ----------------------------------------------------------------------------
-# Extract typical load profiles from year long profile
+# Extract typical load profiles from year-long profile
 def eval_y_from_year(p, months, day_types):
     assert len(p) == len(months) == len(day_types)
     y = []
@@ -130,7 +129,7 @@ def eval_y_from_year(p, months, day_types):
     return np.array(y)
 
 # ----------------------------------------------------------------------------
-# Extract typical load profiles from monthlong profile
+# Extract typical load profiles from month-long profile
 def eval_y_from_month(p, day_types):
     assert len(p) == len(day_types)
     y = []

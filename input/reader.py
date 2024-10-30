@@ -2,6 +2,7 @@ import logging
 import os
 from os.path import join
 
+import numpy as np
 from pandas import DataFrame, concat, read_csv, timedelta_range, to_datetime, date_range
 
 import configuration
@@ -26,6 +27,7 @@ class Reader:
             columns=self.column_names)
         self._data.insert(1, InputColumn.MUNICIPALITY, municipality)
         self._data.reset_index(drop=True, inplace=True)
+        return self._data
 
 
 class ProductionDataReader(Reader):
@@ -87,6 +89,7 @@ class PvPlantReader(Reader):
             production = self._production_data_reader.read(municipality=municipality, user=user)
             self._production_data = self.create_yearly_profile(production, self._production_data, user)
 
+    # TODO: goes into post-processing class
     @classmethod
     def create_yearly_profile(cls, profile, all_profiles, user_name=None):
         profile = DataFrame(data=profile, columns=timedelta_range(start="0 Days", freq="1h", periods=profile.shape[1]))
@@ -118,13 +121,17 @@ class UsersReader(Reader):
 
 
 class BillsReader(Reader):
+    time_of_use_column_names = {f'f{i}': f"{InputColumn.TOU_ENERGY.value}{i}" for i in
+                          range(configuration.config.getint("tariff", "number_of_time_of_use_periods"))}
+
     column_names = {'pod': InputColumn.USER,  # code or name of the end user
                     'anno': InputColumn.YEAR,  # year
                     'mese': InputColumn.MONTH,  # number of the month
-                    'f0': InputColumn.TOU_ENERGY, 'f1': InputColumn.TOU_ENERGY, 'f2': InputColumn.TOU_ENERGY,
-                    'f3': InputColumn.TOU_ENERGY,  # ToU monthly consumption (kWh)
-                    'totale': InputColumn.ANNUAL_ENERGY,  # Annual consumption
-                    }
+                    'totale': InputColumn.ANNUAL_ENERGY,  # Annual consumption,
+                    **time_of_use_column_names}
+
+    # TODO: store this in a common object, not in BillsReader
+    time_of_use_labels = list(time_of_use_column_names.values())
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -136,4 +143,58 @@ class BillsReader(Reader):
         # Check that each user has exactly 12 rows in the bills dataframe
         if not (self._data[InputColumn.USER].value_counts() == 12).all():
             logger.warning(
-                "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less rows.")
+                "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
+                " rows.")
+
+
+class GlobalConstReader(Reader):
+    def read(self, *args, **kwargs):
+        self._data = read_csv(join(self._directory, self._filename), sep=';', index_col=0, header=0)
+
+
+class TariffReader(GlobalConstReader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # ARERA's day-types depending on subdivision into tariff time-slots
+        # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
+        #            2 - tariff time-slot F2, evening of work-days, and saturdays
+        #            3 - tariff times-lot F2, night, sundays and holidays
+        self._directory = "Common"
+        self._filename = "arera.csv"
+
+    def process_data(self):
+        # total number and list of tariff time-slots (index f)
+        fs = self._data.unique()
+        nf = len(fs)
+
+        # number of day-types (index j)
+        # NOTE : j : 0 - work-days (monday-friday)
+        #            1 - saturdays
+        #            2 - sundays and holidays
+        nj = np.size(self._data, axis=0)
+        js = list(range(nj))
+
+        # number of time-steps during each day (index i)
+        ni = np.size(self._data, axis=1)
+
+        # total number of time-steps (index h)
+        nh = self._data.size
+
+        # time-steps where there is a change of tariff time-slot
+        h_switch_arera = list(
+            np.where(np.diff(np.insert(self._data.flatten(), -1, self._data[0,0])) != 0)[0])
+
+
+class TypicalLoadProfileReader(GlobalConstReader):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._directory = "Common"
+        self._filename = "y_ref_gse.csv"
+
+    def read(self, *args, **kwargs):
+        # reference profiles from GSE
+        super().read(*args, **kwargs)
+        # TODO: to postprocessing class
+        y_ref_gse = {i: row.values
+                     for i, row in self._data.set_index(['type', 'month']).iterrows()}
+        return y_ref_gse

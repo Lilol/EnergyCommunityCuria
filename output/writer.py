@@ -1,5 +1,16 @@
+from os import makedirs
+from os.path import join
+
+import configuration
+
+
 class Writer:
-    pass
+    csv_properties = {"sep": ';', "index": False}
 
+    def __init__(self, *args, **kwargs):
+        self.output_path = configuration.config("path", "output")
+        makedirs(self.output_path, exist_ok=True)
 
-directory_out = "DatiProcessati"
+    def write(self, output, name):
+        output.to_csv(join(self.output_path, name if ".csv" not in name else f"{name}.csv"), **self.csv_properties)
+

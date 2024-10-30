@@ -14,6 +14,8 @@ Date: 30.01.2023
 # python libs, packages, modules
 import pandas as pd
 import numpy as np
+
+from input.definitions import BillType
 # self-created modules and functions
 from methods_scaling import scale_gse, scale_qopt
 from utils import eval_x, eval_y_flat
@@ -36,14 +38,13 @@ def evaluate(bills, nds, pod_type, bill_type):
     Date: 07.02.2023
     """
     #
-    assert len(bills) == len(nds) == nm
-    assert pod_type in ['bta', 'dom', 'ip']
-    assert bill_type in ['mono', 'tou']
+    if len(bills) != len(nds) or len(nds) != nm:
+        raise ValueError("Length of input must match")
     #
     y = []
     for im, (bill, nd) in enumerate(zip(bills, nds)):
         y_ref = y_ref_gse[(pod_type, im)]
-        if bill_type == 'mono':
+        if bill_type == BillType.MONO:
             y_scale = y_ref / np.sum(eval_x(y_ref, nd)) * np.sum(bill)
         else:
             y_scale, _ = scale_gse(bill, nd, y_ref)

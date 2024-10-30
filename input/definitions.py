@@ -20,6 +20,18 @@ class InputColumn(Enum):
     DAY_OF_WEEK = 'day_week'  # number of day in the week (1-Monday, ...)
 
 
+class BillType(Enum):
+    MONO = 'mono'
+    TIME_OF_USE = 'tou'
+    INVALID = 'invalid'
+
+
+class UserType(Enum):
+    BTA = 'bta'
+    DOMESTIC = 'dom'
+    IP = 'ip'
+
+
 class PvDataSource(Enum):
     PVGIS = "PVGIS"
     PVSOL = "PVSOL"

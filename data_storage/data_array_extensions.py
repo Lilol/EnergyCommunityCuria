@@ -9,7 +9,7 @@ class OmnesAccessor:
 
     @property
     def sel(self):
-        pass
+        return self._obj.sel
 
     @property
     def center(self):
