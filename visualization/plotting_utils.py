@@ -285,7 +285,7 @@ sizes2 = [1, 9, 5,
 # start_angle = 90  # angle at which the pie chart starts
 # gridspec_kw = {'width_ratios': [1, 1, 0.5]}  # specifications for the grid
 # datas = [data_users, data_plants]
-# columns = [col_municipality, col_municipality]
+# columns = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
 # titles = ['Utenze comunali', 'Impianti PV']
 #
 #
@@ -336,7 +336,7 @@ sizes2 = [1, 9, 5,
 # for i, data in enumerate(datas):
 #     col = columns[i]
 #     # Evaluate data
-#     label_counts = dict(data.groupby(col_municipality)[col].sum() / divide_by)
+#     label_counts = dict(data.groupby(ColumnName.MUNICIPALITY)[col].sum() / divide_by)
 #     labels, counts = list(label_counts.keys()), list(label_counts.values())
 #     # Select axis
 #     ax = axes[i]

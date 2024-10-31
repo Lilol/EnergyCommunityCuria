@@ -1,3 +1,6 @@
-class Dataset:
-    def __init__(self, data, *args, **kwargs):
-        self.data = data
+from xarray import DataArray
+
+
+class OmnesDataset(DataArray):
+    def __init__(self, data):
+        super().__init__(data=data)

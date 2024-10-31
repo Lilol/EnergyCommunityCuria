@@ -13,6 +13,9 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec as gs
 from matplotlib import cm
 from matplotlib import patheffects as pe
+
+from input.definitions import ColumnName
+from input.reader import BillsReader
 from plotting_utils import *  # self-created functions
 
 
@@ -61,32 +64,32 @@ data_users_year = pd.read_csv(os.path.join(directory_data, file_users_year),
 data_results = pd.read_csv(os.path.join(directory_data, file_results), sep=';')
 
 #
-data_users[col_type] = data_users[col_type].str.upper()
-data_plants[col_type] = data_plants[col_type].str.upper()
-new_cols = {col: f"F{f}" for f, col in enumerate(cols_tou_energy)}
+data_users[ColumnName.USER_TYPE] = data_users[ColumnName.USER_TYPE].str.upper()
+data_plants[ColumnName.USER_TYPE] = data_plants[ColumnName.USER_TYPE].str.upper()
+new_cols = {col: f"F{f}" for f, col in enumerate(BillsReader.time_of_use_energy_column_names)}
 data_users = data_users.rename(columns=new_cols)
 data_plants = data_plants.rename(columns=new_cols)
 data_users_tou = data_users_tou.rename(columns=new_cols)
 data_plants_tou = data_plants_tou.rename(columns=new_cols)
-cols_tou_energy = list(new_cols.values())
+BillsReader.time_of_use_energy_column_names = list(new_cols.values())
 
-data_plants_tou[col_energy] = data_plants_tou[cols_tou_energy].sum(axis=1)
+data_plants_tou[ColumnName.ANNUAL_ENERGY] = data_plants_tou[BillsReader.time_of_use_energy_column_names].sum(axis=1)
 
 #
-data_users[[*cols_tou_energy, col_energy]] /= divide_energy
-data_plants[[*cols_tou_energy, col_energy]] /= divide_energy
-data_users_tou[[*cols_tou_energy, col_energy]] /= divide_energy
-data_plants_tou[[*cols_tou_energy, col_energy]] /= divide_energy
+data_users[[*BillsReader.time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+data_plants[[*BillsReader.time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+data_users_tou[[*BillsReader.time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+data_plants_tou[[*BillsReader.time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
 
 
 # ----------------------------------------------------------------------------
 #%% We analyze the users and plants data sets
 
 # We first define some useful variables
-municipalities = sorted(set(data_users[col_municipality]) |
-                        set(data_plants[col_municipality]))
+municipalities = sorted(set(data_users[ColumnName.MUNICIPALITY]) |
+                        set(data_plants[ColumnName.MUNICIPALITY]))
 n_municipalities = len(municipalities)
-types = list(set(data_users[col_type]) | set(data_plants[col_type]))
+types = list(set(data_users[ColumnName.USER_TYPE]) | set(data_plants[ColumnName.USER_TYPE]))
 
 # Setup for these plots
 nrows, ncols = 2, 2
@@ -126,7 +129,7 @@ subplots_adjust_kw = dict(left=0, right=1, bottom=0.05, top=0.9,
 
 # Select data and labels to plot
 datas = [data_users, data_plants]
-cols = [col_municipality, col_municipality]
+cols = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
 pies_counts, pies_labels = [], []
 for i, data in enumerate(datas):
     col = cols[i]
@@ -183,8 +186,8 @@ subplots_adjust_kw = dict(left=0, right=1, bottom=0.05, top=0.9,
 
 # Select data and labels to plot
 datas = [data_users, data_plants]
-cols_label = [col_municipality, col_municipality]
-cols_data = [col_energy, col_energy]
+cols_label = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
+cols_data = [ColumnName.ANNUAL_ENERGY, ColumnName.ANNUAL_ENERGY]
 pies_counts = []
 pies_labels = []
 for i, data in enumerate(datas):
@@ -247,11 +250,11 @@ grid_kw = dict(axis='y')  # (SETUP)
 
 # Select data and labels to plot
 datas = [data_users, data_plants]
-cols_group = [col_municipality, col_municipality]
-cols_data = [col_size, col_size]
-binss = [[0, 3, 6, 10, 16.5, data_users[col_size].max()],  # (SETUP)
+cols_group = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
+cols_data = [ColumnName.POWER, ColumnName.POWER]
+binss = [[0, 3, 6, 10, 16.5, data_users[ColumnName.POWER].max()],  # (SETUP)
          [0, 20,
-          data_plants[col_size].max()]]  # (SETUP)
+          data_plants[ColumnName.POWER].max()]]  # (SETUP)
 labels_from_bins = lambda bins: [f'<{b}' if j == 0 else
                                  f'{bins[j]}-{b}' if j < len(bins)-2
                                  # else f'{int(bins[j])}$\leq${int(b)}'
@@ -337,8 +340,8 @@ grid_kw = dict(axis='y')  # (SETUP)
 
 # Select data and labels to plot
 datas = [data_users, data_plants]
-cols_group = [col_type, col_type]
-cols_data = [col_size, col_size]
+cols_group = [ColumnName.USER_TYPE, ColumnName.USER_TYPE]
+cols_data = [ColumnName.POWER, ColumnName.POWER]
 bars_counts, bars_labels, legend_labels = [], [], []
 for i, data in enumerate(datas):
     bins = binss[i]
@@ -419,8 +422,8 @@ grid_kw = dict(axis='y')  # (SETUP)
 
 # Select data and labels to plot
 datas = [data_users, data_plants]
-cols_group = [col_type, col_type]
-cols_data = [cols_tou_energy, cols_tou_energy]
+cols_group = [ColumnName.USER_TYPE, ColumnName.USER_TYPE]
+cols_data = [BillsReader.time_of_use_energy_column_names, BillsReader.time_of_use_energy_column_names]
 bars_counts, bars_labels, legend_labels = [], [], []
 for i, data in enumerate(datas):
     col_group = cols_group[i]
@@ -513,8 +516,8 @@ figsize = (fig_width, fig_height)
 
 # Select data and labels to plot
 datas = [data_users_tou, data_plants_tou]
-cols_group = [col_month, col_month]
-cols_data = [cols_tou_energy, cols_tou_energy]
+cols_group = [ColumnName.MONTH, ColumnName.MONTH]
+cols_data = [BillsReader.time_of_use_energy_column_names, BillsReader.time_of_use_energy_column_names]
 bars_counts, legend_labels = [], []
 bars_labels = [list(ms), list(ms)]
 for i, data in enumerate(datas):
@@ -569,7 +572,7 @@ width = 0.8
 align = 'center'
 ncols = 2
 nrows = sum([any([any([c > 0 for c in count[i]]) for count in bars_counts])
-             for i in range(len(cols_tou_energy))])
+             for i in range(len(BillsReader.time_of_use_energy_column_names))])
 gridspec_kw = dict(width_ratios=[0.5, 0.5],
                    height_ratios=[1 / nrows]*nrows)
 tickparams_kw = dict(axis='x', rotation=60)
@@ -679,15 +682,15 @@ xlabel_kw = dict(x=0.5, y=0.03, s=xlabel, ha='center', va='center',)
 
 # Select data
 profiles_plants = {}
-data = data_plants_year.groupby([col_season, col_month, col_day]).sum()\
-    .reset_index().groupby([col_season, col_dayweek]).mean()
-for season, df in data.groupby(col_season):
+data = data_plants_year.groupby([ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum()\
+    .reset_index().groupby([ColumnName.SEASON, ColumnName.DAY_OF_WEEK]).mean()
+for season, df in data.groupby(ColumnName.SEASON):
     profile = df.loc[:, '0':].values.flatten()
     profiles_plants[season] = profile
 profiles_users = {}
-data = data_users_year.groupby([col_season, col_month, col_day]).sum() \
-    .reset_index().groupby([col_season, col_dayweek]).mean()
-for season, df in data.groupby(col_season):
+data = data_users_year.groupby([ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum() \
+    .reset_index().groupby([ColumnName.SEASON, ColumnName.DAY_OF_WEEK]).mean()
+for season, df in data.groupby(ColumnName.SEASON):
     profile = df.loc[:, '0':].values.flatten()
     profiles_users[season] = profile
 
@@ -740,15 +743,15 @@ xlabel_kw = dict(x=0.45, y=0.03, s=xlabel, ha='center', va='center',)
 
 # Select data
 profiles_plants = {}
-data = data_plants_year.groupby([col_season, col_month, col_day]).sum()\
+data = data_plants_year.groupby([ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum()\
     .reset_index()
-for season, df in data.groupby(col_season):
+for season, df in data.groupby(ColumnName.SEASON):
     profile = df.mean().loc['0':].values
     profiles_plants[season] = profile
 profiles_users = {}
-data = data_users_year.groupby([col_season, col_month, col_day]).sum()\
+data = data_users_year.groupby([ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum()\
     .reset_index()
-for season, df in data.groupby(col_season):
+for season, df in data.groupby(ColumnName.SEASON):
     profile = df.mean().loc['0':].values
     profiles_users[season] = profile
 

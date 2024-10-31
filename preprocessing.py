@@ -12,7 +12,7 @@ import common as cm
 import configuration
 from approach_gse import evaluate as eval_profiles_gse
 from data_builder.merger import MyMerger
-from input.definitions import InputColumn
+from input.definitions import ColumnName
 from input.reader import UsersReader, BillsReader
 from input.utility import reshape_array_by_year
 from output.writer import Writer
@@ -27,12 +27,12 @@ data_users = UsersReader().read()
 data_users_bills = BillsReader().read()
 
 merger = MyMerger()
-data_users_bs = merger.merge([data_users, data_users_bills], InputColumn.USER)
+data_users_bs = merger.merge([data_users, data_users_bills], ColumnName.USER)
 
-for user, data_bills in data_users_bills.groupby(InputColumn.USER):
+for user, data_bills in data_users_bills.groupby(ColumnName.USER):
     # type of pod (bta/ip/dom)
-    pod_type = data_users.loc[data_users[InputColumn.USER] == user, InputColumn.USER_TYPE].values[0]
-    # pod_type = data_bills[col_type].iloc[0]
+    pod_type = data_users.loc[data_users[ColumnName.USER] == user, ColumnName.USER_TYPE].values[0]
+    # pod_type = data_bills[ColumnName.USER_TYPE].iloc[0]
     # type of bill (mono/tou)
     if not data_bills[BillsReader.time_of_use_labels[1:]].isna().any(how=None):
         bills_cols = BillsReader.time_of_use_labels[1:]
@@ -49,13 +49,13 @@ for user, data_bills in data_users_bills.groupby(InputColumn.USER):
     # Evaluate typical profiles in each month
     nds = []
     labels = []
-    for _, month in data_bills.loc[:, InputColumn.MONTH].iterrows():
+    for _, month in data_bills.loc[:, ColumnName.MONTH].iterrows():
         # Number of days corresponding to this one in the year
-        nds.append(cm.df_year[((cm.df_year[cm.col_year] == reference_year) & (cm.df_year[cm.col_month] == month))].groupby(
-            cm.col_daytype).count().iloc[:, 0].values)
+        nds.append(cm.df_year[((cm.df_year[cm.ColumnName.YEAR] == reference_year) & (cm.df_year[cm.ColumnName.MONTH] == month))].groupby(
+            cm.ColumnName.DAY_TYPE).count().iloc[:, 0].values)
         # Extract labels to get yearly load profile
-        labels.append(cm.df_year.loc[((cm.df_year[cm.col_year] == reference_year) & (cm.df_year[cm.col_month] == month))][
-                          cm.col_daytype].astype(int).values)
+        labels.append(cm.df_year.loc[((cm.df_year[cm.ColumnName.YEAR] == reference_year) & (cm.df_year[cm.ColumnName.MONTH] == month))][
+                          cm.ColumnName.DAY_TYPE].astype(int).values)
 
     nds = np.array(nds)
     bills = data_bills[bills_cols].values
@@ -93,47 +93,47 @@ data_fam_year, df_plants_year = create_yearly_profile(df_plants_year, user_name=
 # ----------------------------------------------------------------------------
 # Evaluate "ToU" production and families consumption
 data_plants_tou = DataFrame()
-for user, df in data_plants_year.groupby(InputColumn.USER):
+for user, df in data_plants_year.groupby(ColumnName.USER):
     # Evaluate profiles in typical days
-    months = np.repeat(df.loc[:, cm.col_month], cm.ni)
-    day_types = np.repeat(df.loc[:, cm.col_daytype], cm.ni)
+    months = np.repeat(df.loc[:, cm.ColumnName.MONTH], cm.ni)
+    day_types = np.repeat(df.loc[:, cm.ColumnName.DAY_TYPE], cm.ni)
     profiles = df.loc[:, 0:].values.flatten()
     profiles = eval_y_from_year(profiles, months, day_types).reshape((cm.nm, cm.nj * cm.ni))
     # Evaluate typical profiles in each month
-    nds = df.groupby([cm.col_month, cm.col_daytype]).count().iloc[:, 0].values.reshape(cm.nm, cm.nj)
+    nds = df.groupby([cm.ColumnName.MONTH, cm.ColumnName.DAY_TYPE]).count().iloc[:, 0].values.reshape(cm.nm, cm.nj)
     tou_energy = []
     for y, nd in zip(profiles, nds):
         tou_energy.append(eval_x(y, nd))
     # Create dataframe
     tou_energy = np.concatenate((np.full((cm.nm, 1), np.nan), np.array(tou_energy)), axis=1)
-    tou_energy = DataFrame(tou_energy, columns=cm.cols_tou_energy)
-    tou_energy.insert(0, InputColumn.USER, user)
-    tou_energy.insert(1, InputColumn.YEAR, reference_year)
-    tou_energy.insert(2, InputColumn.MONTH, cm.ms)
+    tou_energy = DataFrame(tou_energy, columns=cm.BillsReader.time_of_use_energy_column_names)
+    tou_energy.insert(0, ColumnName.USER, user)
+    tou_energy.insert(1, ColumnName.YEAR, reference_year)
+    tou_energy.insert(2, ColumnName.MONTH, cm.ms)
     # Concatenate
     data_plants_tou = concat((data_plants_tou, tou_energy), axis=0)
 
-    # # check  # bills = [[0 for _ in fs] for _ in ms]  # for month, daytype, profiles in zip(df[col_month], df[col_daytype],  #                                     df.loc[:, 0:].values):  #     for if_, f in enumerate(fs):  #         bills[month-1][if_] += np.sum(profiles[arera[daytype]==f])  #  # bills = np.array(bills)
+    # # check  # bills = [[0 for _ in fs] for _ in ms]  # for month, daytype, profiles in zip(df[ColumnName.MONTH], df[ColumnName.DAY_TYPE],  #                                     df.loc[:, 0:].values):  #     for if_, f in enumerate(fs):  #         bills[month-1][if_] += np.sum(profiles[arera[daytype]==f])  #  # bills = np.array(bills)
 
 # Do the same for the families
 data_fam_tou = DataFrame()
-for user, df in data_fam_year.groupby(InputColumn.USER):
+for user, df in data_fam_year.groupby(ColumnName.USER):
     # Evaluate profiles in typical days
-    months = np.repeat(df.loc[:, cm.col_month], cm.ni)
-    day_types = np.repeat(df.loc[:, cm.col_daytype], cm.ni)
+    months = np.repeat(df.loc[:, cm.ColumnName.MONTH], cm.ni)
+    day_types = np.repeat(df.loc[:, cm.ColumnName.DAY_TYPE], cm.ni)
     profiles = df.loc[:, 0:].values.flatten()
     profiles = eval_y_from_year(profiles, months, day_types).reshape((cm.nm, cm.nj * cm.ni))
     # Evaluate typical profiles in each month
-    nds = df.groupby([cm.col_month, cm.col_daytype]).count().iloc[:, 0].values.reshape(cm.nm, cm.nj)
+    nds = df.groupby([cm.ColumnName.MONTH, cm.ColumnName.DAY_TYPE]).count().iloc[:, 0].values.reshape(cm.nm, cm.nj)
     tou_energy = []
     for y, nd in zip(profiles, nds):
         tou_energy.append(eval_x(y, nd))
     # Create dataframe
     tou_energy = np.concatenate((np.full((cm.nm, 1), np.nan), np.array(tou_energy)), axis=1)
-    tou_energy = DataFrame(tou_energy, columns=cm.cols_tou_energy)
-    tou_energy.insert(0, InputColumn.USER, user)
-    tou_energy.insert(1, cm.col_year, reference_year)
-    tou_energy.insert(2, cm.col_month, cm.ms)
+    tou_energy = DataFrame(tou_energy, columns=cm.BillsReader.time_of_use_energy_column_names)
+    tou_energy.insert(0, ColumnName.USER, user)
+    tou_energy.insert(1, cm.ColumnName.YEAR, reference_year)
+    tou_energy.insert(2, cm.ColumnName.MONTH, cm.ms)
     # Concatenate
     data_fam_tou = concat((data_fam_tou, tou_energy), axis=0)
 
@@ -141,18 +141,18 @@ for user, df in data_fam_year.groupby(InputColumn.USER):
 # Refinements
 
 # Add column with yearly production by ToU tariff for each plant
-for i, col in enumerate(cm.cols_tou_energy):
+for i, col in enumerate(cm.BillsReader.time_of_use_energy_column_names):
     if i == 0:
         data_plants[col] = np.nan
         continue
-    data_plants = data_plants.merge(data_plants_tou.groupby(InputColumn.USER)[col].sum().rename(col).reset_index(),
-                                    on=InputColumn.USER)
+    data_plants = data_plants.merge(data_plants_tou.groupby(ColumnName.USER)[col].sum().rename(col).reset_index(),
+                                    on=ColumnName.USER)
 
 # Add column with type of plant
-if cm.col_type not in data_plants:
-    data_plants[cm.col_type] = 'pv'
+if cm.ColumnName.USER_TYPE not in data_plants:
+    data_plants[cm.ColumnName.USER_TYPE] = 'pv'
 else:
-    data_plants[cm.col_type] = data_plants[cm.col_type].fillna('pv')
+    data_plants[cm.ColumnName.USER_TYPE] = data_plants[cm.ColumnName.USER_TYPE].fillna('pv')
 
 # ----------------------------------------------------------------------------
 # %% Graphical check

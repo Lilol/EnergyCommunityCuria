@@ -3,14 +3,12 @@
 
 # Data management
 import os
-import pandas as pd
-from common import *  # common variables
 
 # Data processing
 import numpy as np
+import pandas as pd
 
-# Visualization
-import matplotlib.pyplot as plt
+from input.definitions import ColumnName
 
 
 # ----------------------------------------------------------------------------
@@ -51,8 +49,7 @@ def manage_bess(p_prod, p_cons, bess_size, t_min=None):
 
 # Evaluate shared energy, produced energy, consumed energy, and related
 # indicators
-def eval_rec(p_inj, p_with, dt=1, return_power=False, p_prod=None,
-             p_cons=None):
+def eval_rec(p_inj, p_with, dt=1, return_power=False, p_prod=None, p_cons=None):
     """
     Evaluates shared energy, produced energy, consumed energy, and related
     indicators.
@@ -95,9 +92,10 @@ def eval_rec(p_inj, p_with, dt=1, return_power=False, p_prod=None,
         return sc, ss, e_sh, p_sh
     return sc, ss, e_sh
 
+
 # Calculate the CO2 emissions
-def eval_co2(e_sh, e_cons, e_prod, e_with=None, e_inj=None, bess_size=0,
-             eps_grid=0.263, eps_inj=0, eps_prod=0.05, eps_bess=175, n=20):
+def eval_co2(e_sh, e_cons, e_prod, e_with=None, e_inj=None, bess_size=0, eps_grid=0.263, eps_inj=0, eps_prod=0.05,
+             eps_bess=175, n=20):
     """
     Calculates the CO2 emissions based on the shared energy, consumed energy,
     produced energy, and emission factors.
@@ -127,8 +125,7 @@ def eval_co2(e_sh, e_cons, e_prod, e_with=None, e_inj=None, bess_size=0,
     e_with = e_cons if e_with is None else e_with
 
     # Evaluate total emissions
-    em_tot = ((e_with - e_sh) * eps_grid + (e_inj - e_sh) * eps_inj +
-              eps_prod * e_prod) * n + bess_size * eps_bess
+    em_tot = ((e_with - e_sh) * eps_grid + (e_inj - e_sh) * eps_inj + eps_prod * e_prod) * n + bess_size * eps_bess
 
     # Evaluate total emissions in base case
     em_base = (e_cons * eps_grid) * n
@@ -137,6 +134,7 @@ def eval_co2(e_sh, e_cons, e_prod, e_with=None, e_inj=None, bess_size=0,
     esr = (em_base - em_tot) / em_base
 
     return esr, em_tot, em_base
+
 
 def eval_capex_pv(pv_size):
     """Evaluate investment cost (CAPEX) of a PV system depending on the size."""
@@ -160,6 +158,7 @@ def eval_capex_pv(pv_size):
         c_pv = 1050
     return c_pv * pv_size
 
+
 # Evaluate the investment cost for the REC
 def eval_capex(pv_sizes, bess_size, n_users, c_bess=350, c_user=100):
     """Evaluate CAPEX of a REC, given PV sizes, BESS size(s) and
@@ -176,7 +175,7 @@ def eval_capex(pv_sizes, bess_size, n_users, c_bess=350, c_user=100):
     capex += bess_size * c_bess
 
     # Add cost of users
-    capex += n_users*c_user
+    capex += n_users * c_user
 
     return capex
 
@@ -200,18 +199,15 @@ file_scenarios = "scenarios.csv"  # scenarios to evaluate
 # Load data
 data_plants = pd.read_csv(os.path.join(directory_data, file_plants), sep=';')
 data_users = pd.read_csv(os.path.join(directory_data, file_users), sep=';')
-data_plants_year = pd.read_csv(os.path.join(directory_data, file_plants_year),
-                               sep=';')
-data_users_year = pd.read_csv(os.path.join(directory_data, file_users_year),
-                               sep=';')
-df_fam = pd.read_csv(os.path.join(directory_data, file_fam_year), sep=';')\
-    .drop(col_user, axis=1)
+data_plants_year = pd.read_csv(os.path.join(directory_data, file_plants_year), sep=';')
+data_users_year = pd.read_csv(os.path.join(directory_data, file_users_year), sep=';')
+df_fam = pd.read_csv(os.path.join(directory_data, file_fam_year), sep=';').drop(ColumnName.USER, axis=1)
 scenarios = pd.read_csv(os.path.join(directory_data, file_scenarios), sep=';')
 
 # ----------------------------------------------------------------------------
 # Get plants sizes and number of users
 n_users = len(data_users)
-pv_sizes = list(data_plants.loc[data_plants[col_type]=='pv', col_size])
+pv_sizes = list(data_plants.loc[data_plants[ColumnName.USER_TYPE] == 'pv', ColumnName.POWER])
 if len(pv_sizes) < len(data_plants):
     raise Warning("Some plants are not PV, add CAPEX manually and comment this"
                   " Warning.")
@@ -220,32 +216,29 @@ if len(pv_sizes) < len(data_plants):
 # Get total production and consumption data
 
 # Sum all end users/plants
-cols = [col_year, col_season, col_month, col_week, col_day, col_dayweek,
-        col_daytype]
-df_plants = df_year.loc[df_year[col_year] == ref_year, cols]
-df_plants = df_plants.merge(data_plants_year.groupby([col_month, col_day])\
-                            .sum().loc[:, '0':].reset_index(),
-                            on=[col_month, col_day])
-df_users = df_year.loc[df_year[col_year] == ref_year, cols]
-df_users = df_users.merge(data_users_year.groupby([col_month, col_day])\
-                          .sum().loc[:, '0':].reset_index(),
-                          on=[col_month, col_day])
+cols = [ColumnName.YEAR, ColumnName.SEASON, ColumnName.MONTH, ColumnName.WEEK, ColumnName.DAY_OF_MONTH,
+        ColumnName.DAY_OF_WEEK, ColumnName.DAY_TYPE]
+df_plants = df_year.loc[df_year[ColumnName.YEAR] == ref_year, cols]
+df_plants = df_plants.merge(
+    data_plants_year.groupby([ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
+    on=[ColumnName.MONTH, ColumnName.DAY_OF_MONTH])
+df_users = df_year.loc[df_year[ColumnName.YEAR] == ref_year, cols]
+df_users = df_users.merge(
+    data_users_year.groupby([ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
+    on=[ColumnName.MONTH, ColumnName.DAY_OF_MONTH])
 
 # We create a single dataframe for both production and consumption
 df_hours = pd.DataFrame()
-for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(),
-                                                 df_users.iterrows(),
-                                                 df_fam.iterrows()):
+for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(), df_users.iterrows(), df_fam.iterrows()):
     prod = df_prod.loc['0':].values
     cons = df_cons.loc['0':].values
     fam = df_f.loc['0':].values
 
     df_temp = pd.concat([df_prod[cols]] * len(prod), axis=1).T
-    col_hour = 'hour'
-    df_temp[col_hour] = np.arange(len(prod))
-    df_temp['production'] = prod
-    df_temp['consumption'] = cons
-    df_temp['family'] = fam
+    df_temp[ColumnName.HOUR] = np.arange(len(prod))
+    df_temp[ColumnName.PRODUCTION] = prod
+    df_temp[ColumnName.CONSUMPTION] = cons
+    df_temp[ColumnName.FAMILY] = fam
 
     df_hours = pd.concat((df_hours, df_temp), axis=0)
 
@@ -253,9 +246,9 @@ for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(),
 # Here, we evaluate the scenarios
 
 # Get data arrays
-p_prod = df_hours['production'].values
-p_cons = df_hours['consumption'].values
-p_fam = df_hours['family'].values
+p_prod = df_hours[ColumnName.PRODUCTION].values
+p_cons = df_hours[ColumnName.CONSUMPTION].values
+p_fam = df_hours[ColumnName.FAMILY].values
 
 # Initialize results
 results = dict(scenarios)
@@ -268,7 +261,7 @@ for i, scenario in scenarios.iterrows():
     bess_size = scenario['bess_size']
 
     # Manage BESS, if present
-    p_with = p_cons+n_fam*p_fam
+    p_with = p_cons + n_fam * p_fam
     if bess_size > 0:
         p_bess = manage_bess(p_prod, p_with, bess_size)
         p_inj = p_prod - p_bess
@@ -283,11 +276,10 @@ for i, scenario in scenarios.iterrows():
     e_with = e_sh / ss
 
     # Evaluate emissions
-    esr, em_tot, em_base = eval_co2(e_sh, e_cons=e_with, e_inj=e_inj,
-                                    e_prod=e_prod)
+    esr, em_tot, em_base = eval_co2(e_sh, e_cons=e_with, e_inj=e_inj, e_prod=e_prod)
 
     # Evaluate CAPEX
-    capex = eval_capex(pv_sizes, bess_size=bess_size, n_users=n_users+n_fam)
+    capex = eval_capex(pv_sizes, bess_size=bess_size, n_users=n_users + n_fam)
 
     # Update results
     try:
@@ -335,8 +327,6 @@ for i, scenario in scenarios.iterrows():
     except KeyError:
         results['capex'] = [capex]
 
-
 results = pd.DataFrame(results)
 
-results.to_csv(os.path.join(directory_data, "results.csv"), sep=';',
-               index=False)
+results.to_csv(os.path.join(directory_data, "results.csv"), sep=';', index=False)
