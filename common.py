@@ -58,4 +58,4 @@ h_switch_arera = list(
 # reference profiles from GSE
 y_ref_gse = pd.read_csv(join("Common", "y_ref_gse.csv"), sep=';', index_col=0)
 y_ref_gse = {i: row.values
-             for i, row in y_ref_gse.set_index(['type', 'month']).iterrows()}
+             for i, row in y_ref_gse.set_index([ColumnName.USER_TYPE, ColumnName.MONTH]).iterrows()}

@@ -9,7 +9,7 @@ def vis_profiles(data_fam_year):
     # Families profiles
     # By month
     plt.figure()
-    data = data_fam_year.groupby(['user', 'month']).mean().groupby('month').sum().loc[:, 0:]
+    data = data_fam_year.groupby(['user', ColumnName.MONTH]).mean().groupby(ColumnName.MONTH).sum().loc[:, 0:]
     for m, profile in data.iterrows():
         plt.plot(profile, label=str(m))
     plt.legend()
@@ -34,7 +34,7 @@ def by_month_profiles(data_plants_year):
     # Production profiles
     # By month
     plt.figure()
-    data = data_plants_year.groupby(['user', 'month']).mean().groupby('month').sum().loc[:, 0:]
+    data = data_plants_year.groupby(['user', ColumnName.MONTH]).mean().groupby(ColumnName.MONTH).sum().loc[:, 0:]
     for m, profile in data.iterrows():
         plt.plot(profile, label=str(m))
     plt.legend()
@@ -63,7 +63,7 @@ def consumption_profiles():
 
         # By month
         plt.figure()
-        ddata = data.groupby(['user', 'month']).mean().groupby('month').sum().loc[:, 0:]
+        ddata = data.groupby(['user', ColumnName.MONTH]).mean().groupby(ColumnName.MONTH).sum().loc[:, 0:]
         for m, profile in ddata.iterrows():
             plt.plot(profile, label=str(m))
         plt.legend()

@@ -13,6 +13,7 @@ from pandas import DataFrame, concat, read_csv
 import configuration
 from input.definitions import ColumnName
 from input.reader import BillsReader
+from time.day_of_the_week import df_year
 
 # Data processing
 ref_year = configuration.config.getint("time", "year")

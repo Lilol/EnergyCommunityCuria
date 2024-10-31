@@ -8,7 +8,9 @@ import os
 import numpy as np
 import pandas as pd
 
+import configuration
 from input.definitions import ColumnName
+from time.day_of_the_week import df_year
 
 
 # ----------------------------------------------------------------------------
@@ -216,6 +218,7 @@ if len(pv_sizes) < len(data_plants):
 # Get total production and consumption data
 
 # Sum all end users/plants
+ref_year = configuration.config.getint("time", "year")
 cols = [ColumnName.YEAR, ColumnName.SEASON, ColumnName.MONTH, ColumnName.WEEK, ColumnName.DAY_OF_MONTH,
         ColumnName.DAY_OF_WEEK, ColumnName.DAY_TYPE]
 df_plants = df_year.loc[df_year[ColumnName.YEAR] == ref_year, cols]

@@ -1,9 +1,11 @@
 from calendar import weekday
 
 import holidays
-from pandas import date_range
+from pandas import date_range, DataFrame
 
 import configuration
+from input.definitions import ColumnName
+from processing import ref_year
 
 weekday_name = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
 weekday_long_name = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
@@ -32,3 +34,14 @@ def get_similar_day_code(wdc):
         return weekdays
     else:
         return weekend
+
+
+df_year = DataFrame(index=date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"),
+                    columns=[ColumnName.YEAR, ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.WEEK,
+                             ColumnName.SEASON])
+df_year[ColumnName.YEAR] = df_year.index.year
+df_year[ColumnName.MONTH] = df_year.index.month
+df_year[ColumnName.DAY_OF_MONTH] = df_year.index.day
+df_year[ColumnName.WEEK] = df_year.index.dt.isocalendar().week
+df_year[ColumnName.SEASON] = df_year.index.month % 12 // 3 + 1
+df_year[ColumnName.DAY_OF_WEEK] = df_year.index.dayofweek

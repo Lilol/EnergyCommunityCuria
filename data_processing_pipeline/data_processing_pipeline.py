@@ -1,5 +1,6 @@
 from data_processing_pipeline.data_processing_arbiter import DataProcessingArbiter
 from data_processing_pipeline.pipeline_stage import PipelineStage
+from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataset
 
 
@@ -15,4 +16,5 @@ class DataProcessingPipeline:
     def execute(self, dataset, *args, **kwargs) -> OmnesDataset:
         for _, processor in self.workers.items():
             dataset = processor.execute(dataset, *args, **kwargs)
+        DataStore()[self.name] = dataset
         return dataset

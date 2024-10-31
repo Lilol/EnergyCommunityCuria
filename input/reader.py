@@ -32,7 +32,7 @@ class Reader(PipelineStage):
             columns=self.column_names)
         self._data.insert(1, ColumnName.MUNICIPALITY, municipality)
         self._data.reset_index(drop=True, inplace=True)
-        return self._data
+        return self._data.to_xarray()
 
 
 class ProductionDataReader(Reader):
@@ -50,7 +50,7 @@ class PvgisReader(ProductionDataReader):
         municipality = kwargs.pop("municipality", "")
         user = kwargs.pop("user", "")
         return read_csv(join(self._directory, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
-                        index_col=0, parse_dates=True, date_format="%d/%m/%Y %H:%M")
+                        index_col=0, parse_dates=True, date_format="%d/%m/%Y %H:%M").to_xarray()
 
 
 class PvsolReader(ProductionDataReader):
@@ -67,7 +67,7 @@ class PvsolReader(ProductionDataReader):
         days = production[self.production_column_name].groupby(production.index.dayofyear)
         production = DataFrame(data=[items.values for g, items in days], index=days.groups.keys(),
                                columns=days.groups[1] - days.groups[1][0])
-        return production
+        return production.to_xarray()
 
 
 class PvPlantReader(Reader):
@@ -93,7 +93,7 @@ class PvPlantReader(Reader):
         for user in self._data[ColumnName.USER].unique():
             production = self._production_data_reader.execute(municipality=municipality, user=user)
             self._production_data = self.create_yearly_profile(production, self._production_data, user)
-        return self._data
+        return self._data.to_xarray()
 
     # TODO: goes into post-processing class
     @classmethod
@@ -151,13 +151,13 @@ class BillsReader(Reader):
             logger.warning(
                 "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
                 " rows.")
-        return self._data
+        return self._data.to_xarray()
 
 
 class GlobalConstReader(Reader):
     def execute(self, *args, **kwargs):
         self._data = read_csv(join(self._directory, self._filename), sep=';', index_col=0, header=0)
-        return self._data
+        return self._data.to_xarray()
 
 
 class TariffReader(GlobalConstReader):
@@ -202,5 +202,5 @@ class TypicalLoadProfileReader(GlobalConstReader):
         # reference profiles from GSE
         super().execute(*args, **kwargs)
         # TODO: to postprocessing class
-        y_ref_gse = {i: row.values for i, row in self._data.set_index(['type', 'month']).iterrows()}
+        y_ref_gse = {i: row.values for i, row in self._data.set_index([ColumnName.USER_TYPE, ColumnName.MONTH]).iterrows()}
         return y_ref_gse
