@@ -2,7 +2,6 @@ class DataProcessingArbiter(object):
     _instance = None
 
     def __init__(self):
-        self.processing_stages = None
         self._pipelines = {}
 
     @classmethod

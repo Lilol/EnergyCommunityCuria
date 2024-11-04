@@ -54,6 +54,9 @@ class ConfigurationManager:
     def setint(self, section, key, value):
         self.__config.set(section, key, f"{value}")
 
+    def setarray(self, section, key, value):
+        self.__config.set(section, key, f",".join(f"{val}" for val in value))
+
     def setboolean(self, section, key, value):
         boolean_str = 'True' if value else 'False'
         self.__config.set(section, key, boolean_str)

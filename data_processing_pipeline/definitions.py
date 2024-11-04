@@ -5,4 +5,5 @@ class Stage(IntEnum):
     READ = 0
     EXTRACT = 1
     STORE = 2
-    INVALID = 3
+    TRANSFORM = 3
+    INVALID = 4

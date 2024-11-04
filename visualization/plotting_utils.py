@@ -73,7 +73,7 @@ def get_colors(labels, colors):
 
 # Make a figure with one or two subplot(s)
 def make_fig(make_legend=False, figsize=(12, 10), legend_loc='column',
-             gridspec_kw=dict()):
+             gridspec_kw=None):
     """
     Create a figure with one or two subplots based on the specified parameters.
 
@@ -98,7 +98,6 @@ def make_fig(make_legend=False, figsize=(12, 10), legend_loc='column',
         ValueError: If an invalid legend_loc value is provided.
 
     """
-
     # Determine the number of rows and columns for subplots based on
     # make_legend and legend_loc parameters
     if make_legend:

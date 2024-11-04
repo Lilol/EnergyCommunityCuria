@@ -4,3 +4,4 @@ matplotlib
 xarray
 cvxopt
 holidays
+openpyxl

@@ -10,11 +10,9 @@ INFO
 Author : G. Lorenti (gianmarco.lorenti@polito.it)
 Date : 29.11.2022
 """
-# ----------------------------------------------------------------------------
-# Import
-# python libs, packages, modules
-# common variables
-from common import *
+import numpy as np
+
+
 # ----------------------------------------------------------------------------
 # Method to evaluate monthly consumption from hourly load profiles
 # evaluate the monthly consumption divided into tariff time-slots from the
@@ -48,11 +46,11 @@ def eval_x(y, nd):
     Author : G. Lorenti (gianmarco.lorenti@polito.it)
     Date : 29.11.2022
     """
-    # evaluate and return
     x = np.array([
         sum([(y.reshape(nj, ni)[j, arera[j] == f] * nd[j]).sum()
              for j in range(nj)]) for f in fs])
     return x
+
 # ----------------------------------------------------------------------------
 # This methods just spreads the total consumption over the tariff time-slots
 # according to the number of hours of each of them

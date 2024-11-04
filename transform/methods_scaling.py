@@ -17,9 +17,6 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 
-# common variables
-from common import arera, fs, nf, nj, nh, ni
-
 from utils import eval_x
 
 
@@ -184,7 +181,7 @@ def scale_qopt(x, nd, y_ref, y_max=None, obj=0, obj_reg=None, cvxopt=None):
     NOTES
     The method solves a quadratic optimisation problem where the deviation 
     from the given reference profiles is to be minimised.
-    The total consumption is a contraint. Other (optional) constraints are:
+    The total consumption is a constraint. Other (optional) constraints are:
         - demand smaller than a maximum value in all time-steps;
     ____________
     PARAMETERS
@@ -386,4 +383,6 @@ if __name__ == "__main__":
     ax.legend(fontsize=fontsize, bbox_to_anchor=(1.005, 0.5), loc="center left")
     ax.grid(axis='y')
     fig.subplots_adjust(top=0.98, bottom=0.1, left=0.1, right=0.8)
-    plt.show()  # fig.savefig('test_methods_scaling.png', dpi=300)
+    plt.show()
+    plt.close(fig)
+    # fig.savefig('test_methods_scaling.png', dpi=300)

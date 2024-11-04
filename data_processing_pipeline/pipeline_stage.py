@@ -1,5 +1,5 @@
 from data_processing_pipeline.definitions import Stage
-from data_storage.dataset import OmnesDataset
+from data_storage.dataset import OmnesDataArray
 
 
 class PipelineStage:
@@ -8,6 +8,6 @@ class PipelineStage:
     def __init__(self, name="", *args, **kwargs):
         self.name = name
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataset:
+    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError(
             "'execute' is not implemented in base class 'PipelineStage', must be implemented in every child class.")

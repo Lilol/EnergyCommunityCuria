@@ -1,6 +1,3 @@
-# ----------------------------------------------------------------------------
-# Import statement
-
 # Data management
 import os
 
@@ -13,6 +10,7 @@ from pandas import DataFrame, concat, read_csv
 import configuration
 from input.definitions import ColumnName
 from input.reader import BillsReader
+from output.writer import Writer
 from time.day_of_the_week import df_year
 
 # Data processing
@@ -85,7 +83,6 @@ def find_n_fam(sc, n_fam_max, p_plants, p_users, p_fam, step=25):
     # Loop to find best value
     # TODO: kill it with fire
     while True:
-
         # Stopping criterion (considering that n_fam is integer)
         if n_fam_high - n_fam_low <= step:
             print("Procedure ended without exact match.")
@@ -115,10 +112,10 @@ n_fams_ = [0, 25, 50, 75, 100]  # [0, 15, 30, 45, 60]
 # Directory with files
 directory_data = 'DatiProcessati'
 
-# Names of the files to loadhttps://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
+# Names of the files to load https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
+# TODO: filenames always into config, or kill it with fire
 # file_plants = "data_plants.csv"  # list of plants
 # file_users = "data_users.csv"  # list of end users
-# TODO: filenames always into config
 file_plants_tou = "data_plants_tou.csv"  # monthly production data
 file_users_tou = "data_users_tou.csv"  # monthly consumption data
 file_fam_tou = "data_fam_tou.csv"  # monthly family consumption data
@@ -230,7 +227,7 @@ def sc_lim_tou(n_fam):
     return e_shared / e_prod
 
 
-# Function to evaluate SC with different aggregation in time
+# Function to evaluate SC with different aggregations in time
 def aggregated_sc(groupby, n_fam):
     """Evaluate SC with given temporal aggregation and number of families."""
     # Get values
@@ -247,7 +244,8 @@ def aggregated_sc(groupby, n_fam):
 
 # Setup to aggregate in time
 groupbys = dict(sc_year=ColumnName.YEAR, sc_season=ColumnName.SEASON, sc_month=ColumnName.MONTH, sc_week=ColumnName.WEEK,
-                sc_day=[ColumnName.MONTH, ColumnName.DAY_OF_MONTH], sc_hour=[ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.HOUR])
+                sc_day=[ColumnName.MONTH, ColumnName.DAY_OF_MONTH], sc_hour=[ColumnName.MONTH, ColumnName.DAY_OF_MONTH,
+                                                                             ColumnName.HOUR])
 
 results = {label: [] for label in groupbys.keys()}
 results['sc_tou'] = []
@@ -268,6 +266,7 @@ plt.xlabel('Numero famiglie')
 plt.ylabel('SCI')
 plt.legend()
 plt.show()
+plt.close()
 
 # ----------------------------------------------------------------------------
 # %% Here, we check which storage sizes should be considered for each number of
@@ -300,6 +299,7 @@ for n_fam in n_fams:
 
     plt.title(f"Numero famiglie: {int(n_fam)}")
     plt.show()
+    plt.close()
 
 # %% Manually insert bess sizes for each number of families
 bess_sizes = [[0] for _ in n_fams]
@@ -348,4 +348,5 @@ scenarios['sc_month'] = scenarios['n_fam'].map(sc_month)
 scenarios['sc_season'] = scenarios['n_fam'].map(sc_season)
 scenarios['sc_year'] = scenarios['n_fam'].map(sc_year)
 
-scenarios.to_csv(os.path.join(directory_data, "scenarios.csv"), sep=';', index=False)
+
+Writer().write(scenarios, "scenarios")

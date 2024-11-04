@@ -2,7 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from input.definitions import ColumnName
-from preprocessing import data_users_year, data_users
+from preprocessing import data_users
+from processing import data_users_year
 
 
 def vis_profiles(data_fam_year):

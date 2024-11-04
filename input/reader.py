@@ -10,6 +10,8 @@ import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from input.definitions import ColumnName, PvDataSource
+from pre_check_files import cols_to_add
+from time.day_of_the_week import df_year
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,9 @@ class PvPlantReader(Reader):
                     'rendita specifica [kWh/kWp]': ColumnName.ANNUAL_YIELD,  # specific annual production (kWh/kWp)
                     }
 
+    _cols_to_add = [ColumnName.YEAR, ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.WEEK, ColumnName.SEASON,
+                    ColumnName.DAY_OF_WEEK]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._data_source = configuration.config.get("production", "estimator")
@@ -95,21 +100,14 @@ class PvPlantReader(Reader):
             self._production_data = self.create_yearly_profile(production, self._production_data, user)
         return self._data.to_xarray()
 
-    # TODO: goes into post-processing class
     @classmethod
-    def create_yearly_profile(cls, profile, all_profiles, user_name=None):
+    def create_yearly_profile(cls, profile, all_profiles=None, user_name=None):
         profile = DataFrame(data=profile, columns=timedelta_range(start="0 Days", freq="1h", periods=profile.shape[1]))
-
         ref_year = configuration.config.getint("time", "year")
         profile.index = to_datetime(date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"))
         profile[ColumnName.USER] = user_name
-        profile[ColumnName.YEAR] = profile.index.year
-        profile[ColumnName.MONTH] = profile.index.month
-        profile[ColumnName.DAY_OF_MONTH] = profile.index.day
-        profile[ColumnName.WEEK] = profile.index.dt.isocalendar().week
-        profile[ColumnName.SEASON] = profile.index.month % 12 // 3 + 1
-        profile[ColumnName.DAY_OF_WEEK] = profile.index.dayofweek
-        return concat((all_profiles, profile), axis=0)
+        profile[cols_to_add] = df_year[cols_to_add]
+        return concat((all_profiles, profile), axis=0) if all_profiles is not None else profile
 
 
 class UsersReader(Reader):
@@ -170,37 +168,11 @@ class TariffReader(GlobalConstReader):
         self._directory = "Common"
         self._filename = "arera.csv"
 
-    def process_data(self):
-        # total number and list of tariff time-slots (index f)
-        fs = self._data.unique()
-        nf = len(fs)
-
-        # number of day-types (index j)
-        # NOTE : j : 0 - work-days (monday-friday)
-        #            1 - saturdays
-        #            2 - sundays and holidays
-        nj = np.size(self._data, axis=0)
-        js = list(range(nj))
-
-        # number of time-steps during each day (index i)
-        ni = np.size(self._data, axis=1)
-
-        # total number of time-steps (index h)
-        nh = self._data.size
-
-        # time-steps where there is a change of tariff time-slot
-        h_switch_arera = list(np.where(np.diff(np.insert(self._data.flatten(), -1, self._data[0, 0])) != 0)[0])
-
 
 class TypicalLoadProfileReader(GlobalConstReader):
+    # Reference profiles from GSE
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._directory = "Common"
         self._filename = "y_ref_gse.csv"
 
-    def execute(self, *args, **kwargs):
-        # reference profiles from GSE
-        super().execute(*args, **kwargs)
-        # TODO: to postprocessing class
-        y_ref_gse = {i: row.values for i, row in self._data.set_index([ColumnName.USER_TYPE, ColumnName.MONTH]).iterrows()}
-        return y_ref_gse

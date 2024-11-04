@@ -9,18 +9,18 @@ INFO
 Author: G. Lorenti (gianmarco.lorenti@polito.it)
 Date: 30.01.2023
 """
+import numpy as np
+
 # ----------------------------------------------------------------------------
 # Import
 # python libs, packages, modules
-import pandas as pd
-import numpy as np
+
+# common variables
 
 from input.definitions import BillType
 # self-created modules and functions
-from methods_scaling import scale_gse, scale_qopt
-from utils import eval_x, eval_y_flat
-# common variables
-from common import *
+from methods_scaling import scale_gse
+from utils import eval_x
 
 
 # ----------------------------------------------------------------------------
@@ -38,7 +38,7 @@ def evaluate(bills, nds, pod_type, bill_type):
     Date: 07.02.2023
     """
     #
-    if len(bills) != len(nds) or len(nds) != nm:
+    if len(bills) != len(nds) or len(nds) != 12:
         raise ValueError("Length of input must match")
     #
     y = []
@@ -52,9 +52,8 @@ def evaluate(bills, nds, pod_type, bill_type):
                 y_scale[np.isnan(y_scale)] = 0
                 for if_, f in enumerate(fs):
                     # Just spread total consumption in F1 on F1 hours
-                    y_scale[arera.flatten() == f] += \
-                        (bill[if_] - (b[if_] if not np.isnan(b[if_]) else 0)) /\
-                        sum([np.count_nonzero(arera[j] == f) * nd[j] for j in js])
+                    y_scale[arera.flatten() == f] += (bill[if_] - (b[if_] if not np.isnan(b[if_]) else 0)) / sum(
+                        [np.count_nonzero(arera[j] == f) * nd[j] for j in js])
                 if (np.abs(eval_x(y_scale, nd) - bill) > 0.1).any():
                     print("While correcting total consumption:")
                     print(f"True:{bill}")
