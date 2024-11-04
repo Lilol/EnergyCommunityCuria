@@ -13,10 +13,7 @@ class ConfigurationManager:
     def __init__(self, config_filename=join(getcwd(), "config", "config.ini")):
         self.__config = RawConfigParser(allow_no_value=True, interpolation=ExtendedInterpolation())
         self.__config.read_file(open(config_filename))
-        self._registered_entries = {
-            "production":
-                {"estimator": self._process_pv_estimator},
-        }
+        self._registered_entries = {"production": {"estimator": self._process_pv_estimator}, }
 
     def _process_pv_estimator(self):
         pv_data_source = self.__config.get("production", "estimator")
@@ -49,6 +46,9 @@ class ConfigurationManager:
         return [v.replace(" ", "") for v in values]
 
     def set(self, section, key, value):
+        if type(value) != str:
+            value = str(value)
+            logger.warning(f"Configuration is set with a non-string-type value: {value}")
         self.__config.set(section, key, value)
 
     def setint(self, section, key, value):
@@ -82,6 +82,18 @@ class ConfigurationManager:
 
     def has_option(self, section, option):
         return self.__config.has_option(section, option)
+
+    def set_and_check(self, section, key, value, setter=None, check=True):
+        if check and setter is None:
+            value_cf = self.getfloat(section, key)
+            if value != value_cf:
+                logger.warning(
+                    f"The value of [section={section}, key={key}] set dynamically (value={value}) does not equal"
+                    f"the original value from the configuration file (value={value_cf})")
+        if setter is None:
+            self.set(section, key, value)
+        else:
+            getattr(self, setter)(section, key, value)
 
 
 # def do_configuration():

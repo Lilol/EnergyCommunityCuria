@@ -21,7 +21,6 @@ class MyMerger(DataMerger):
 
     @staticmethod
     def check_labels(label, *data):
-        label_columns = [df.columns.get(label, None) for df in data]
         if not all(label in dat for dat in data):
             raise ValueError(f"Not all data have a '{label}' label")
 

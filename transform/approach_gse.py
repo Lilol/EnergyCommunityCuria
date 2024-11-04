@@ -26,18 +26,6 @@ from utils import eval_x
 # ----------------------------------------------------------------------------
 #
 def evaluate(bills, nds, pod_type, bill_type):
-    """
-    Function 'evaluate'
-    ____________
-    DESCRIPTION
-    ______
-    NOTES
-    _____
-    INFO
-    Author: G. Lorenti (gianmarco.lorenti@polito.it)
-    Date: 07.02.2023
-    """
-    #
     if len(bills) != len(nds) or len(nds) != 12:
         raise ValueError("Length of input must match")
     #

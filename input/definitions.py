@@ -22,6 +22,8 @@ class ColumnName(Enum):
     DAY_TYPE = 'day_type'  # type of day (0-work, 1-Saturday, 2-Sunday/holiday)
     DAY_OF_WEEK = 'day_week'  # number of day in the week (1-Monday, ...)
     HOUR = 'hour'
+    BILL_TYPE = 'bill_type'
+    MONO_TARIFF = 'mono_tariff'
 
 
 class BillType(Enum):

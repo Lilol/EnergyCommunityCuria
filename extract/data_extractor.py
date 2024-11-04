@@ -6,7 +6,7 @@ import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
-from input.definitions import ColumnName
+from input.definitions import ColumnName, BillType, UserType
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,23 @@ class DataExtractor(PipelineStage):
         raise NotImplementedError
 
 
+class UserExtractor(DataExtractor):
+    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+        dataset[ColumnName.USER_TYPE] = dataset[ColumnName.USER_TYPE].apply(lambda x: UserType(x))
+        return dataset
+
+
+class BillsExtractor(DataExtractor):
+    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+        user_data = args[0]
+
+        def get_bill_type(df):
+            return BillType.MONO if df[ColumnName.MONO_TARIFF].notna().all(how="all") else BillType.TIME_OF_USE
+
+        dataset[ColumnName.BILL_TYPE] = user_data.groupby(ColumnName.USER).apply(get_bill_type)
+        return dataset
+
+
 class TariffExtractor(DataExtractor):
     """
     ______
@@ -32,21 +49,6 @@ class TariffExtractor(DataExtractor):
       - 'h' : time step index in multiple days, \in [0, n_h) \subset N
     _____
     """
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
-    @staticmethod
-    def set_value_and_check(value, section_in_config, key_in_config, setter=None, check=True):
-        if check:
-            value_cf = configuration.config.getint(section_in_config, key_in_config)
-            if value != value_cf:
-                logger.warning(
-                    f"The value of [{section_in_config}.{key_in_config}] from input files ({value}) does not equal to "
-                    f"the value set from the configuration file ({value_cf})")
-        if setter is None:
-            configuration.config.setint(section_in_config, key_in_config, value)
-        else:
-            getattr(configuration.config, setter)(section_in_config, key_in_config, value)
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         # total number and list of tariff time-slots (index f)
@@ -55,25 +57,25 @@ class TariffExtractor(DataExtractor):
         #            2 - tariff time-slot F2, evening of work-days, and saturdays
         #            3 - tariff times-lot F2, night, sundays and holidays
         tariff_time_slots = dataset.unique()
-        self.set_value_and_check(tariff_time_slots, "tariff", "tariff_time_slots", configuration.config.setarray,
-                                 check=False)
-        self.set_value_and_check(len(tariff_time_slots), "tariff", "number_of_time_of_use_periods")
+        configuration.config.set_and_check("tariff", "tariff_time_slots", tariff_time_slots,
+                                           configuration.config.setarray, check=False)
+        configuration.config.set_value_and_check("tariff", "number_of_time_of_use_periods", len(tariff_time_slots))
 
         # time-steps where there is a change of tariff time-slot
         h_switch_arera = np.where(np.diff(np.insert(dataset.flatten(), -1, dataset[0, 0])) != 0)[0]
-        self.set_value_and_check(h_switch_arera, "tariff", "tariff_period_switch_time_steps")
+        configuration.config.set_and_check("tariff", "tariff_period_switch_time_steps", h_switch_arera)
 
         # number of day-types (index j)
         # NOTE : j : 0 - work-days (monday-friday)
         #            1 - saturdays
         #            2 - sundays and holidays
-        self.set_value_and_check(dataset.size(axis=0), "time", "number_of_day_types")
+        configuration.config.set_and_check("time", "number_of_day_types", dataset.size(axis=0))
 
         # number of time-steps during each day (index i)
-        self.set_value_and_check(dataset.size(axis=1), "time", "number_of_time_steps_per_day")
+        configuration.config.set_and_check("time", "number_of_time_steps_per_day", dataset.size(axis=1))
 
         # total number of time-steps (index h)
-        self.set_value_and_check(dataset.size, "time", "total_number_of_time_steps")
+        configuration.config.set_and_check("time", "total_number_of_time_steps", dataset.size)
 
         return dataset
 

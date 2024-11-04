@@ -2,7 +2,6 @@ import logging
 import os
 from os.path import join
 
-import numpy as np
 from pandas import DataFrame, concat, read_csv, timedelta_range, to_datetime, date_range
 from xarray import DataArray
 
@@ -93,7 +92,7 @@ class PvPlantReader(Reader):
         self._production_data = DataFrame()
 
     def execute(self, *args, **kwargs):
-        municipality = kwargs.get("municipality", "")
+        municipality = kwargs.pop("municipality")
         super().execute(*args, **kwargs)
         for user in self._data[ColumnName.USER].unique():
             production = self._production_data_reader.execute(municipality=municipality, user=user)
@@ -126,16 +125,14 @@ class UsersReader(Reader):
 
 class BillsReader(Reader):
     time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in
-                                       range(configuration.config.getint("tariff", "number_of_time_of_use_periods"))}
+                                       range(1, configuration.config.getint("tariff", "number_of_time_of_use_periods")+1)}
 
     column_names = {'pod': ColumnName.USER,  # code or name of the end user
                     'anno': ColumnName.YEAR,  # year
                     'mese': ColumnName.MONTH,  # number of the month
-                    'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption,
+                    'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption
+                    'f0': ColumnName.MONO_TARIFF,
                     **time_of_use_energy_column_names}
-
-    # TODO: store this in a common object, not in BillsReader
-    time_of_use_labels = list(time_of_use_energy_column_names.values())
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -149,6 +146,9 @@ class BillsReader(Reader):
             logger.warning(
                 "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
                 " rows.")
+        # Time of use labels
+        configuration.config.set_and_check("tariff", "time_of_use_labels", self._data.columns[
+            self._data.columns.isin(self.time_of_use_energy_column_names.values())])
         return self._data.to_xarray()
 
 
@@ -175,4 +175,3 @@ class TypicalLoadProfileReader(GlobalConstReader):
         super().__init__(*args, **kwargs)
         self._directory = "Common"
         self._filename = "y_ref_gse.csv"
-
