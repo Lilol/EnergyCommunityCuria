@@ -18,7 +18,7 @@ class DataStore(object):
             try:
                 self._data[key] = DataArray(data=value)
             except ValueError as e:
-                logger.error(f"Unexpected data type in DataStore.__setitem__, DataArray cannot be initialized. '{e}'")
+                logger.error(f"Unexpected data type in DataStore.__setitem__, DataArray cannot be initialized.\n'{e}'")
                 return
             else:
                 return

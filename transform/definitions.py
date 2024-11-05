@@ -1,7 +1,7 @@
-# TODO: option for data processing methodology (will be more in the future)
 import numpy as np
 from pandas import DataFrame, concat
 
+import configuration
 from input.definitions import ColumnName
 from input.reader import BillsReader
 from preprocessing import year
@@ -23,7 +23,7 @@ def create_profiles(user_data, ni, nj, nm, ms):
             tou_energy.append(eval_x(y, nd))
         # Create dataframe
         tou_energy = np.concatenate((np.full((nm, 1), np.nan), np.array(tou_energy)), axis=1)
-        tou_energy = DataFrame(tou_energy, columns=BillsReader.time_of_use_energy_column_names)
+        tou_energy = DataFrame(tou_energy, columns=configuration.config.getarray("tariff", "time_of_use_labels", str))
         tou_energy.insert(0, ColumnName.USER, user)
         tou_energy.insert(1, ColumnName.YEAR, year)
         tou_energy.insert(2, ColumnName.MONTH, ms)

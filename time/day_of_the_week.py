@@ -41,3 +41,6 @@ def create_reference_year_dataframe():
 
 
 df_year = create_reference_year_dataframe()
+
+cols_to_add = [ColumnName.YEAR, ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.WEEK, ColumnName.SEASON,
+                ColumnName.DAY_OF_WEEK]

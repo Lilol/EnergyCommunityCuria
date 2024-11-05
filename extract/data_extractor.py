@@ -6,7 +6,6 @@ import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
-from input.definitions import ColumnName, BillType, UserType
 
 logger = logging.getLogger(__name__)
 
@@ -19,23 +18,6 @@ class DataExtractor(PipelineStage):
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError
-
-
-class UserExtractor(DataExtractor):
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        dataset[ColumnName.USER_TYPE] = dataset[ColumnName.USER_TYPE].apply(lambda x: UserType(x))
-        return dataset
-
-
-class BillsExtractor(DataExtractor):
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        user_data = args[0]
-
-        def get_bill_type(df):
-            return BillType.MONO if df[ColumnName.MONO_TARIFF].notna().all(how="all") else BillType.TIME_OF_USE
-
-        dataset[ColumnName.BILL_TYPE] = user_data.groupby(ColumnName.USER).apply(get_bill_type)
-        return dataset
 
 
 class TariffExtractor(DataExtractor):
@@ -78,11 +60,3 @@ class TariffExtractor(DataExtractor):
         configuration.config.set_and_check("time", "total_number_of_time_steps", dataset.size)
 
         return dataset
-
-
-class TypicalLoadProfileExtractor(DataExtractor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        return OmnesDataArray(data=dataset.set_index([ColumnName.USER_TYPE, ColumnName.MONTH]))

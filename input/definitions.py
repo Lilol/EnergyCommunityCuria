@@ -35,7 +35,8 @@ class BillType(Enum):
 class UserType(Enum):
     PDMF = 'dom',
     PAUF = 'bta',
-    PICM = 'ip'
+    PICM = 'ip',
+    PV = 'pv'
 
 
 class PvDataSource(Enum):

@@ -30,7 +30,7 @@ def eval_x(y, nd):
     PARAMETERS
     y : np.ndarray
         Hourly load profile in each day-type
-        Array of shape (nj*ni) where 'ni' is the number of time-steps in each
+        Array of shape (1,nj*ni) where 'ni' is the number of time-steps in each
         day.
     nd : np.ndarray
         Number of days of each day-type in the month
@@ -89,11 +89,9 @@ def eval_y_flat(x, nd):
     # ------------------------------------
     # check consistency of data
     # division of 'x' into tariff time-slots
-    assert (size := x.size) == nf, \
-        f"'x' must have size {nf}, not {size}."
+    assert (size := x.size) == nf, f"'x' must have size {nf}, not {size}."
     # division of 'nd' into day-types
-    assert (size := nd.size) == nj, \
-        f"'nd' must have size {nj}, not {size}."
+    assert (size := nd.size) == nj, f"'nd' must have size {nj}, not {size}."
     # ------------------------------------
     # evaluate load profiles
     # count hours of each tariff time-slot in each day-type
@@ -114,13 +112,14 @@ def eval_y_flat(x, nd):
 
 # ----------------------------------------------------------------------------
 # Extract typical load profiles from year-long profile
+# A typical load profile is defined as: (month,day type); and calculated as the average of those days in each month
+# TODO: put this into the data extractor library
 def eval_y_from_year(p, months, day_types):
     assert len(p) == len(months) == len(day_types)
     y = []
     for im, m in enumerate(ms):
         for ij, j in enumerate(js):
-            inds = ((months == m) & (day_types == j))
-            ps = p[inds]
+            ps = p[(months == m) & (day_types == j)]
             assert (n := (len(ps) / ni)) == int(n) != 0
             ps = ps.reshape(int(n), ni)
             y.append(ps.mean(axis=0))
@@ -132,8 +131,7 @@ def eval_y_from_month(p, day_types):
     assert len(p) == len(day_types)
     y = []
     for ij, j in enumerate(js):
-        inds = (day_types == j)
-        ps = p[inds]
+        ps = p[day_types == j]
         assert (n := (len(ps) / ni)) == int(n) != 0
         ps = ps.reshape(int(n), ni)
         y.append(ps.mean(axis=0))

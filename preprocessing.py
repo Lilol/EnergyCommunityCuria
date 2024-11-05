@@ -6,9 +6,6 @@
 import numpy as np
 from pandas import DataFrame
 
-# Plotting
-
-#
 import configuration
 from init_logger import init_logger
 from input.definitions import ColumnName, BillType, UserType
@@ -61,14 +58,13 @@ for user, data_bills in data_users_bills.groupby(ColumnName.USER):
         day_types_over_the_year.append(
             df_year.loc[df_year[ColumnName.MONTH] == month, ColumnName.DAY_TYPE].astype(int).values)
 
-    bills = data_bills[bills_cols].values
     # TODO: option to profile estimation
     # scale typical profiles according to bills
     # in the future:
     # -function inputs can change
     # -different columns
     # -instead of monthly data, use daily data
-    profiles = eval_profiles_gse(bills, nds, pod_type, bill_type)
+    profiles = eval_profiles_gse(data_bills[bills_cols].values, nds, pod_type, bill_type)
 
     # Make yearly profile
     profile = []
@@ -103,17 +99,6 @@ data_fam_tou = create_profiles(data_fam_year, ni, nj, nm, ms)
 # ----------------------------------------------------------------------------
 # Refinements
 # Add column with yearly production by ToU tariff for each plant
-data_plants = DataFrame()
-for i, col in enumerate(BillsReader.time_of_use_energy_column_names):
-    if i == 0:
-        data_plants[col] = np.nan
-        continue
-    data_plants = data_plants.merge(data_plants_tou.groupby(ColumnName.USER)[col].sum().rename(col).reset_index(),
-                                    on=ColumnName.USER)
-
-# Add column with type of plant
-data_plants[ColumnName.USER_TYPE] = 'pv' if ColumnName.USER_TYPE not in data_plants else data_plants[
-    ColumnName.USER_TYPE].fillna('pv')
 
 # ----------------------------------------------------------------------------
 # %% Graphical check

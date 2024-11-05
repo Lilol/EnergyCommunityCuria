@@ -80,9 +80,6 @@ class PvPlantReader(Reader):
                     'rendita specifica [kWh/kWp]': ColumnName.ANNUAL_YIELD,  # specific annual production (kWh/kWp)
                     }
 
-    _cols_to_add = [ColumnName.YEAR, ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.WEEK, ColumnName.SEASON,
-                    ColumnName.DAY_OF_WEEK]
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._data_source = configuration.config.get("production", "estimator")
@@ -98,15 +95,6 @@ class PvPlantReader(Reader):
             production = self._production_data_reader.execute(municipality=municipality, user=user)
             self._production_data = self.create_yearly_profile(production, self._production_data, user)
         return self._data.to_xarray()
-
-    @classmethod
-    def create_yearly_profile(cls, profile, all_profiles=None, user_name=None):
-        profile = DataFrame(data=profile, columns=timedelta_range(start="0 Days", freq="1h", periods=profile.shape[1]))
-        ref_year = configuration.config.getint("time", "year")
-        profile.index = to_datetime(date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"))
-        profile[ColumnName.USER] = user_name
-        profile[cols_to_add] = df_year[cols_to_add]
-        return concat((all_profiles, profile), axis=0) if all_profiles is not None else profile
 
 
 class UsersReader(Reader):
@@ -124,15 +112,15 @@ class UsersReader(Reader):
 
 
 class BillsReader(Reader):
-    time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in
-                                       range(1, configuration.config.getint("tariff", "number_of_time_of_use_periods")+1)}
+    _time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in
+                                        range(1, configuration.config.getint("tariff", "number_of_time_of_use_periods")+1)}
 
     column_names = {'pod': ColumnName.USER,  # code or name of the end user
                     'anno': ColumnName.YEAR,  # year
                     'mese': ColumnName.MONTH,  # number of the month
                     'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption
                     'f0': ColumnName.MONO_TARIFF,
-                    **time_of_use_energy_column_names}
+                    **_time_of_use_energy_column_names}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -148,7 +136,7 @@ class BillsReader(Reader):
                 " rows.")
         # Time of use labels
         configuration.config.set_and_check("tariff", "time_of_use_labels", self._data.columns[
-            self._data.columns.isin(self.time_of_use_energy_column_names.values())])
+            self._data.columns.isin(self._time_of_use_energy_column_names.values())])
         return self._data.to_xarray()
 
 
