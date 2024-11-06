@@ -1,5 +1,5 @@
 import numpy as np
-from pandas import DataFrame, timedelta_range, date_range
+from pandas import DataFrame, timedelta_range, date_range, MultiIndex
 
 import configuration
 from data_processing_pipeline.definitions import Stage
@@ -53,7 +53,17 @@ class ReshaperByYear(DataTransformer):
 
 class TypicalLoadProfileTransformer(DataTransformer):
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        return OmnesDataArray(data=dataset.set_index([ColumnName.USER_TYPE, ColumnName.MONTH]))
+        dataset[ColumnName.USER_TYPE] = dataset[ColumnName.USER_TYPE].apply(lambda x: UserType(x))
+        df = dataset.filter(regex='y.*', axis=1)
+        tariff_time_slots = df.columns.str.split("_").str[1].str.strip("j").astype(int) + 1
+        hours = df.columns.str.split("_").str[2].str.strip("i").astype(int)
+        dataset = dataset.set_index((ColumnName.USER_TYPE, ColumnName.MONTH))
+        df.columns = MultiIndex.from_tuples((i, j) for i, j in zip(tariff_time_slots, hours))
+        df.columns.names = (ColumnName.TARIFF_TIME_SLOT, ColumnName.HOUR)
+        df.index = dataset.index
+        df.index.names = (x.value for x in df.index.names)
+        df.columns.names = (x.value for x in df.columns.names)
+        return OmnesDataArray.from_series(df.stack().stack())
 
 
 class PvPlantDataTransformer(DataTransformer):
@@ -71,3 +81,11 @@ class PvPlantDataTransformer(DataTransformer):
             ColumnName.USER_TYPE].fillna(UserType.PV)
 
         return dataset
+
+
+class TariffTransformer(DataTransformer):
+    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+        dataset = dataset - 1
+        dataset.index = dataset.index.astype(int) + 1
+        dataset.columns = dataset.columns.astype(int)
+        return OmnesDataArray(dataset, dims=["day_type", "hour"])

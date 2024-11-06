@@ -17,8 +17,6 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 
-from utils import eval_x
-
 
 # ----------------------------------------------------------------------------
 # 2. METHODS TO SCALE HOURLY LOAD PROFILES IN TYPICAL DAYS TO MONTHLY 
@@ -59,7 +57,7 @@ def scale_gse(x, nd, y_ref):
         day.
     status : str
         Status of the solution.
-        Can be : 'ok', 'unphysical', 'error'.
+        Can be : 'ok', 'unphysical', 'error'. No, not really.
     _____
     INFO
     Author : G. Lorenti (gianmarco.lorenti@polito.it)
@@ -77,7 +75,7 @@ def scale_gse(x, nd, y_ref):
     # scale reference profiles
     # evaluate the monthly consumption associated with the reference profile
     # divided into tariff time-slots
-    x_ref = eval_x(y_ref, nd)
+    x_ref = get_monthly_consumption(y_ref, nd)
     # calculate scaling factors k (one for each tariff time-slot)
     k_scale = x / x_ref
     # evaluate load profiles by scaling the reference profiles

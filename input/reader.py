@@ -2,15 +2,13 @@ import logging
 import os
 from os.path import join
 
-from pandas import DataFrame, concat, read_csv, timedelta_range, to_datetime, date_range
+from pandas import DataFrame, read_csv
 from xarray import DataArray
 
 import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from input.definitions import ColumnName, PvDataSource
-from pre_check_files import cols_to_add
-from time.day_of_the_week import df_year
 
 logger = logging.getLogger(__name__)
 
@@ -112,15 +110,16 @@ class UsersReader(Reader):
 
 
 class BillsReader(Reader):
-    _time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in
-                                        range(1, configuration.config.getint("tariff", "number_of_time_of_use_periods")+1)}
+    _time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in range(1,
+                                                                                                    configuration.config.getint(
+                                                                                                        "tariff",
+                                                                                                        "number_of_time_of_use_periods") + 1)}
 
     column_names = {'pod': ColumnName.USER,  # code or name of the end user
                     'anno': ColumnName.YEAR,  # year
                     'mese': ColumnName.MONTH,  # number of the month
                     'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption
-                    'f0': ColumnName.MONO_TARIFF,
-                    **_time_of_use_energy_column_names}
+                    'f0': ColumnName.MONO_TARIFF, **_time_of_use_energy_column_names}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -142,7 +141,8 @@ class BillsReader(Reader):
 
 class GlobalConstReader(Reader):
     def execute(self, *args, **kwargs):
-        self._data = read_csv(join(self._directory, self._filename), sep=';', index_col=0, header=0)
+        self._data = read_csv(join(self._directory, self._filename), sep=';', index_col=0, header=0).rename(
+            columns=self.column_names)
         return self._data.to_xarray()
 
 
@@ -158,6 +158,9 @@ class TariffReader(GlobalConstReader):
 
 
 class TypicalLoadProfileReader(GlobalConstReader):
+    column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user
+                    'month': ColumnName.MONTH}
+
     # Reference profiles from GSE
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

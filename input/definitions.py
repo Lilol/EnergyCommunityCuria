@@ -24,6 +24,7 @@ class ColumnName(Enum):
     HOUR = 'hour'
     BILL_TYPE = 'bill_type'
     MONO_TARIFF = 'mono_tariff'
+    TARIFF_TIME_SLOT = "tariff_time_slot"
 
 
 class BillType(Enum):
@@ -33,9 +34,9 @@ class BillType(Enum):
 
 
 class UserType(Enum):
-    PDMF = 'dom',
-    PAUF = 'bta',
-    PICM = 'ip',
+    PDMF = 'dom'
+    PAUF = 'bta'
+    PICM = 'ip'
     PV = 'pv'
 
 

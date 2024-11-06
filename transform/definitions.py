@@ -5,7 +5,7 @@ import configuration
 from input.definitions import ColumnName
 from input.reader import BillsReader
 from preprocessing import year
-from transform.utils import eval_y_from_year, eval_x
+from transform.utils import create_yearly_profile, get_monthly_consumption
 
 
 def create_profiles(user_data, ni, nj, nm, ms):
@@ -15,12 +15,12 @@ def create_profiles(user_data, ni, nj, nm, ms):
         months = np.repeat(df.loc[:, ColumnName.MONTH], ni)
         day_types = np.repeat(df.loc[:, ColumnName.DAY_TYPE], ni)
         profiles = df.loc[:, 0:].values.flatten()
-        profiles = eval_y_from_year(profiles, months, day_types).reshape((nm, nj * ni))
+        profiles = create_yearly_profile(profiles, months, day_types).reshape((nm, nj * ni))
         # Evaluate typical profiles in each month
         nds = df.groupby([ColumnName.MONTH, ColumnName.DAY_TYPE]).count().iloc[:, 0].values.reshape(nm, nj)
         tou_energy = []
         for y, nd in zip(profiles, nds):
-            tou_energy.append(eval_x(y, nd))
+            tou_energy.append(get_monthly_consumption(y, nd))
         # Create dataframe
         tou_energy = np.concatenate((np.full((nm, 1), np.nan), np.array(tou_energy)), axis=1)
         tou_energy = DataFrame(tou_energy, columns=configuration.config.getarray("tariff", "time_of_use_labels", str))

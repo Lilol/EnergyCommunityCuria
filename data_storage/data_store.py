@@ -13,6 +13,9 @@ class DataStore(object):
     def __init__(self):
         self._data = defaultdict(DataArray)
 
+    def __getitem__(self, item):
+        return self._data[item]
+
     def __setitem__(self, key, value):
         if type(value) != DataArray:
             try:
