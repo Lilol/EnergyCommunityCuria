@@ -16,7 +16,7 @@ class TwoWayDictionary(dict):
         self._key_map[combined_key] = value
 
     def get(self, key1=None, key2=None):
-        """Get a value using one or two keys."""
+        # Get a value using one or two keys.
         if key1 is None and key2 is None:
             raise ValueError("Both keys cannot be None at the same time")
 
@@ -55,7 +55,7 @@ class TwoWayDictionary(dict):
         return len(set(self._key_map.keys()))
 
     def __iter__(self):
-        return iter(self._key_map)
+        return iter(self._key_map.items())
 
 
 class DataProcessingPipeline(TwoWayDictionary):
@@ -64,13 +64,15 @@ class DataProcessingPipeline(TwoWayDictionary):
         self.name = name
         DataProcessingArbiter().register_pipeline(name, self)
         # Set pipeline workers
+        # Pipeline workers' order is determined by their order of appearance
         for worker in kwargs.pop("workers", [PipelineStage(), ]):
             self.set(worker.stage, worker.name, worker)
 
     def register(self, worker: PipelineStage):
         self.set(worker.stage, worker.name, worker)
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, *args, **kwargs) -> OmnesDataArray:
+        dataset = None
         for _, processor in iter(self):
             dataset = processor.execute(dataset, *args, **kwargs)
         # The final dataset gets stored in the Data Store using the name of the pipeline

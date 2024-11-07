@@ -10,7 +10,7 @@ import pandas as pd
 
 import configuration
 from input.definitions import ColumnName
-from time.day_of_the_week import df_year
+from utility.day_of_the_week import df_year
 
 
 # ----------------------------------------------------------------------------
