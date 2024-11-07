@@ -93,8 +93,7 @@ class ConfigurationManager:
         if setter is None:
             self.set(section, key, value)
         else:
-            # Get the setter function passed using the current Configuration object
-            getattr(self, setter.__name__)(section, key, value)
+            getattr(self, setter)(section, key, value)
 
 
 # def do_configuration():

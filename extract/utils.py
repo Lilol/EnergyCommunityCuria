@@ -20,8 +20,7 @@ class ProfileExtractor(DataExtractor):
     # Method to evaluate monthly consumption from hourly load profiles
     # evaluate the monthly consumption divided into tariff time-slots from the
     # hourly load profiles in the day-types
-    # TODO: this is analysis
-    def get_monthly_consumption(self, hourly_load_profiles, number_of_days_by_type):
+    def get_monthly_consumption(self, y, number_of_days_by_type):
         """
         Function 'eval_x'
         ____________
@@ -51,14 +50,13 @@ class ProfileExtractor(DataExtractor):
         Date : 29.11.2022
         """
         x = np.array([
-            sum([(hourly_load_profiles.reshape(nj, ni)[j, arera[j] == f] * number_of_days_by_type[j]).sum()
+            sum([(y.reshape(nj, ni)[j, arera[j] == f] * number_of_days_by_type[j]).sum()
                  for j in range(nj)]) for f in fs])
         return x
 
     # ----------------------------------------------------------------------------
     # This methods just spreads the total consumption over the tariff time-slots
     # according to the number of hours of each of them
-    # TODO: this is analysis
     def spread_consumption_over_time_slots(self, total_consumption_by_tariff_slots, number_of_days_by_type):
         """
         Function 'flat'

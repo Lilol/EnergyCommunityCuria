@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-
-# TODO: What to do with this file?
-
 """
 Module 'gse_ref_profiles.py'
 ____________

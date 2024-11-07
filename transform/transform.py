@@ -6,7 +6,7 @@ from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
-from utility.day_of_the_week import df_year, cols_to_add
+from time.day_of_the_week import df_year, cols_to_add
 
 
 class DataTransformer(PipelineStage):
@@ -52,9 +52,6 @@ class ReshaperByYear(DataTransformer):
 
 
 class TypicalLoadProfileTransformer(DataTransformer):
-    def __init__(self, name="typical_load_profile_transformer", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         dataset[ColumnName.USER_TYPE] = dataset[ColumnName.USER_TYPE].apply(lambda x: UserType(x))
         df = dataset.filter(regex='y.*', axis=1)
@@ -87,12 +84,8 @@ class PvPlantDataTransformer(DataTransformer):
 
 
 class TariffTransformer(DataTransformer):
-    def __init__(self, name="tariff_transformer", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        # Tariff timeslot naming convention: time slot indices start from 0
         dataset = dataset - 1
-        dataset[ColumnName.DAY_TYPE.value] = dataset[ColumnName.DAY_TYPE.value].astype(int) + 1
-        dataset[ColumnName.HOUR.value] = dataset[ColumnName.HOUR.value].astype(int)
-        return dataset
+        dataset.index = dataset.index.astype(int) + 1
+        dataset.columns = dataset.columns.astype(int)
+        return OmnesDataArray(dataset, dims=["day_type", "hour"])

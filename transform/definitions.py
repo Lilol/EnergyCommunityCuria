@@ -3,6 +3,9 @@ from pandas import DataFrame, concat
 
 import configuration
 from input.definitions import ColumnName
+from input.reader import BillsReader
+from preprocessing import year
+from transform.utils import create_yearly_profile, get_monthly_consumption
 
 
 def create_profiles(user_data, ni, nj, nm, ms):
@@ -22,8 +25,8 @@ def create_profiles(user_data, ni, nj, nm, ms):
         tou_energy = np.concatenate((np.full((nm, 1), np.nan), np.array(tou_energy)), axis=1)
         tou_energy = DataFrame(tou_energy, columns=configuration.config.getarray("tariff", "time_of_use_labels", str))
         tou_energy.insert(0, ColumnName.USER, user)
-        tou_energy.insert(1, ColumnName.YEAR, configuration.config.getint("time", "year"))
+        tou_energy.insert(1, ColumnName.YEAR, year)
         tou_energy.insert(2, ColumnName.MONTH, ms)
         # Concatenate
-        output_df = concat((output_df, tou_energy), axis="rows")
+        output_df = concat((output_df, tou_energy), axis=0)
     return output_df

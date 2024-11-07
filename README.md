@@ -1,1 +1,1 @@
-# Energy Community Curia
+# EnergyCommunityCuria

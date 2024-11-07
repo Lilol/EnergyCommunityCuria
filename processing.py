@@ -11,7 +11,7 @@ import configuration
 from input.definitions import ColumnName
 from input.reader import BillsReader
 from output.writer import Writer
-from utility.day_of_the_week import df_year
+from time.day_of_the_week import df_year
 
 # Data processing
 ref_year = configuration.config.getint("time", "year")

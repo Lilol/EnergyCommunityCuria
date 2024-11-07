@@ -4,6 +4,7 @@ class DataProcessingArbiter(object):
     def __init__(self):
         self._pipelines = {}
 
+    @classmethod
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(DataProcessingArbiter, cls).__new__(cls)

@@ -17,7 +17,6 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 
-# TODO: These all go into 'combination'
 
 # ----------------------------------------------------------------------------
 # 2. METHODS TO SCALE HOURLY LOAD PROFILES IN TYPICAL DAYS TO MONTHLY 
