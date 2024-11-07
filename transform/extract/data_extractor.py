@@ -16,11 +16,13 @@ class DataExtractor(PipelineStage):
     def __init__(self, name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset=None, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError
 
 
 class TariffExtractor(DataExtractor):
+    def __init__(self, name="tariff_extractor", *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
     """
     ______
     NOTES
@@ -30,15 +32,15 @@ class TariffExtractor(DataExtractor):
       - 'i' : time step index during one day, \in [0, n_i) \subset N
       - 'h' : time step index in multiple days, \in [0, n_h) \subset N
     _____
-    """
 
+    # total number and list of tariff time-slots (index f)
+    # ARERA's day-types depending on subdivision into tariff time-slots
+    # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
+    #            2 - tariff time-slot F2, evening of work-days, and saturdays
+    #            3 - tariff times-lot F2, night, sundays and holidays
+    """
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        # total number and list of tariff time-slots (index f)
-        # ARERA's day-types depending on subdivision into tariff time-slots
-        # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
-        #            2 - tariff time-slot F2, evening of work-days, and saturdays
-        #            3 - tariff times-lot F2, night, sundays and holidays
-        tariff_time_slots = dataset.unique()
+        tariff_time_slots = np.unique(dataset)
         configuration.config.set_and_check("tariff", "tariff_time_slots", tariff_time_slots,
                                            configuration.config.setarray, check=False)
         configuration.config.set_value_and_check("tariff", "number_of_time_of_use_periods", len(tariff_time_slots))

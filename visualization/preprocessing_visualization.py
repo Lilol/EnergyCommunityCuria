@@ -1,9 +1,7 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from input.definitions import ColumnName
-from preprocessing import data_users
-from processing import data_users_year
+from input.definitions import ColumnName, UserType
 
 
 def vis_profiles(data_fam_year):
@@ -56,9 +54,9 @@ def by_month_profiles(data_plants_year):
     plt.close()
 
 
-def consumption_profiles():
+def consumption_profiles(data_users, data_users_year):
     # Consumption profiles
-    for filter in ['bta', 'ip']:
+    for filter in (UserType.PAUF, UserType.PICM):
         data = data_users_year.loc[data_users_year[ColumnName.USER].isin(
             data_users.loc[data_users[ColumnName.USER_TYPE] == filter, ColumnName.USER])]
 
@@ -70,7 +68,7 @@ def consumption_profiles():
         plt.legend()
         plt.xlabel('Time, h')
         plt.ylabel('Power, kW')
-        plt.title(f'Consumption profiles {filter.upper()}')
+        plt.title(f'Consumption profiles {filter.value.upper()}')
         plt.show()
         # Whole year
         plt.figure()
@@ -80,7 +78,7 @@ def consumption_profiles():
         plt.plot(profiles, )
         plt.xlabel('Time, h')
         plt.ylabel('Power, kW')
-        plt.title(f'Consumption profiles {filter.upper()}')
+        plt.title(f'Consumption profiles {filter.value.upper()}')
         plt.show()
         plt.close()
 
@@ -94,6 +92,6 @@ def consumption_profiles():
         plt.legend()
         plt.yticks(range(0, 2 * len(real), 2), real.index)
         plt.xlabel('Energy, kWh')
-        plt.title(f'Yearly consumption {filter.upper()}')
+        plt.title(f'Yearly consumption {filter.value.upper()}')
         plt.show()
         plt.close()
