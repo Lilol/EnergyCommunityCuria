@@ -1,5 +1,6 @@
 import numpy as np
-from pandas import DataFrame, timedelta_range, date_range, MultiIndex
+import xarray as xr
+from pandas import DataFrame, timedelta_range, date_range
 
 import configuration
 from data_processing_pipeline.definitions import Stage
@@ -56,17 +57,22 @@ class TypicalLoadProfileTransformer(DataTransformer):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        dataset[ColumnName.USER_TYPE] = dataset[ColumnName.USER_TYPE].apply(lambda x: UserType(x))
-        df = dataset.filter(regex='y.*', axis=1)
-        tariff_time_slots = df.columns.str.split("_").str[1].str.strip("j").astype(int) + 1
-        hours = df.columns.str.split("_").str[2].str.strip("i").astype(int)
-        dataset = dataset.set_index((ColumnName.USER_TYPE, ColumnName.MONTH))
-        df.columns = MultiIndex.from_tuples((i, j) for i, j in zip(tariff_time_slots, hours))
-        df.columns.names = (ColumnName.TARIFF_TIME_SLOT, ColumnName.HOUR)
-        df.index = dataset.index
-        df.index.names = (x.value for x in df.index.names)
-        df.columns.names = (x.value for x in df.columns.names)
-        return OmnesDataArray.from_series(df.stack().stack())
+        # Tariff timeslot naming convention: time slot indices start from 0
+        dataset.loc[:, ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
+                                                              dataset.sel({"dim_1": ColumnName.USER_TYPE}),
+                                                              vectorize=True)
+        values = dataset.where(~dataset.dim_1.isin((ColumnName.USER_TYPE, ColumnName.MONTH)), drop=True)
+        tariff_time_slots = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")) + 1,
+                                           values.dim_1, vectorize=True)
+        hour = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), values.dim_1,
+                              vectorize=True)
+        values = values.assign_coords(tariff_time_slots=tariff_time_slots, hour=hour,
+                                       user_type=dataset.loc[:, ColumnName.USER_TYPE],
+                                       month=dataset.loc[:, ColumnName.MONTH])
+        dataset = dataset.expand_dims((ColumnName.TARIFF_TIME_SLOT.value, ColumnName.HOUR.value, ColumnName.MONTH.value,
+                                       ColumnName.USER_TYPE.value))
+        dataset = dataset.drop_dims(("dim_0", "dim_1"))
+        return dataset
 
 
 class PvPlantDataTransformer(DataTransformer):
@@ -92,6 +98,7 @@ class TariffTransformer(DataTransformer):
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
+        dataset = dataset.rename({"dim_0": ColumnName.DAY_TYPE.value, "dim_1": ColumnName.HOUR.value})
         dataset = dataset - 1
         dataset[ColumnName.DAY_TYPE.value] = dataset[ColumnName.DAY_TYPE.value].astype(int) + 1
         dataset[ColumnName.HOUR.value] = dataset[ColumnName.HOUR.value].astype(int)

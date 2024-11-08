@@ -158,10 +158,6 @@ class TariffReader(GlobalConstReader):
         self._directory = "Common"
         self._filename = "arera.csv"
 
-    def execute(self, *args, **kwargs):
-        data = super().execute(*args, **kwargs)
-        return data.rename({"dim_0": ColumnName.DAY_TYPE.value, "dim_1": ColumnName.HOUR.value})
-
 
 class TypicalLoadProfileReader(GlobalConstReader):
     column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user

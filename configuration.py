@@ -91,7 +91,10 @@ class ConfigurationManager:
                     f"The value of [section={section}, key={key}] set dynamically (value={value}) does not equal"
                     f"the original value from the configuration file (value={value_cf})")
         if setter is None:
-            self.set(section, key, value)
+            if type(value) == int:
+                self.setint(section, key, value)
+            else:
+                self.set(section, key, value)
         else:
             # Get the setter function passed using the current Configuration object
             getattr(self, setter.__name__)(section, key, value)
