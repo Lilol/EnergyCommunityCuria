@@ -5,10 +5,8 @@
 
 import numpy as np
 
-import configuration
 from data_processing_pipeline.data_processing_arbiter import DataProcessingArbiter
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
-from init_logger import init_logger
 from input.definitions import ColumnName, BillType, UserType
 from input.reader import UsersReader, BillsReader, PvPlantReader, TariffReader, TypicalLoadProfileReader
 from input.utility import reshape_array_by_year
@@ -16,22 +14,23 @@ from output.writer import Writer
 from transform.definitions import create_profiles
 from transform.extract.data_extractor import TariffExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer
+from utility import configuration
 from utility.day_of_the_week import df_year
+from utility.init_logger import init_logger
 from visualization.preprocessing_visualization import vis_profiles, by_month_profiles, consumption_profiles
-
 
 init_logger()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("time_of_use_tariff", workers=(TariffReader(), TariffTransformer(), TariffExtractor())).execute()
-DataProcessingPipeline("typical_load_profile", workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
+DataProcessingPipeline("typical_load_profile",
+                       workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
 
 arbiter = DataProcessingArbiter()
 
 # Extract hourly consumption profiles from bills
 year = configuration.config.getint("time", "year")
 DataProcessingPipeline("pv_plant_profile", workers={})
-
 
 data_users = UsersReader().execute()
 data_users_bills = BillsReader().execute()

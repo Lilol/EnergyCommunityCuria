@@ -3,7 +3,7 @@ from calendar import weekday
 import holidays
 from pandas import date_range, DataFrame
 
-import configuration
+from utility import configuration
 from input.definitions import ColumnName
 
 weekdays = (0, 1, 2, 3, 4)

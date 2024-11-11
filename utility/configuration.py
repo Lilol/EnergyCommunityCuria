@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ConfigurationManager:
-    def __init__(self, config_filename=join(getcwd(), "config", "config.ini")):
+    def __init__(self, config_filename=join(getcwd(), "..", "config", "config.ini")):
         self.__config = RawConfigParser(allow_no_value=True, interpolation=ExtendedInterpolation())
         self.__config.read_file(open(config_filename))
         self._registered_entries = {"production": {"estimator": self._process_pv_estimator}, }
@@ -101,5 +101,5 @@ class ConfigurationManager:
 
 
 # def do_configuration():
-config_file = argv[2] if len(argv) >= 3 else join(dirname(__file__), 'config', 'config.ini')
+config_file = argv[2] if len(argv) >= 3 else join(dirname(__file__), '..', 'config', 'config.ini')
 config = ConfigurationManager(config_filename=config_file)

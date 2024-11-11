@@ -7,7 +7,7 @@ import numpy as np
 from numpy import arange
 from pandas import DataFrame, concat, read_csv
 
-import configuration
+from utility import configuration
 from input.definitions import ColumnName
 from input.reader import BillsReader
 from output.writer import Writer

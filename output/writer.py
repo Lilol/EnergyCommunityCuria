@@ -4,7 +4,7 @@ from os.path import join
 
 from pandas import DataFrame
 
-import configuration
+from utility import configuration
 
 
 class Writer:

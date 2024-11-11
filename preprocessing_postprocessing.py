@@ -2,7 +2,7 @@ from os.path import join
 
 import pandas as pd
 
-import configuration
+from utility import configuration
 
 
 if __name__ == '__main__':

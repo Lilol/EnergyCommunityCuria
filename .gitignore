@@ -164,3 +164,4 @@ cython_debug/
 *.xlsx
 .idea/
 config/config.ini
+logs/

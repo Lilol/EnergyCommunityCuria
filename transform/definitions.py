@@ -1,7 +1,7 @@
 import numpy as np
 from pandas import DataFrame, concat
 
-import configuration
+from utility import configuration
 from input.definitions import ColumnName
 
 

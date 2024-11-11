@@ -2,11 +2,11 @@ import numpy as np
 import xarray as xr
 from pandas import DataFrame, timedelta_range, date_range
 
-import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
+from utility import configuration
 from utility.day_of_the_week import df_year, cols_to_add
 
 
@@ -66,13 +66,21 @@ class TypicalLoadProfileTransformer(DataTransformer):
                                            values.dim_1, vectorize=True)
         hour = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), values.dim_1,
                               vectorize=True)
-        values = values.assign_coords(tariff_time_slots=tariff_time_slots, hour=hour,
-                                       user_type=dataset.loc[:, ColumnName.USER_TYPE],
-                                       month=dataset.loc[:, ColumnName.MONTH])
-        dataset = dataset.expand_dims((ColumnName.TARIFF_TIME_SLOT.value, ColumnName.HOUR.value, ColumnName.MONTH.value,
-                                       ColumnName.USER_TYPE.value))
-        dataset = dataset.drop_dims(("dim_0", "dim_1"))
-        return dataset
+        values.reset_index(dims_or_levels=("dim_0", "dim_1"))
+
+        dims = (ColumnName.TARIFF_TIME_SLOT.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value,
+                ColumnName.MONTH.value)
+        coords = {ColumnName.TARIFF_TIME_SLOT.value: np.unique(tariff_time_slots),
+                  ColumnName.HOUR.value: np.unique(hour),
+                      ColumnName.USER_TYPE.value: np.unique(dataset.loc[:, ColumnName.USER_TYPE]),
+                  ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH])}
+        new_array = xr.DataArray(dims=dims, coords=coords)
+        for user_type, df in values.groupby(dataset.loc[:, ColumnName.USER_TYPE]):
+            hours = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), df.dim_1,
+                                   vectorize=True)
+            for hour, df in df.groupby(hours):
+                new_array.loc[:, user_type, hour, :]=df.values.T
+        return values
 
 
 class PvPlantDataTransformer(DataTransformer):

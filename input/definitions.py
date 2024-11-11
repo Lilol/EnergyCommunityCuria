@@ -1,7 +1,9 @@
 from enum import Enum
 
+from utility.definitions import OrderedEnum
 
-class ColumnName(Enum):
+
+class ColumnName(OrderedEnum):
     USER = 'user'
     MUNICIPALITY = 'municipality'
     DESCRIPTION = 'description'
@@ -27,19 +29,19 @@ class ColumnName(Enum):
     TARIFF_TIME_SLOT = "tariff_time_slot"
 
 
-class BillType(Enum):
+class BillType(OrderedEnum):
     MONO = 'mono'
     TIME_OF_USE = 'tou'
     INVALID = 'invalid'
 
 
-class UserType(Enum):
+class UserType(OrderedEnum):
     PDMF = 'dom'
     PAUF = 'bta'
     PICM = 'ip'
     PV = 'pv'
 
 
-class PvDataSource(Enum):
+class PvDataSource(OrderedEnum):
     PVGIS = "PVGIS"
     PVSOL = "PVSOL"

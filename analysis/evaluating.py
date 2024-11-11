@@ -8,7 +8,7 @@ import os
 import numpy as np
 import pandas as pd
 
-import configuration
+from utility import configuration
 from input.definitions import ColumnName
 from utility.day_of_the_week import df_year
 

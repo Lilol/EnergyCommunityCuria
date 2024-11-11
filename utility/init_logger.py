@@ -3,10 +3,10 @@ from logging import getLogger, INFO, StreamHandler, Formatter, FileHandler, DEBU
 from os import makedirs
 from os.path import join
 
-import configuration as config
+from utility import configuration
 
 
-def get_logger_path(path=config.config.get("path", "log")):
+def get_logger_path(path=configuration.config.get("path", "log")):
     return join(path, f"log_{datetime.now().date():%Y%m%d}.txt")
 
 
@@ -23,7 +23,7 @@ def init_logger(mode="w"):
 
         # create formatter and add it to the handlers
         # create file handler which logs even debug messages
-        logger_path = config.config.get("path", "log")
+        logger_path = configuration.config.get("path", "log")
         makedirs(logger_path, exist_ok=True)
         filename = join(logger_path, f"{datetime.now():%Y%m%d}.txt")
         formatter = Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')

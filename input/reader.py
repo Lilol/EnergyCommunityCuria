@@ -5,7 +5,7 @@ from os.path import join
 from pandas import DataFrame, read_csv, concat
 from xarray import DataArray
 
-import configuration
+from utility import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
