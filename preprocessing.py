@@ -1,19 +1,14 @@
-# ----------------------------------------------------------------------------
-# Import statement
-
-# Data management
-
 import numpy as np
 
 from data_processing_pipeline.data_processing_arbiter import DataProcessingArbiter
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from input.definitions import ColumnName, BillType, UserType
-from input.reader import UsersReader, BillsReader, PvPlantReader, TariffReader, TypicalLoadProfileReader
+from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, TypicalLoadProfileReader
 from input.utility import reshape_array_by_year
 from output.writer import Writer
 from transform.definitions import create_profiles
 from transform.extract.data_extractor import TariffExtractor
-from transform.transform import TariffTransformer, TypicalLoadProfileTransformer
+from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer
 from utility import configuration
 from utility.day_of_the_week import df_year
 from utility.init_logger import init_logger
@@ -26,6 +21,8 @@ DataProcessingPipeline("time_of_use_tariff", workers=(TariffReader(), TariffTran
 DataProcessingPipeline("typical_load_profile",
                        workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
 
+DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
+
 arbiter = DataProcessingArbiter()
 
 # Extract hourly consumption profiles from bills
@@ -33,7 +30,8 @@ year = configuration.config.getint("time", "year")
 DataProcessingPipeline("pv_plant_profile", workers={})
 
 data_users = UsersReader().execute()
-data_users_bills = BillsReader().execute()
+data_users_bills = BillReader().execute()
+PvPlantReader()
 
 # merger = MyMerger()
 # data_users_bs = merger.merge([data_users, data_users_bills], ColumnName.USER)
@@ -45,14 +43,14 @@ for user, data_bills in data_users_bills.groupby(ColumnName.USER):
     pod_type = data_users.loc[user, ColumnName.USER_TYPE]
     # pod_type = data_bills[ColumnName.USER_TYPE].iloc[0]
     # type of bill (mono/tou)
-    if not data_bills[BillsReader.time_of_use_labels[1:]].isna().any(how=None):
-        bills_cols = BillsReader.time_of_use_labels[1:]
+    if not data_bills[BillReader.time_of_use_labels[1:]].isna().any(how=None):
+        bills_cols = BillReader.time_of_use_labels[1:]
         bill_type = BillType.TIME_OF_USE
     else:
-        if not data_bills[BillsReader.time_of_use_labels[0]].isna().any():
-            bills_cols = [BillsReader.time_of_use_labels[0]]
-        elif not data_bills[BillsReader.time_of_use_labels].isna().any():
-            bills_cols = [BillsReader.time_of_use_labels]
+        if not data_bills[BillReader.time_of_use_labels[0]].isna().any():
+            bills_cols = [BillReader.time_of_use_labels[0]]
+        elif not data_bills[BillReader.time_of_use_labels].isna().any():
+            bills_cols = [BillReader.time_of_use_labels]
         else:
             raise ValueError
         bill_type = BillType.MONO
@@ -87,7 +85,7 @@ for user, data_bills in data_users_bills.groupby(ColumnName.USER):
 # %% Make yearly profile of families
 ni, nj, nm, ms = 0, 0, 0, 0
 
-bill = BillsReader().execute()
+bill = BillReader().execute()
 profiles = eval_profiles_gse(bill, nds_ref, pod_type=UserType.PDMF, bill_type=BillType.TIME_OF_USE)
 profiles = profiles.reshape(nj * nm, ni)
 
@@ -118,7 +116,7 @@ if configuration.config.getboolean("visualization", "check_by_plotting"):
 
 # ----------------------------------------------------------------------------
 # %% Save data
-data_writer = Writer()
+data_writer = Writer("writer")
 data_writer.write(data_plants, "data_plants")
 data_writer.write(data_users, "data_users")
 data_writer.write(data_plants_tou, "data_plants_tou")

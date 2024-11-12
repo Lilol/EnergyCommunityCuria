@@ -13,20 +13,21 @@ from utility.day_of_the_week import df_year, cols_to_add
 class DataTransformer(PipelineStage):
     stage = Stage.TRANSFORM
 
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError
 
 
 class UserDataTransformer(DataTransformer):
+    _name = "user_data_transformer"
+
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         dataset[ColumnName.USER_TYPE] = dataset[ColumnName.USER_TYPE].apply(lambda x: UserType(x))
         return dataset
 
 
 class BillDataTransformer(DataTransformer):
+    _name = "bill_data_transformer"
+
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         user_data = args[0]
 
@@ -38,6 +39,8 @@ class BillDataTransformer(DataTransformer):
 
 
 class ReshaperByYear(DataTransformer):
+    _name = "year_reshaper"
+
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         user_name = kwargs.pop('user_name')
         ref_year = configuration.config.getint("time", "year")
@@ -53,8 +56,7 @@ class ReshaperByYear(DataTransformer):
 
 
 class TypicalLoadProfileTransformer(DataTransformer):
-    def __init__(self, name="typical_load_profile_transformer", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
+    _name = "typical_load_profile_transformer"
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
@@ -84,6 +86,8 @@ class TypicalLoadProfileTransformer(DataTransformer):
 
 
 class PvPlantDataTransformer(DataTransformer):
+    _name = "pv_plant_data_transformer"
+
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         # Add column with yearly production by ToU tariff for each plant
         dataset[ColumnName.MONO_TARIFF] = np.nan
@@ -101,8 +105,7 @@ class PvPlantDataTransformer(DataTransformer):
 
 
 class TariffTransformer(DataTransformer):
-    def __init__(self, name="tariff_transformer", *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
+    _name="tariff_transformer"
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0

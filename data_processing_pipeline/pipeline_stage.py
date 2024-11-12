@@ -4,8 +4,9 @@ from data_storage.dataset import OmnesDataArray
 
 class PipelineStage:
     stage = Stage.INVALID
+    _name = ""
 
-    def __init__(self, name="", *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         self.name = name
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:

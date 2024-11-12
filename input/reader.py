@@ -5,38 +5,38 @@ from os.path import join
 from pandas import DataFrame, read_csv, concat
 from xarray import DataArray
 
-from utility import configuration
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, PvDataSource
+from utility import configuration
 
 logger = logging.getLogger(__name__)
 
 
 class Reader(PipelineStage):
     stage = Stage.READ
-    column_names = {}
+    _column_names = {}
+    _name = "reader"
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._directory = "."
         self._filename = ""
         self._data = DataArray()
 
-    def execute(self, *args, **kwargs):
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", "")
         input_path = os.path.join(self._directory, municipality, self._filename)
-        self._data = read_csv(input_path, sep=';', usecols=list(self.column_names.keys())).rename(
-            columns=self.column_names)
+        self._data = read_csv(input_path, sep=';', usecols=list(self._column_names.keys())).rename(
+            columns=self._column_names)
         self._data.insert(1, ColumnName.MUNICIPALITY, municipality)
         self._data.reset_index(drop=True, inplace=True)
         return OmnesDataArray(data=self._data)
 
 
 class ProductionDataReader(Reader):
-    def __init__(self, name, *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
+    _name = "production_reader"
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -45,7 +45,9 @@ class ProductionDataReader(Reader):
 
 
 class PvgisReader(ProductionDataReader):
-    def execute(self, *args, **kwargs):
+    _name = "pvgis_reader"
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", "")
         user = kwargs.pop("user", "")
         return OmnesDataArray(
@@ -54,32 +56,35 @@ class PvgisReader(ProductionDataReader):
 
 
 class PvsolReader(ProductionDataReader):
-    production_column_name = 'Grid Export '  # hourly production of the plants (kW)
+    _name = "pvsol_reader"
+    _production_column_name = 'Grid Export '  # hourly production of the plants (kW)
 
-    def execute(self, *args, **kwargs):
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", "")
         user = kwargs.pop("user", "")
         production = read_csv(join(self._directory, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
                               decimal=',', low_memory=False, skiprows=range(1, 17), index_col=0, header=0,
                               parse_dates=True, date_format="%d.%m. %H:%M",
-                              usecols=["Time", self.production_column_name])
+                              usecols=["Time", self._production_column_name])
 
-        days = production[self.production_column_name].groupby(production.index.dayofyear)
+        days = production[self._production_column_name].groupby(production.index.dayofyear)
         production = DataFrame(data=[items.values for g, items in days], index=days.groups.keys(),
                                columns=days.groups[1] - days.groups[1][0])
         return OmnesDataArray(data=production)
 
 
 class PvPlantReader(Reader):
-    column_names = {'pod': ColumnName.USER,  # code or name of the associated end user
-                    'descrizione': ColumnName.DESCRIPTION,  # description of the associated end user
-                    'indirizzo': ColumnName.USER_ADDRESS,  # address of the end user
-                    'pv_size': ColumnName.POWER,  # size of the plant (kW)
-                    'produzione annua [kWh]': ColumnName.ANNUAL_ENERGY,  # annual energy produced (kWh)
-                    'rendita specifica [kWh/kWp]': ColumnName.ANNUAL_YIELD,  # specific annual production (kWh/kWp)
-                    }
+    _name = "pvplant_reader"
 
-    def __init__(self, name, *args, **kwargs):
+    _column_names = {'pod': ColumnName.USER,  # code or name of the associated end user
+                     'descrizione': ColumnName.DESCRIPTION,  # description of the associated end user
+                     'indirizzo': ColumnName.USER_ADDRESS,  # address of the end user
+                     'pv_size': ColumnName.POWER,  # size of the plant (kW)
+                     'produzione annua [kWh]': ColumnName.ANNUAL_ENERGY,  # annual energy produced (kWh)
+                     'rendita specifica [kWh/kWp]': ColumnName.ANNUAL_YIELD,  # specific annual production (kWh/kWp)
+                     }
+
+    def __init__(self, name="pv_plant_reader", *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._data_source = configuration.config.get("production", "estimator")
         self._directory = "DatiCommuni"
@@ -87,9 +92,9 @@ class PvPlantReader(Reader):
         self._production_data_reader = ProductionDataReader.create()
         self._production_data = DataFrame()
 
-    def execute(self, *args, **kwargs):
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality")
-        super().execute(*args, **kwargs)
+        super().execute(dataset, *args, **kwargs)
         for user in self._data[ColumnName.USER].unique():
             production = self._production_data_reader.execute(municipality=municipality, user=user)
             production[ColumnName.USER] = user
@@ -98,38 +103,40 @@ class PvPlantReader(Reader):
 
 
 class UsersReader(Reader):
-    column_names = {'pod': ColumnName.USER,  # code or name of the end user
-                    'descrizione': ColumnName.DESCRIPTION,  # description of the end user
-                    'indirizzo': ColumnName.USER_ADDRESS,  # address of the end user
-                    'tipo': ColumnName.USER_TYPE,  # type of end user
-                    'potenza': ColumnName.POWER,  # maximum available power of the end-user (kW)
-                    }
+    _name = "users_reader"
+    _column_names = {'pod': ColumnName.USER,  # code or name of the end user
+                     'descrizione': ColumnName.DESCRIPTION,  # description of the end user
+                     'indirizzo': ColumnName.USER_ADDRESS,  # address of the end user
+                     'tipo': ColumnName.USER_TYPE,  # type of end user
+                     'potenza': ColumnName.POWER,  # maximum available power of the end-user (kW)
+                     }
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._directory = "DatiCommuni"
         self._filename = "lista_pod.csv"  # list of end-users
 
 
-class BillsReader(Reader):
+class BillReader(Reader):
+    _name = "bill_reader"
     _time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in range(1,
                                                                                                     configuration.config.getint(
                                                                                                         "tariff",
                                                                                                         "number_of_time_of_use_periods") + 1)}
 
-    column_names = {'pod': ColumnName.USER,  # code or name of the end user
-                    'anno': ColumnName.YEAR,  # year
-                    'mese': ColumnName.MONTH,  # number of the month
-                    'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption
-                    'f0': ColumnName.MONO_TARIFF, **_time_of_use_energy_column_names}
+    _column_names = {'pod': ColumnName.USER,  # code or name of the end user
+                     'anno': ColumnName.YEAR,  # year
+                     'mese': ColumnName.MONTH,  # number of the month
+                     'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption
+                     'f0': ColumnName.MONO_TARIFF, **_time_of_use_energy_column_names}
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._directory = "DatiCommuni"
         self._filename = "dati_bollette.csv"  # monthly consumption data
 
-    def execute(self, *args, **kwargs):
-        super().execute(*args, **kwargs)
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        super().execute(dataset, *args, **kwargs)
         # Check that each user has exactly 12 rows in the bills dataframe
         if not (self._data[ColumnName.USER].value_counts() == 12).all():
             logger.warning(
@@ -142,14 +149,16 @@ class BillsReader(Reader):
 
 
 class GlobalConstReader(Reader):
-    def execute(self, *args, **kwargs):
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         self._data = read_csv(join(self._directory, self._filename), sep=';', index_col=0, header=0).rename(
-            columns=self.column_names)
+            columns=self._column_names)
         return OmnesDataArray(data=self._data)
 
 
 class TariffReader(GlobalConstReader):
-    def __init__(self, name="tariff_reader", *args, **kwargs):
+    _name = "tariff_reader"
+
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         # ARERA's day-types depending on subdivision into tariff time-slots
         # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
@@ -160,11 +169,12 @@ class TariffReader(GlobalConstReader):
 
 
 class TypicalLoadProfileReader(GlobalConstReader):
-    column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user
-                    'month': ColumnName.MONTH}
+    _name = "typical_load_profile_reader"
+    _column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user
+                     'month': ColumnName.MONTH}
 
     # Reference profiles from GSE
-    def __init__(self, name="typical_load_profile_reader", *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._directory = "Common"
         self._filename = "y_ref_gse.csv"

@@ -15,7 +15,7 @@ from matplotlib import patheffects as pe
 
 # common variables
 from input.definitions import ColumnName
-from input.reader import BillsReader
+from input.reader import BillReader
 from visualization.plotting_utils import get_colors_from_map, pie_chart
 
 if __name__ == '__main__':
@@ -61,20 +61,20 @@ if __name__ == '__main__':
     #
     data_users[ColumnName.USER_TYPE] = data_users[ColumnName.USER_TYPE].str.upper()
     data_plants[ColumnName.USER_TYPE] = data_plants[ColumnName.USER_TYPE].str.upper()
-    new_cols = {col: f"F{f}" for f, col in enumerate(BillsReader._time_of_use_energy_column_names)}
+    new_cols = {col: f"F{f}" for f, col in enumerate(BillReader._time_of_use_energy_column_names)}
     data_users = data_users.rename(columns=new_cols)
     data_plants = data_plants.rename(columns=new_cols)
     data_users_tou = data_users_tou.rename(columns=new_cols)
     data_plants_tou = data_plants_tou.rename(columns=new_cols)
-    BillsReader._time_of_use_energy_column_names = list(new_cols.values())
+    BillReader._time_of_use_energy_column_names = list(new_cols.values())
 
-    data_plants_tou[ColumnName.ANNUAL_ENERGY] = data_plants_tou[BillsReader._time_of_use_energy_column_names].sum(axis=1)
+    data_plants_tou[ColumnName.ANNUAL_ENERGY] = data_plants_tou[BillReader._time_of_use_energy_column_names].sum(axis=1)
 
     #
-    data_users[[*BillsReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
-    data_plants[[*BillsReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
-    data_users_tou[[*BillsReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
-    data_plants_tou[[*BillsReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+    data_users[[*BillReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+    data_plants[[*BillReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+    data_users_tou[[*BillReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+    data_plants_tou[[*BillReader._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
 
     # ----------------------------------------------------------------------------
     # %% We analyze the users and plants data sets
@@ -389,7 +389,7 @@ if __name__ == '__main__':
     # Select data and labels to plot
     datas = [data_users, data_plants]
     cols_group = [ColumnName.USER_TYPE, ColumnName.USER_TYPE]
-    cols_data = [BillsReader._time_of_use_energy_column_names, BillsReader._time_of_use_energy_column_names]
+    cols_data = [BillReader._time_of_use_energy_column_names, BillReader._time_of_use_energy_column_names]
     bars_counts, bars_labels, legend_labels = [], [], []
     for i, data in enumerate(datas):
         col_group = cols_group[i]
@@ -479,7 +479,7 @@ if __name__ == '__main__':
     # Select data and labels to plot
     datas = [data_users_tou, data_plants_tou]
     cols_group = [ColumnName.MONTH, ColumnName.MONTH]
-    cols_data = [BillsReader._time_of_use_energy_column_names, BillsReader._time_of_use_energy_column_names]
+    cols_data = [BillReader._time_of_use_energy_column_names, BillReader._time_of_use_energy_column_names]
     bars_counts, legend_labels = [], []
     bars_labels = [list(range(12)), list(range(12))]
     for i, data in enumerate(datas):
@@ -530,7 +530,7 @@ if __name__ == '__main__':
     align = 'center'
     ncols = 2
     nrows = sum([any([any([c > 0 for c in count[i]]) for count in bars_counts]) for i in
-                 range(len(BillsReader._time_of_use_energy_column_names))])
+                 range(len(BillReader._time_of_use_energy_column_names))])
     gridspec_kw = dict(width_ratios=[0.5, 0.5], height_ratios=[1 / nrows] * nrows)
     tickparams_kw = dict(axis='x', rotation=60)
     subplots_adjust_kw = dict(left=0.1, top=0.95, right=0.95, bottom=0.15, wspace=0.05, hspace=0.05)
