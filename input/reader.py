@@ -1,9 +1,10 @@
 import logging
 import os
 from os.path import join
+from typing import Iterable
 
+import xarray as xr
 from pandas import DataFrame, read_csv, concat
-from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
@@ -23,13 +24,20 @@ class Reader(PipelineStage):
         super().__init__(name, *args, **kwargs)
         self._directory = "."
         self._filename = ""
-        self._data = DataArray()
+        self._data = OmnesDataArray()
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        municipality = kwargs.pop("municipality", "")
-        input_path = os.path.join(self._directory, municipality, self._filename)
-        self._data = read_csv(input_path, sep=';', usecols=list(self._column_names.keys())).rename(
-            columns=self._column_names)
+        municipality = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
+        municipalities = filter(lambda x: os.path.isdir(join(self._directory, x)), os.listdir(self._directory)) if municipality == "all" else (
+            municipality if isinstance(municipality, Iterable) else (municipality,))
+        data = OmnesDataArray(data=None, dims=("dim_0","dim_1"), coords={"dim_0": [], "dim_1": []})
+        for m in municipalities:
+            data = xr.concat([data, self._read_municipality(m)], dim="dim_1")
+        return data
+
+    def _read_municipality(self, municipality):
+        self._data = read_csv(os.path.join(self._directory, municipality, self._filename), sep=';',
+                              usecols=list(self._column_names.keys())).rename(columns=self._column_names)
         self._data.insert(1, ColumnName.MUNICIPALITY, municipality)
         self._data.reset_index(drop=True, inplace=True)
         return OmnesDataArray(data=self._data)
@@ -87,7 +95,7 @@ class PvPlantReader(Reader):
     def __init__(self, name="pv_plant_reader", *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._data_source = configuration.config.get("production", "estimator")
-        self._directory = "DatiCommuni"
+        self._directory = "DatiComuni"
         self._filename = "lista_impianti.csv"  # list of plants
         self._production_data_reader = ProductionDataReader.create()
         self._production_data = DataFrame()
@@ -113,7 +121,7 @@ class UsersReader(Reader):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._directory = "DatiCommuni"
+        self._directory = "DatiComuni"
         self._filename = "lista_pod.csv"  # list of end-users
 
 
@@ -132,7 +140,7 @@ class BillReader(Reader):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._directory = "DatiCommuni"
+        self._directory = "DatiComuni"
         self._filename = "dati_bollette.csv"  # monthly consumption data
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
