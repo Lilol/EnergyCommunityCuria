@@ -1,6 +1,9 @@
+import itertools
+
 import numpy as np
 import xarray as xr
 from pandas import timedelta_range, date_range
+from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
@@ -23,6 +26,11 @@ class UserDataTransformer(DataTransformer):
         dataset.loc[:, ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
                                                               dataset.sel({"dim_1": ColumnName.USER_TYPE}),
                                                               vectorize=True)
+        dataset.loc[:, [ColumnName.USER_ADDRESS, ColumnName.DESCRIPTION]] = xr.apply_ufunc(lambda x: x.strip(),
+                                                                                           dataset.sel({"dim_1": [
+                                                                                               ColumnName.USER_ADDRESS,
+                                                                                               ColumnName.DESCRIPTION]}),
+                                                                                           vectorize=True)
         return dataset
 
 
@@ -30,13 +38,13 @@ class BillDataTransformer(DataTransformer):
     _name = "bill_data_transformer"
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        user_data = args[0]
-
         def get_bill_type(df):
-            return BillType.MONO if df[ColumnName.MONO_TARIFF].notna().all(how="all") else BillType.TIME_OF_USE
+            return BillType.TIME_OF_USE if any(df.loc[:, ColumnName.MONO_TARIFF].isnull()) else BillType.MONO
 
-        dataset[ColumnName.BILL_TYPE] = xr.apply_ufunc(get_bill_type, user_data.groupby(ColumnName.USER),
-                                                       vectorize=True)
+        da = DataArray(list(itertools.chain.from_iterable(
+            [get_bill_type(df), ] * df.shape[0] for _, df in dataset.groupby(dataset.loc[:, ColumnName.USER]))))
+        da = da.expand_dims("dim_1").assign_coords({"dim_1": [ColumnName.BILL_TYPE, ]})
+        dataset = xr.concat([dataset, da], dim="dim_1")
         return dataset
 
 
@@ -71,13 +79,13 @@ class TypicalLoadProfileTransformer(DataTransformer):
                               vectorize=True)
         values.reset_index(dims_or_levels=("dim_0", "dim_1"))
 
-        dims = (
-        ColumnName.TARIFF_TIME_SLOT.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value, ColumnName.MONTH.value)
+        dims = (ColumnName.TARIFF_TIME_SLOT.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value,
+                ColumnName.MONTH.value)
         coords = {ColumnName.TARIFF_TIME_SLOT.value: np.unique(tariff_time_slots),
                   ColumnName.HOUR.value: np.unique(hour),
                   ColumnName.USER_TYPE.value: np.unique(dataset.loc[:, ColumnName.USER_TYPE]),
                   ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH])}
-        new_array = xr.DataArray(dims=dims, coords=coords)
+        new_array = OmnesDataArray(dims=dims, coords=coords)
         for user_type, df in values.groupby(dataset.loc[:, ColumnName.USER_TYPE]):
             hours = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), df.dim_1,
                                    vectorize=True)

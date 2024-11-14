@@ -9,9 +9,7 @@ logger = logging.getLogger(__name__)
 class DataStore(object):
     # Data store: main object storing all data for the operations
     _instance = None
-
-    def __init__(self):
-        self._data = defaultdict(DataArray)
+    _data = defaultdict(DataArray)
 
     def __getitem__(self, item):
         return self._data[item]

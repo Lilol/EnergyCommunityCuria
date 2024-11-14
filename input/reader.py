@@ -28,9 +28,10 @@ class Reader(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        municipalities = filter(lambda x: os.path.isdir(join(self._directory, x)), os.listdir(self._directory)) if municipality == "all" else (
+        municipalities = filter(lambda x: os.path.isdir(join(self._directory, x)),
+                                os.listdir(self._directory)) if municipality == "all" else (
             municipality if isinstance(municipality, Iterable) else (municipality,))
-        data = OmnesDataArray(data=None, dims=("dim_0","dim_1"), coords={"dim_0": [], "dim_1": []})
+        data = OmnesDataArray(data=None, dims=("dim_0", "dim_1"), coords={"dim_0": [], "dim_1": []})
         for m in municipalities:
             data = xr.concat([data, self._read_municipality(m)], dim="dim_1")
         return data
@@ -152,7 +153,8 @@ class BillReader(Reader):
                 " rows.")
         # Time of use labels
         configuration.config.set_and_check("tariff", "time_of_use_labels", self._data.columns[
-            self._data.columns.isin(self._time_of_use_energy_column_names.values())])
+            self._data.columns.isin(self._time_of_use_energy_column_names.values())],
+                                           setter=configuration.config.setarray, check=False)
         return OmnesDataArray(data=self._data)
 
 
