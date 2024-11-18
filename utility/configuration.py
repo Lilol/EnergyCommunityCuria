@@ -1,8 +1,10 @@
 import logging
+import os
 from configparser import RawConfigParser, ExtendedInterpolation
 from os import getcwd
 from os.path import join, dirname
 from sys import argv
+from typing import Iterable
 
 from input.definitions import PvDataSource
 
@@ -13,7 +15,8 @@ class ConfigurationManager:
     def __init__(self, config_filename=join(getcwd(), "..", "config", "config.ini")):
         self.__config = RawConfigParser(allow_no_value=True, interpolation=ExtendedInterpolation())
         self.__config.read_file(open(config_filename))
-        self._registered_entries = {"production": {"estimator": self._process_pv_estimator}, }
+        self._registered_entries = {"production": {"estimator": self._process_pv_estimator},
+                                    "rec": {"municipalities": self._get_municipalities}}
 
     def _process_pv_estimator(self):
         pv_data_source = self.__config.get("production", "estimator")
@@ -21,6 +24,13 @@ class ConfigurationManager:
             return PvDataSource(pv_data_source)
         except ValueError:
             return pv_data_source
+
+    def _get_municipalities(self):
+        municipality = self.__config.get("rec", "municipalities")
+        input_dir = self.__config.get("path", "rec_data")  # Bit of a hack
+        return filter(lambda x: os.path.isdir(join(input_dir, x)),
+                      os.listdir(input_dir)) if municipality == "all" else (
+            municipality if isinstance(municipality, Iterable) else (municipality,))
 
     def get(self, section, key, fallback=None):
         if section not in self._registered_entries or key not in self._registered_entries[section]:

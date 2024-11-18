@@ -7,6 +7,7 @@ from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
+from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
 from utility import configuration
@@ -98,18 +99,18 @@ class PvPlantDataTransformer(DataTransformer):
     _name = "pv_plant_data_transformer"
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        # Add column with yearly production by ToU tariff for each plant
-        dataset[ColumnName.MONO_TARIFF] = np.nan
-        data_plants_tou = kwargs.pop("data_plants_tou")
-        tou_columns = configuration.config.getarray("tariff", "time_of_use_labels")
-        dataset = dataset.merge(
-            data_plants_tou.groupby(ColumnName.USER)[tou_columns].sum().rename(tou_columns).reset_index(),
-            on=ColumnName.USER)
+        dataset = dataset.rename({"dim_0": "index", "dim_1": "user_data"})
+        dims = ("user_data", )
+        coords = {"user_data": [ColumnName.USER_TYPE,],}
+        new_array = OmnesDataArray(UserType.PV, dims=dims, coords=coords)
+        dataset = xr.concat([dataset, new_array], dim="user_data")
+        return dataset
 
-        # Add column with type of plant
-        dataset[ColumnName.USER_TYPE] = UserType.PV if ColumnName.USER_TYPE not in dataset else dataset[
-            ColumnName.USER_TYPE].fillna(UserType.PV)
 
+class ProductionDataTransformer(DataTransformer):
+    _name = "pv_production_data_transformer"
+
+    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         return dataset
 
 

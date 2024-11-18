@@ -4,13 +4,14 @@ from data_processing_pipeline.data_processing_arbiter import DataProcessingArbit
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
 from input.definitions import ColumnName, BillType, UserType
-from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, TypicalLoadProfileReader
+from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, TypicalLoadProfileReader, \
+    ProductionReader
 from input.utility import reshape_array_by_year
 from output.writer import Writer
 from transform.definitions import create_profiles
 from transform.extract.data_extractor import TariffExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
-    PvPlantDataTransformer, BillDataTransformer
+    PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer
 from utility import configuration
 from utility.day_of_the_week import df_year
 from utility.init_logger import init_logger
@@ -26,6 +27,7 @@ DataProcessingPipeline("typical_load_profile",
 DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
 DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).execute()
 DataProcessingPipeline("pv_plants", workers=(PvPlantReader(), PvPlantDataTransformer())).execute()
+DataProcessingPipeline("pv_production", workers=(ProductionReader(), ProductionDataTransformer())).execute()
 
 arbiter = DataProcessingArbiter()
 data_store = DataStore()
