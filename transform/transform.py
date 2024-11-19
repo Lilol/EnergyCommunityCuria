@@ -1,4 +1,5 @@
 import itertools
+from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -7,7 +8,6 @@ from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
-from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
 from utility import configuration
@@ -80,8 +80,8 @@ class TypicalLoadProfileTransformer(DataTransformer):
                               vectorize=True)
         values.reset_index(dims_or_levels=("dim_0", "dim_1"))
 
-        dims = (ColumnName.TARIFF_TIME_SLOT.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value,
-                ColumnName.MONTH.value)
+        dims = (
+        ColumnName.TARIFF_TIME_SLOT.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value, ColumnName.MONTH.value)
         coords = {ColumnName.TARIFF_TIME_SLOT.value: np.unique(tariff_time_slots),
                   ColumnName.HOUR.value: np.unique(hour),
                   ColumnName.USER_TYPE.value: np.unique(dataset.loc[:, ColumnName.USER_TYPE]),
@@ -99,12 +99,19 @@ class PvPlantDataTransformer(DataTransformer):
     _name = "pv_plant_data_transformer"
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        dataset = dataset.rename({"dim_0": "index", "dim_1": "user_data"})
-        dims = ("user_data", )
-        coords = {"user_data": [ColumnName.USER_TYPE,],}
+        dataset = dataset.rename({"dim_1": ColumnName.USER_DATA.value}).squeeze()
+        dims = (ColumnName.USER_DATA.value,)
+        coords = {ColumnName.USER_DATA.value: [ColumnName.USER_TYPE, ], }
         new_array = OmnesDataArray(UserType.PV, dims=dims, coords=coords)
-        dataset = xr.concat([dataset, new_array], dim="user_data")
-        return dataset
+        dataset = xr.concat([dataset, new_array], dim=ColumnName.USER_DATA.value)
+
+        dims = (ColumnName.MUNICIPALITY.value, ColumnName.USER_DATA.value)
+        coords = {ColumnName.MUNICIPALITY.value: np.unique(dataset.loc[...,ColumnName.MUNICIPALITY]),
+                  ColumnName.USER_DATA.value: dataset[ColumnName.USER_DATA.value]}
+        new_array = OmnesDataArray(None, dims=dims, coords=coords)
+        for municipality in np.unique(dataset.loc[...,ColumnName.MUNICIPALITY]):
+            new_array.loc[municipality, :] = dataset.where(dataset.loc[...,ColumnName.MUNICIPALITY] == municipality)
+        return new_array
 
 
 class ProductionDataTransformer(DataTransformer):

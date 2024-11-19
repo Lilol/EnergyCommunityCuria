@@ -32,7 +32,6 @@ DataProcessingPipeline("pv_production", workers=(ProductionReader(), ProductionD
 arbiter = DataProcessingArbiter()
 data_store = DataStore()
 
-
 bills_cols = configuration.config.getarray("tariff", "time_of_use_labels", str)
 
 for user, data_bills in data_users_bills.groupby(ColumnName.USER):

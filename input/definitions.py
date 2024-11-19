@@ -5,6 +5,7 @@ from utility.definitions import OrderedEnum
 
 class ColumnName(OrderedEnum):
     USER = 'user'
+    USER_DATA = 'user_data'
     MUNICIPALITY = 'municipality'
     DESCRIPTION = 'description'
     USER_TYPE = 'type'  # type of end user

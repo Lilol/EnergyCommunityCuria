@@ -20,7 +20,7 @@ class Reader(PipelineStage):
     _column_names = {}
     _name = "reader"
     _input_root = configuration.config.get("path", "input")
-    _directory = "."
+    _directory = ""
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -48,21 +48,25 @@ class ProductionReader(Reader):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._pv_resource_reader = PvResourceReader()
+        self._pv_resource_reader = PvResourceReader.create()
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        self._data = OmnesDataArray(data=None, dims=("dim_0", "dim_1"), coords={"dim_0": [], "dim_1": []})
+        self._data = OmnesDataArray(data=None, dims=(
+            ColumnName.TIME.value, ColumnName.USER.value, ColumnName.POWER.value, ColumnName.MUNICIPALITY.value),
+                                    coords={ColumnName.TIME.value: [], ColumnName.USER.value: [],
+                                            ColumnName.POWER.value: [], ColumnName.MUNICIPALITY.value: []})
         user_data = DataStore()["pv_plants"]
-        for m in municipalities:
-            for user in user_data.sel({ColumnName.MUNICIPALITY: m})[ColumnName.USER].unique():
-                production = self._pv_resource_reader.execute(self._data, municipality=m, user=user)
-                self._data = xr.concat([self._data, production], dim="dim_1")
+        for municipality in municipalities:
+            for user in user_data.loc[user_data.municipality == municipality, ColumnName.USER]:
+                production = self._pv_resource_reader.execute(self._data, municipality=municipality, user=user.values)
+                self._data = production if self._data.size == 0 else xr.concat([self._data, production], dim=ColumnName.USER.value)
         return self._data
 
 
 class PvResourceReader(Reader):
     _name = "pvresource_reader"
+    _directory = "DatiComuni"
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -72,27 +76,34 @@ class PvResourceReader(Reader):
 
 class PvgisReader(PvResourceReader):
     _name = "pvgis_reader"
+    _production_column_name = 'Irradiance onto horizontal plane '  # hourly production of the plants (kW)
+    _column_names = {"power": ColumnName.POWER}
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "location"))
         user = kwargs.pop("user")
-        production = read_csv(join(self._path, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
-                              index_col=0, parse_dates=True, date_format="%d/%m/%Y %H:%M")
-        production[ColumnName.USER] = user
-        return OmnesDataArray(production)
+        production = read_csv(join(self._path, municipality, PvDataSource.PVGIS.value, f"{user}.csv"), sep=';',
+                              index_col=0, parse_dates=True, date_format="%d/%m/%Y %H:%M").rename(
+            columns=self._column_names)
+        production = OmnesDataArray(data=production).rename(
+            {"dim_1": ColumnName.POWER.value, "timestamp": ColumnName.TIME.value}).expand_dims(
+            [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
+            {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]})
+        return production
 
 
 class PvsolReader(PvResourceReader):
     _name = "pvsol_reader"
     _production_column_name = 'Grid Export '  # hourly production of the plants (kW)
+    _column_names = {_production_column_name: ColumnName.POWER}
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "location"))
         user = kwargs.pop("user", "")
         production = read_csv(join(self._path, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
-                              decimal=',', low_memory=False, skiprows=range(1, 17), index_col=0, header=0,
-                              parse_dates=True, date_format="%d.%m. %H:%M",
-                              usecols=["Time", self._production_column_name])
+                              decimal=',', skiprows=range(1, 17), index_col=0, header=0, parse_dates=True,
+                              date_format="%d.%m. %H:%M", usecols=["Time", self._production_column_name]).rename(
+            columns=self._column_names)
         production[ColumnName.USER] = user
         days = production[self._production_column_name].groupby(production.index.dayofyear)
         production = DataFrame(data=[items.values for g, items in days], index=days.groups.keys(),
