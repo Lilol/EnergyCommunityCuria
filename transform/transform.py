@@ -1,16 +1,18 @@
 import itertools
-from typing import Any
 
 import numpy as np
 import xarray as xr
-from pandas import timedelta_range, date_range
+from pandas import timedelta_range, date_range, DataFrame
 from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
+from transform.combine.approach_gse import evaluate
+from transform.extract.utils import ProfileExtractor
 from utility import configuration
+from utility.day_of_the_week import get_weekday_code
 
 
 class DataTransformer(PipelineStage):
@@ -24,14 +26,14 @@ class UserDataTransformer(DataTransformer):
     _name = "user_data_transformer"
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        dataset.loc[:, ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
-                                                              dataset.sel({"dim_1": ColumnName.USER_TYPE}),
-                                                              vectorize=True)
-        dataset.loc[:, [ColumnName.USER_ADDRESS, ColumnName.DESCRIPTION]] = xr.apply_ufunc(lambda x: x.strip(),
-                                                                                           dataset.sel({"dim_1": [
-                                                                                               ColumnName.USER_ADDRESS,
-                                                                                               ColumnName.DESCRIPTION]}),
-                                                                                           vectorize=True)
+        dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
+                                                                dataset.sel({"dim_1": ColumnName.USER_TYPE}),
+                                                                vectorize=True)
+        dataset.loc[..., [ColumnName.USER_ADDRESS, ColumnName.DESCRIPTION]] = xr.apply_ufunc(lambda x: x.strip(),
+                                                                                             dataset.sel({"dim_1": [
+                                                                                                 ColumnName.USER_ADDRESS,
+                                                                                                 ColumnName.DESCRIPTION]}),
+                                                                                             vectorize=True)
         return dataset
 
 
@@ -45,7 +47,7 @@ class BillDataTransformer(DataTransformer):
         da = DataArray(list(itertools.chain.from_iterable(
             [get_bill_type(df), ] * df.shape[0] for _, df in dataset.groupby(dataset.loc[:, ColumnName.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [ColumnName.BILL_TYPE, ]})
-        dataset = xr.concat([dataset, da], dim="dim_1")
+        dataset = xr.concat([dataset, da], dim="dim_1").rename({"dim_1": ColumnName.USER_DATA.value})
         return dataset
 
 
@@ -70,19 +72,19 @@ class TypicalLoadProfileTransformer(DataTransformer):
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
-        dataset.loc[:, ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
-                                                              dataset.sel({"dim_1": ColumnName.USER_TYPE}),
-                                                              vectorize=True)
+        dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
+                                                                dataset.sel({"dim_1": ColumnName.USER_TYPE}),
+                                                                vectorize=True)
         values = dataset.where(~dataset.dim_1.isin((ColumnName.USER_TYPE, ColumnName.MONTH)), drop=True)
-        tariff_time_slots = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")) + 1,
+        day_types = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")) + 1,
                                            values.dim_1, vectorize=True)
         hour = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), values.dim_1,
                               vectorize=True)
         values.reset_index(dims_or_levels=("dim_0", "dim_1"))
 
-        dims = (
-        ColumnName.TARIFF_TIME_SLOT.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value, ColumnName.MONTH.value)
-        coords = {ColumnName.TARIFF_TIME_SLOT.value: np.unique(tariff_time_slots),
+        dims = (ColumnName.DAY_TYPE.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value,
+                ColumnName.MONTH.value)
+        coords = {ColumnName.DAY_TYPE.value: np.unique(day_types),
                   ColumnName.HOUR.value: np.unique(hour),
                   ColumnName.USER_TYPE.value: np.unique(dataset.loc[:, ColumnName.USER_TYPE]),
                   ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH])}
@@ -99,19 +101,7 @@ class PvPlantDataTransformer(DataTransformer):
     _name = "pv_plant_data_transformer"
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
-        dataset = dataset.rename({"dim_1": ColumnName.USER_DATA.value}).squeeze()
-        dims = (ColumnName.USER_DATA.value,)
-        coords = {ColumnName.USER_DATA.value: [ColumnName.USER_TYPE, ], }
-        new_array = OmnesDataArray(UserType.PV, dims=dims, coords=coords)
-        dataset = xr.concat([dataset, new_array], dim=ColumnName.USER_DATA.value)
-
-        dims = (ColumnName.MUNICIPALITY.value, ColumnName.USER_DATA.value)
-        coords = {ColumnName.MUNICIPALITY.value: np.unique(dataset.loc[...,ColumnName.MUNICIPALITY]),
-                  ColumnName.USER_DATA.value: dataset[ColumnName.USER_DATA.value]}
-        new_array = OmnesDataArray(None, dims=dims, coords=coords)
-        for municipality in np.unique(dataset.loc[...,ColumnName.MUNICIPALITY]):
-            new_array.loc[municipality, :] = dataset.where(dataset.loc[...,ColumnName.MUNICIPALITY] == municipality)
-        return new_array
+        return dataset.rename({"dim_1": ColumnName.USER_DATA.value})
 
 
 class ProductionDataTransformer(DataTransformer):
@@ -131,3 +121,30 @@ class TariffTransformer(DataTransformer):
         dataset[ColumnName.DAY_TYPE.value] = dataset[ColumnName.DAY_TYPE.value].astype(int) + 1
         dataset[ColumnName.HOUR.value] = dataset[ColumnName.HOUR.value].astype(int)
         return dataset
+
+
+class DayTypeTransformer(DataTransformer):
+    _name = "day_type_transformer"
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        ref_year = configuration.config.get("time", "year")
+        index = date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d")
+        ref_df = DataFrame(data=index.map(get_weekday_code), index=index, columns=[ColumnName.DAY_TYPE, ])
+        return xr.concat([OmnesDataArray(
+            df.astype(int).set_index(df.index.day).rename(columns={ColumnName.DAY_TYPE: month}),
+            dims=(ColumnName.DAY_OF_MONTH.value, ColumnName.MONTH.value)) for month, df in
+                          ref_df.groupby(ref_df.index.month)], dim=ColumnName.MONTH.value)
+
+
+class BillLoadProfileTransformer(DataTransformer):
+    _name = "bill_load_profile_transformer"
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        profiles = evaluate(data_bills[bills_cols].values, nds, pod_type=pod_type, bill_type=bill_type) # group by day
+
+
+class PvProfileTransformer(DataTransformer):
+    _name = "pv_profile_data_transformer"
+
+    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+        df_profile, df_plants_year = ProfileExtractor.create_yearly_profile(df_plants_year)

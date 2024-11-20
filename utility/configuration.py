@@ -28,8 +28,8 @@ class ConfigurationManager:
     def _get_municipalities(self):
         municipality = self.__config.get("rec", "municipalities")
         input_dir = self.__config.get("path", "rec_data")  # Bit of a hack
-        return filter(lambda x: os.path.isdir(join(input_dir, x)),
-                      os.listdir(input_dir)) if municipality == "all" else (
+        return list(
+            filter(lambda x: os.path.isdir(join(input_dir, x)), os.listdir(input_dir))) if municipality == "all" else (
             municipality if isinstance(municipality, Iterable) else (municipality,))
 
     def get(self, section, key, fallback=None):

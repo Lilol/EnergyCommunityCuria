@@ -9,11 +9,11 @@ class DataProcessingArbiter(object):
             cls._instance = super(DataProcessingArbiter, cls).__new__(cls)
         return cls._instance
 
-    # TODO: should this work like a dictionary, or define separate methods for registering and retrieving pipelines?
     def register_pipeline(self, name, pipeline):
-        self._pipelines[name] = pipeline
+        self.__setitem__(name, pipeline)
 
     def __getitem__(self, item):
         return self._pipelines[item]
 
-
+    def __setitem__(self, key, value):
+        self._pipelines[key] = value

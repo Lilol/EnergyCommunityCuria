@@ -104,10 +104,9 @@ def find_n_fam(sc, n_fam_max, p_plants, p_users, p_fam, step=25):
 
 # ----------------------------------------------------------------------------
 # Setup and data loading
-# TODO: to config
 # n_fam_max = 200  # (SETUP)
 # sc_targets = [0, 0.10, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]  # 0 needed
-n_fams_ = [0, 25, 50, 75, 100]  # [0, 15, 30, 45, 60]
+n_fams_ = configuration.config.getarray("rec", "number_of_families", int)  # [0, 15, 30, 45, 60]
 
 # Directory with files
 directory_data = 'DatiProcessati'

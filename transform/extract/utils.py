@@ -12,7 +12,7 @@ Date : 29.11.2022
 """
 import numpy as np
 
-from extract.data_extractor import DataExtractor
+from transform.extract.data_extractor import DataExtractor
 
 
 class ProfileExtractor(DataExtractor):
@@ -21,7 +21,8 @@ class ProfileExtractor(DataExtractor):
     # evaluate the monthly consumption divided into tariff time-slots from the
     # hourly load profiles in the day-types
     # TODO: this is analysis
-    def get_monthly_consumption(self, hourly_load_profiles, number_of_days_by_type):
+    @staticmethod
+    def get_monthly_consumption(hourly_load_profiles, number_of_days_by_type):
         """
         Function 'eval_x'
         ____________
@@ -56,12 +57,12 @@ class ProfileExtractor(DataExtractor):
         return x
 
     # ----------------------------------------------------------------------------
-    # This methods just spreads the total consumption over the tariff time-slots
+    # This methods spreads the total consumption over the tariff time-slots
     # according to the number of hours of each of them
     # TODO: this is analysis
-    def spread_consumption_over_time_slots(self, total_consumption_by_tariff_slots, number_of_days_by_type):
+    @staticmethod
+    def spread_consumption_over_time_slots(total_consumption_by_tariff_slots, number_of_days_by_type):
         """
-        Function 'flat'
         ____________
         DESCRIPTION
         The function evaluates hourly load profiles (y) in each type of day (j)
@@ -73,11 +74,12 @@ class ProfileExtractor(DataExtractor):
         according to the number of hours of each tariff time-slot in the month.
         ___________
         PARAMETERS
-        x : np.ndarray
+        total_consumption_by_tariff_slots : np.ndarray
             Monthly electricity consumption divided into tariff time-slots
             Array of shape (nf, ) where 'nf' is the number of tariff time-slots.
-        nd : np.ndarray
-            Number of days of each day-type in the month
+        number_of_days_by_type : np.ndarray
+            Number of days of each day-ty
+            pe in the month
             Array of shape (nj, ) where 'nj' is the number of day-types
             (according to ARERA's subdivision into day-types).
         ________
@@ -118,7 +120,8 @@ class ProfileExtractor(DataExtractor):
     # ----------------------------------------------------------------------------
     # Extract typical load profiles from year-long profile
     # A typical load profile is defined as: (month,day type); and calculated as the average of those days in each month
-    def create_yearly_profile(self, p, months, day_types):
+    @staticmethod
+    def create_yearly_profile(p, months, day_types):
         assert len(p) == len(months) == len(day_types)
         y = []
         for im, m in enumerate(ms):

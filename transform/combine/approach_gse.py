@@ -21,6 +21,7 @@ from data_storage.data_store import DataStore
 from input.definitions import BillType
 # self-created modules and functions
 from methods_scaling import scale_gse
+from transform.extract.utils import ProfileExtractor
 
 
 # ----------------------------------------------------------------------------
@@ -33,10 +34,10 @@ def evaluate(bills, nds, pod_type, bill_type):
     for im, (bill, nd) in enumerate(zip(bills, nds)):
         y_ref = DataStore()["load_profiles"][(pod_type, im)]
         if bill_type == BillType.MONO:
-            y_scale = y_ref / np.sum(get_monthly_consumption(y_ref, nd)) * np.sum(bill)
+            y_scale = y_ref / np.sum(ProfileExtractor.get_monthly_consumption(y_ref, nd)) * np.sum(bill)
         else:
             y_scale, _ = scale_gse(bill, nd, y_ref)
-            if ((b := get_monthly_consumption(y_scale, nd)) != bill).any():
+            if ((b := ProfileExtractor.get_monthly_consumption(y_scale, nd)) != bill).any():
                 y_scale[np.isnan(y_scale)] = 0
                 for if_, f in enumerate(fs):
                     # Just spread total consumption in F1 on F1 hours

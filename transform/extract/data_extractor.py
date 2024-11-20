@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+import xarray as xr
 
 from utility import configuration
 from data_processing_pipeline.definitions import Stage
@@ -12,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 class DataExtractor(PipelineStage):
     stage = Stage.EXTRACT
+    _name = "data_extractor"
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
@@ -66,3 +68,13 @@ class TariffExtractor(DataExtractor):
         configuration.config.set_and_check("time", "total_number_of_time_steps", dataset.size)
 
         return dataset
+
+
+    class TouExtractor(DataExtractor):
+        _name = "tou_extractor"
+
+        def __init__(self, name=_name, *args, **kwargs):
+            super().__init__(name, *args, **kwargs)
+
+        def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+            return xr.concat([OmnesDataArray(np.unique(a, return_counts=True)[1]) for a in dataset.values], dim="dim_0")

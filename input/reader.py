@@ -3,7 +3,7 @@ import os
 from os.path import join
 
 import xarray as xr
-from pandas import DataFrame, read_csv
+from pandas import read_csv
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
@@ -30,17 +30,14 @@ class Reader(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        data = OmnesDataArray(data=None, dims=("dim_0", "dim_1"), coords={"dim_0": [], "dim_1": []})
-        for m in municipalities:
-            data = xr.concat([data, self._read_municipality(m)], dim="dim_1")
+        data = xr.concat([self._read_municipality(m) for m in municipalities], dim=ColumnName.MUNICIPALITY.value)
         return data
 
     def _read_municipality(self, municipality):
         self._data = read_csv(os.path.join(self._path, municipality, self._filename), sep=';',
                               usecols=list(self._column_names.keys())).rename(columns=self._column_names)
-        self._data.insert(1, ColumnName.MUNICIPALITY, municipality)
-        self._data.reset_index(drop=True, inplace=True)
-        return OmnesDataArray(data=self._data)
+        return OmnesDataArray(data=self._data.reset_index(drop=True)).expand_dims(
+            ColumnName.MUNICIPALITY.value).assign_coords({ColumnName.MUNICIPALITY.value: [municipality]})
 
 
 class ProductionReader(Reader):
@@ -52,15 +49,12 @@ class ProductionReader(Reader):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        self._data = OmnesDataArray(data=None, dims=(
-            ColumnName.TIME.value, ColumnName.USER.value, ColumnName.POWER.value, ColumnName.MUNICIPALITY.value),
-                                    coords={ColumnName.TIME.value: [], ColumnName.USER.value: [],
-                                            ColumnName.POWER.value: [], ColumnName.MUNICIPALITY.value: []})
         user_data = DataStore()["pv_plants"]
-        for municipality in municipalities:
-            for user in user_data.loc[user_data.municipality == municipality, ColumnName.USER]:
-                production = self._pv_resource_reader.execute(self._data, municipality=municipality, user=user.values)
-                self._data = production if self._data.size == 0 else xr.concat([self._data, production], dim=ColumnName.USER.value)
+        self._data = xr.concat(
+            [self._pv_resource_reader.execute(self._data, municipality=municipality, user=user) for municipality in
+             municipalities for user in user_data.sel(
+                {ColumnName.USER_DATA.value: ColumnName.USER, ColumnName.MUNICIPALITY.value: municipality}).values],
+            dim=ColumnName.USER.value)
         return self._data
 
 
@@ -88,7 +82,8 @@ class PvgisReader(PvResourceReader):
         production = OmnesDataArray(data=production).rename(
             {"dim_1": ColumnName.POWER.value, "timestamp": ColumnName.TIME.value}).expand_dims(
             [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
-            {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]})
+            {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]}).squeeze(
+            ColumnName.POWER.value)
         return production
 
 
@@ -104,11 +99,13 @@ class PvsolReader(PvResourceReader):
                               decimal=',', skiprows=range(1, 17), index_col=0, header=0, parse_dates=True,
                               date_format="%d.%m. %H:%M", usecols=["Time", self._production_column_name]).rename(
             columns=self._column_names)
-        production[ColumnName.USER] = user
-        days = production[self._production_column_name].groupby(production.index.dayofyear)
-        production = DataFrame(data=[items.values for g, items in days], index=days.groups.keys(),
-                               columns=days.groups[1] - days.groups[1][0])
-        return OmnesDataArray(data=production)
+        production.index -= production.index[0]
+        production = OmnesDataArray(data=production).rename(
+            {"dim_1": ColumnName.POWER.value, "Time": ColumnName.TIME.value}).expand_dims(
+            [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
+            {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]}).squeeze(
+            ColumnName.POWER.value)
+        return production
 
 
 class PvPlantReader(Reader):
