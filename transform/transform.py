@@ -2,7 +2,7 @@ import itertools
 
 import numpy as np
 import xarray as xr
-from pandas import timedelta_range, date_range, DataFrame
+from pandas import timedelta_range, date_range
 from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
@@ -12,7 +12,6 @@ from input.definitions import ColumnName, UserType, BillType
 from transform.combine.approach_gse import evaluate
 from transform.extract.utils import ProfileExtractor
 from utility import configuration
-from utility.day_of_the_week import get_weekday_code
 
 
 class DataTransformer(PipelineStage):
@@ -70,7 +69,7 @@ class ReshaperByYear(DataTransformer):
 class TypicalLoadProfileTransformer(DataTransformer):
     _name = "typical_load_profile_transformer"
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
         dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
                                                                 dataset.sel({"dim_1": ColumnName.USER_TYPE}),
@@ -100,21 +99,21 @@ class TypicalLoadProfileTransformer(DataTransformer):
 class PvPlantDataTransformer(DataTransformer):
     _name = "pv_plant_data_transformer"
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         return dataset.rename({"dim_1": ColumnName.USER_DATA.value})
 
 
 class ProductionDataTransformer(DataTransformer):
     _name = "pv_production_data_transformer"
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         return dataset
 
 
 class TariffTransformer(DataTransformer):
     _name = "tariff_transformer"
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
         dataset = dataset.rename({"dim_0": ColumnName.DAY_TYPE.value, "dim_1": ColumnName.HOUR.value})
         dataset = dataset - 1
@@ -123,28 +122,17 @@ class TariffTransformer(DataTransformer):
         return dataset
 
 
-class DayTypeTransformer(DataTransformer):
-    _name = "day_type_transformer"
-
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        ref_year = configuration.config.get("time", "year")
-        index = date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d")
-        ref_df = DataFrame(data=index.map(get_weekday_code), index=index, columns=[ColumnName.DAY_TYPE, ])
-        return xr.concat([OmnesDataArray(
-            df.astype(int).set_index(df.index.day).rename(columns={ColumnName.DAY_TYPE: month}),
-            dims=(ColumnName.DAY_OF_MONTH.value, ColumnName.MONTH.value)) for month, df in
-                          ref_df.groupby(ref_df.index.month)], dim=ColumnName.MONTH.value)
-
-
 class BillLoadProfileTransformer(DataTransformer):
     _name = "bill_load_profile_transformer"
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         profiles = evaluate(data_bills[bills_cols].values, nds, pod_type=pod_type, bill_type=bill_type) # group by day
+        return dataset
 
 
 class PvProfileTransformer(DataTransformer):
     _name = "pv_profile_data_transformer"
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         df_profile, df_plants_year = ProfileExtractor.create_yearly_profile(df_plants_year)
+        return dataset

@@ -12,16 +12,16 @@ Date: 30.01.2023
 import numpy as np
 
 from data_storage.data_store import DataStore
-# ----------------------------------------------------------------------------
-# Import
-# python libs, packages, modules
-
-# common variables
-
 from input.definitions import BillType
 from transform.combine.methods_scaling import scale_gse
 # self-created modules and functions
 from transform.extract.utils import ProfileExtractor
+
+
+# ----------------------------------------------------------------------------
+# Import
+# python libs, packages, modules
+# common variables
 
 
 # ----------------------------------------------------------------------------
@@ -41,7 +41,8 @@ def evaluate(bills, nds, pod_type, bill_type):
                 y_scale[np.isnan(y_scale)] = 0
                 for if_, f in enumerate(fs):
                     # Just spread total consumption in F1 on F1 hours
-                    y_scale[DataStore()["tariff"].flatten() == f] += (bill[if_] - (b[if_] if not np.isnan(b[if_]) else 0)) / sum(
+                    y_scale[DataStore()["tariff"].flatten() == f] += (bill[if_] - (
+                        b[if_] if not np.isnan(b[if_]) else 0)) / sum(
                         [np.count_nonzero(arera[j] == f) * nd[j] for j in js])
                 if (np.abs(b - bill) > 0.1).any():
                     print("While correcting total consumption:")

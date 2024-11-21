@@ -2,12 +2,14 @@ import logging
 
 import numpy as np
 import xarray as xr
+from pandas import date_range, DataFrame
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName
 from utility import configuration
+from utility.day_of_the_week import get_weekday_code
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class DataExtractor(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError
 
 
@@ -44,7 +46,7 @@ class TariffExtractor(DataExtractor):
     #            3 - tariff times-lot F2, night, sundays and holidays
     """
 
-    def execute(self, dataset, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         tariff_time_slots = np.unique(dataset)
         configuration.config.set_and_check("tariff", "tariff_time_slots", tariff_time_slots,
                                            configuration.config.setarray, check=False)
@@ -79,6 +81,39 @@ class TouExtractor(DataExtractor):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         return xr.concat([OmnesDataArray(unique_numbers[1], dims=ColumnName.COUNT.value,
-                                         coords={ColumnName.COUNT.value: unique_numbers[0]}).expand_dims({ColumnName.DAY_TYPE.value: [i,]}) for
-                          i, a in enumerate(dataset.values) if (unique_numbers := np.unique(a, return_counts=True))],
-                         dim=ColumnName.DAY_TYPE.value)
+                                         coords={ColumnName.COUNT.value: unique_numbers[0]}).expand_dims(
+            {ColumnName.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
+            (unique_numbers := np.unique(a, return_counts=True))], dim=ColumnName.DAY_TYPE.value)
+
+
+class DayTypeExtractor(DataExtractor):
+    _name = "day_type_extractor"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        ref_year = configuration.config.get("time", "year")
+        start = kwargs.pop("start", f"{ref_year}-01-01")
+        end = kwargs.pop("end", f"{ref_year}-12-31")
+        index = date_range(start=start, end=end, freq="d")
+        ref_df = DataFrame(data=index.map(get_weekday_code), index=index, columns=[ColumnName.DAY_TYPE, ])
+        return xr.concat([
+            OmnesDataArray(df.astype(int).set_index(df.index.day).rename(columns={ColumnName.DAY_TYPE: month}),
+                dims=(ColumnName.DAY_OF_MONTH.value, ColumnName.MONTH.value)) for month, df in
+            ref_df.groupby(ref_df.index.month)], dim=ColumnName.MONTH.value)
+
+
+class DayCountExtractor(DataExtractor):
+    _name = "day_count_extractor"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        dataset = xr.concat([OmnesDataArray(unique_numbers[1], dims=ColumnName.DAY_TYPE.value,
+                                         coords={ColumnName.DAY_TYPE.value: unique_numbers[0]}).expand_dims(
+            {ColumnName.MONTH.value: [i, ]}) for i, da in enumerate(dataset.T, 1) if
+            (unique_numbers := np.unique(da, return_counts=True))], dim=ColumnName.MONTH.value).drop(
+            dim=ColumnName.DAY_TYPE.value, labels=np.nan).fillna(0).astype(int)
+        return dataset.assign_coords({ColumnName.DAY_TYPE.value: dataset[ColumnName.DAY_TYPE.value].astype(int)})

@@ -11,11 +11,11 @@ from input.utility import reshape_array_by_year
 from output.writer import Writer
 from transform.combine.approach_gse import evaluate
 from transform.definitions import create_profiles
-from transform.extract.data_extractor import TariffExtractor, TouExtractor
+from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor
 from transform.extract.utils import ProfileExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
-    PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, DayTypeTransformer, \
-    BillLoadProfileTransformer, PvProfileTransformer
+    PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, BillLoadProfileTransformer, \
+    PvProfileTransformer
 from utility import configuration
 from utility.init_logger import init_logger
 from visualization.preprocessing_visualization import vis_profiles, by_month_profiles, consumption_profiles
@@ -24,10 +24,10 @@ init_logger()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("time_of_use_tariff", workers=(
-    TariffReader(), TariffTransformer(), TariffExtractor(), StoreData("time_of_use_time_slots"), TouExtractor(),)).execute()
+    TariffReader(), TariffTransformer(), TariffExtractor(), StoreData("time_of_use_time_slots"), TouExtractor())).execute()
 DataProcessingPipeline("typical_load_profile_gse",
                        workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
-DataProcessingPipeline("day_type", workers=(DayTypeTransformer(),)).execute()
+DataProcessingPipeline("day_type", workers=(DayTypeExtractor(), StoreData("day_types"), DayCountExtractor())).execute()
 
 DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
 DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).execute()
