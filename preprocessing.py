@@ -3,6 +3,7 @@ import numpy as np
 from data_processing_pipeline.data_processing_arbiter import DataProcessingArbiter
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
+from data_storage.store_data import StoreData
 from input.definitions import BillType, UserType
 from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, TypicalLoadProfileReader, \
     ProductionReader
@@ -10,7 +11,7 @@ from input.utility import reshape_array_by_year
 from output.writer import Writer
 from transform.combine.approach_gse import evaluate
 from transform.definitions import create_profiles
-from transform.extract.data_extractor import TariffExtractor
+from transform.extract.data_extractor import TariffExtractor, TouExtractor
 from transform.extract.utils import ProfileExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
     PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, DayTypeTransformer, \
@@ -22,7 +23,8 @@ from visualization.preprocessing_visualization import vis_profiles, by_month_pro
 init_logger()
 
 # ----------------------------------------------------------------------------
-DataProcessingPipeline("time_of_use_tariff", workers=(TariffReader(), TariffTransformer(), TariffExtractor())).execute()
+DataProcessingPipeline("time_of_use_tariff", workers=(
+    TariffReader(), TariffTransformer(), TariffExtractor(), StoreData("time_of_use_time_slots"), TouExtractor(),)).execute()
 DataProcessingPipeline("typical_load_profile_gse",
                        workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
 DataProcessingPipeline("day_type", workers=(DayTypeTransformer(),)).execute()
@@ -32,12 +34,11 @@ DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).e
 DataProcessingPipeline("pv_plants", workers=(PvPlantReader(), PvPlantDataTransformer())).execute()
 DataProcessingPipeline("pv_production", workers=(ProductionReader(), ProductionDataTransformer())).execute()
 
-DataProcessingPipeline("load_profiles_from_bills", workers=(BillLoadProfileTransformer())).execute()
-DataProcessingPipeline("load_profiles_from_bills", workers=(PvProfileTransformer())).execute()
+DataProcessingPipeline("load_profiles_from_bills", workers=(BillLoadProfileTransformer(),)).execute()
+DataProcessingPipeline("pv_profile", workers=(PvProfileTransformer(),)).execute()
 
 arbiter = DataProcessingArbiter()
 data_store = DataStore()
-
 
 # ----------------------------------------------------------------------------
 # %% Make yearly profile of families

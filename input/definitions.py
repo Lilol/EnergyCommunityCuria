@@ -25,6 +25,7 @@ class ColumnName(OrderedEnum):
     TIME = 'time' # time
     DAY_OF_MONTH = 'day'  # number of day in the month (1-28, 29 30, 31)
     DAY_TYPE = 'day_type'  # type of day (0-work, 1-Saturday, 2-Sunday/holiday)
+    COUNT = 'count' # Generic count type
     DAY_OF_WEEK = 'day_week'  # number of day in the week (1-Monday, ...)
     HOUR = 'hour'
     BILL_TYPE = 'bill_type'

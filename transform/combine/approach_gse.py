@@ -19,8 +19,8 @@ from data_storage.data_store import DataStore
 # common variables
 
 from input.definitions import BillType
+from transform.combine.methods_scaling import scale_gse
 # self-created modules and functions
-from methods_scaling import scale_gse
 from transform.extract.utils import ProfileExtractor
 
 

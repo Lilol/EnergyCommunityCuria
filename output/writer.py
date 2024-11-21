@@ -11,19 +11,21 @@ from utility import configuration
 
 
 class Writer(PipelineStage):
+    _name = "output_writer"
     csv_properties = {"sep": ';', "index": False, "float_format": ".4f"}
 
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self.output_path = configuration.config("path", "output")
-        self.filename = kwargs.get("filename", None)
+        self.output_path = configuration.config.get("path", "output")
+        self.filename = kwargs.get("filename", name)
         makedirs(self.output_path, exist_ok=True)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs):
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
         output = dataset.map(lambda x: x.value if type(x) == Enum else x)
         xr.apply_ufunc(lambda x: x.value if type(x) == Enum else x, dataset, vectorize=True)
         output.to_csv(join(self.output_path, name if ".csv" not in name else f"{name}.csv"), **self.csv_properties)
+        return dataset
 
     def write(self, output: DataFrame, name=None):
         self.execute(output.to_xarray(), filename=name)
