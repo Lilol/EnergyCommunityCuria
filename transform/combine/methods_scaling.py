@@ -17,14 +17,17 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 
+from transform.extract.utils import ProfileExtractor
+
+
 # TODO: These all go into 'combination'
 
 # ----------------------------------------------------------------------------
 # 2. METHODS TO SCALE HOURLY LOAD PROFILES IN TYPICAL DAYS TO MONTHLY 
 # ENERGY CONSUMPTION
 # ----------------------------------------------------------------------------
-# 2.1 Method 'gse tariff timeslots'
-def scale_gse(x, nd, y_ref):
+# 2.1 Method 'scale_gse'
+def scale_gse(x, y_ref):
     """
     Function 'scale_gse'
     ____________
@@ -52,7 +55,7 @@ def scale_gse(x, nd, y_ref):
         day, containing the reference profiles.
     _______
     RETURNS
-    y_scal : np.ndarray
+    y_scale : np.ndarray
         Estimated hourly load profile in each day-type
         Array of shape (nj*ni) where 'ni' is the number of time-steps in each
         day.
@@ -65,18 +68,10 @@ def scale_gse(x, nd, y_ref):
     Date : 29.11.2022 (last update: 29.11.2022)
     """
     # ------------------------------------
-    # check consistency of data
-    # division of 'x' into tariff time slots
-    assert (size := x.size) == nf, f"'x' must have size {nf}, not {size}."
-    # division of 'n_days' into day-types
-    assert (size := nd.size) == nj, f"'nd' must have size {nj}, not {size}."
-    # total number of time-steps in 'y_ref'
-    assert (size := np.size(y_ref)) == ni * nj, f"'y_ref' must have size {ni * nj}, not {size}."
-    # ------------------------------------
     # scale reference profiles
     # evaluate the monthly consumption associated with the reference profile
     # divided into tariff time-slots
-    x_ref = get_monthly_consumption(y_ref, nd)
+    x_ref = ProfileExtractor.get_monthly_consumption(y_ref)
     # calculate scaling factors k (one for each tariff time-slot)
     k_scale = x / x_ref
     # evaluate load profiles by scaling the reference profiles
@@ -335,7 +330,7 @@ if __name__ == "__main__":
     # ------------------------------------
     # methods
     # method 'scale_gse'
-    y_gse, _ = scale_gse(x, nd, y_ref)
+    y_gse, _ = scale_gse(x, y_ref)
     # print ("Scale, set_eq {}: ".format(ref), stat)
     # method 'scale_seteq'
     y_seteq, stat = scale_seteq(x, nd, y_ref)

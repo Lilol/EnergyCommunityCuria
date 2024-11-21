@@ -10,6 +10,7 @@ from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, T
 from input.utility import reshape_array_by_year
 from output.writer import Writer
 from transform.combine.approach_gse import evaluate
+from transform.combine.combine import TypicalMonthlyConsumptionCalculator
 from transform.definitions import create_profiles
 from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor
 from transform.extract.utils import ProfileExtractor
@@ -24,10 +25,12 @@ init_logger()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("time_of_use_tariff", workers=(
-    TariffReader(), TariffTransformer(), TariffExtractor(), StoreData("time_of_use_time_slots"), TouExtractor())).execute()
+    TariffReader(), TariffTransformer(), TariffExtractor(), StoreData("time_of_use_time_slots"),
+    TouExtractor())).execute()
+DataProcessingPipeline("day_count", workers=(DayTypeExtractor(), StoreData("day_types"), DayCountExtractor())).execute()
 DataProcessingPipeline("typical_load_profile_gse",
                        workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
-DataProcessingPipeline("day_type", workers=(DayTypeExtractor(), StoreData("day_types"), DayCountExtractor())).execute()
+DataProcessingPipeline("typical_aggregated_consumption", workers=(TypicalMonthlyConsumptionCalculator(),)).execute()
 
 DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
 DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).execute()

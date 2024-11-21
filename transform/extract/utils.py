@@ -12,6 +12,7 @@ Date : 29.11.2022
 """
 import numpy as np
 
+from data_storage.data_store import DataStore
 from transform.extract.data_extractor import DataExtractor
 
 
@@ -22,9 +23,9 @@ class ProfileExtractor(DataExtractor):
     # hourly load profiles in the day-types
     # TODO: this is analysis
     @staticmethod
-    def get_monthly_consumption(hourly_load_profiles, number_of_days_by_type):
+    def get_monthly_consumption(hourly_load_profiles):
         """
-        Function 'eval_x'
+        Function 'get_monthly_consumption'
         ____________
         DESCRIPTION
         The function evaluates the monthly energy consumption divided into tariff
@@ -34,13 +35,8 @@ class ProfileExtractor(DataExtractor):
         ____________
         PARAMETERS
         y : np.ndarray
-            Hourly load profile in each day-type
-            Array of shape (1,nj*ni) where 'ni' is the number of time-steps in each
-            day.
-        number_of_days_by_type : np.ndarray
-            Number of days of each day-type in the month
-            Array of shape (nj, ) where 'nj' is the number of day-types
-            (according to ARERA's subdivision into day-types).
+            Hourly load profile for each day-type
+            Array of shape (1,nj*ni) where 'ni' is the number of time-steps in each day.
         _______
         RETURNS
         x : np.ndarray
@@ -52,7 +48,7 @@ class ProfileExtractor(DataExtractor):
         Date : 29.11.2022
         """
         x = np.array([
-            sum([(hourly_load_profiles.reshape(nj, ni)[j, arera[j] == f] * number_of_days_by_type[j]).sum()
+            sum([(hourly_load_profiles.reshape(nj, ni)[j, DataStore()["day_types"][j] == f] * DataStore()["day_count"][j]).sum()
                  for j in range(nj)]) for f in fs])
         return x
 

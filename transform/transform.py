@@ -86,7 +86,7 @@ class TypicalLoadProfileTransformer(DataTransformer):
         coords = {ColumnName.DAY_TYPE.value: np.unique(day_types),
                   ColumnName.HOUR.value: np.unique(hour),
                   ColumnName.USER_TYPE.value: np.unique(dataset.loc[:, ColumnName.USER_TYPE]),
-                  ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH])}
+                  ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH])+1}
         new_array = OmnesDataArray(dims=dims, coords=coords)
         for user_type, df in values.groupby(dataset.loc[:, ColumnName.USER_TYPE]):
             hours = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), df.dim_1,
@@ -117,7 +117,7 @@ class TariffTransformer(DataTransformer):
         # Tariff timeslot naming convention: time slot indices start from 0
         dataset = dataset.rename({"dim_0": ColumnName.DAY_TYPE.value, "dim_1": ColumnName.HOUR.value})
         dataset = dataset - 1
-        dataset[ColumnName.DAY_TYPE.value] = dataset[ColumnName.DAY_TYPE.value].astype(int) + 1
+        dataset[ColumnName.DAY_TYPE.value] = dataset[ColumnName.DAY_TYPE.value].astype(int)
         dataset[ColumnName.HOUR.value] = dataset[ColumnName.HOUR.value].astype(int)
         return dataset
 
