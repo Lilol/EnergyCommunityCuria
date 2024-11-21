@@ -134,5 +134,5 @@ class PvProfileTransformer(DataTransformer):
     _name = "pv_profile_data_transformer"
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        df_profile, df_plants_year = ProfileExtractor.create_yearly_profile(df_plants_year)
+        df_profile, df_plants_year = ProfileExtractor.create_typical_profile_from_yearly_profile(df_plants_year)
         return dataset

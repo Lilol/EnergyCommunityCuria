@@ -25,6 +25,19 @@ class DataExtractor(PipelineStage):
         raise NotImplementedError
 
 
+class TypicalMeteorologicalYearExtractor(DataExtractor):
+    _name = "typical_meteorological_year_extractor"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        ff = xr.concat([dd.assign_coords(time=dd.time.dt.hour).rename({"time": "hour"}).expand_dims(
+            {"month": [month, ], "day": [day, ]}) for month, df in dataset.groupby(dataset.time.dt.month) for day, dd in
+            df.groupby(df.time.dt.day)], dim="hour")
+        return OmnesDataArray(ff).sel(day=[1, 2, 3]).mean("day")
+
+
 class TariffExtractor(DataExtractor):
     def __init__(self, name="tariff_extractor", *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -100,7 +113,7 @@ class DayTypeExtractor(DataExtractor):
         ref_df = DataFrame(data=index.map(get_weekday_code), index=index, columns=[ColumnName.DAY_TYPE, ])
         return xr.concat([
             OmnesDataArray(df.astype(int).set_index(df.index.day).rename(columns={ColumnName.DAY_TYPE: month}),
-                dims=(ColumnName.DAY_OF_MONTH.value, ColumnName.MONTH.value)) for month, df in
+                           dims=(ColumnName.DAY_OF_MONTH.value, ColumnName.MONTH.value)) for month, df in
             ref_df.groupby(ref_df.index.month)], dim=ColumnName.MONTH.value)
 
 
@@ -112,7 +125,7 @@ class DayCountExtractor(DataExtractor):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         dataset = xr.concat([OmnesDataArray(unique_numbers[1], dims=ColumnName.DAY_TYPE.value,
-                                         coords={ColumnName.DAY_TYPE.value: unique_numbers[0]}).expand_dims(
+                                            coords={ColumnName.DAY_TYPE.value: unique_numbers[0]}).expand_dims(
             {ColumnName.MONTH.value: [i, ]}) for i, da in enumerate(dataset.T, 1) if
             (unique_numbers := np.unique(da, return_counts=True))], dim=ColumnName.MONTH.value).drop(
             dim=ColumnName.DAY_TYPE.value, labels=np.nan).fillna(0).astype(int)

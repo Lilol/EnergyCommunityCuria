@@ -13,7 +13,7 @@ def create_profiles(user_data, ni, nj, nm, ms):
         months = np.repeat(df.loc[:, ColumnName.MONTH], ni)
         day_types = np.repeat(df.loc[:, ColumnName.DAY_TYPE], ni)
         profiles = df.loc[:, 0:].values.flatten()
-        profiles = ProfileExtractor.create_yearly_profile(profiles, months, day_types).reshape((nm, nj * ni))
+        profiles = ProfileExtractor.create_typical_profile_from_yearly_profile(profiles, months, day_types).reshape((nm, nj * ni))
         # Evaluate typical profiles in each month
         nds = df.groupby([ColumnName.MONTH, ColumnName.DAY_TYPE]).count().iloc[:, 0].values.reshape(nm, nj)
         tou_energy = []

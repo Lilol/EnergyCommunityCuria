@@ -12,7 +12,8 @@ from output.writer import Writer
 from transform.combine.approach_gse import evaluate
 from transform.combine.combine import TypicalMonthlyConsumptionCalculator
 from transform.definitions import create_profiles
-from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor
+from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor, \
+    TypicalMeteorologicalYearExtractor
 from transform.extract.utils import ProfileExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
     PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, BillLoadProfileTransformer, \
@@ -35,7 +36,8 @@ DataProcessingPipeline("typical_aggregated_consumption", workers=(TypicalMonthly
 DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
 DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).execute()
 DataProcessingPipeline("pv_plants", workers=(PvPlantReader(), PvPlantDataTransformer())).execute()
-DataProcessingPipeline("pv_production", workers=(ProductionReader(), ProductionDataTransformer())).execute()
+DataProcessingPipeline("pv_production", workers=(
+ProductionReader(), ProductionDataTransformer(), TypicalMeteorologicalYearExtractor())).execute()
 
 DataProcessingPipeline("load_profiles_from_bills", workers=(BillLoadProfileTransformer(),)).execute()
 DataProcessingPipeline("pv_profile", workers=(PvProfileTransformer(),)).execute()
@@ -57,7 +59,7 @@ for label in labels_ref:
     profile.append(profiles[label])
 profile = np.concatenate(profile)
 profile = reshape_array_by_year(profile, year)  # group by day
-data_fam_year, df_plants_year = ProfileExtractor.create_yearly_profile(df_plants_year, user_type=UserType.PDMF)
+data_fam_year, df_plants_year = ProfileExtractor.create_typical_profile_from_yearly_profile(df_plants_year)
 
 # ----------------------------------------------------------------------------
 # Evaluate "ToU" production and families consumption

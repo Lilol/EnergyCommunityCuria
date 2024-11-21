@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from xarray import DataArray
+from data_storage.dataset import OmnesDataArray
 
 logger = logging.getLogger(__name__)
 
@@ -9,15 +9,15 @@ logger = logging.getLogger(__name__)
 class DataStore(object):
     # Data store: main object storing all data for the operations
     _instance = None
-    _data = defaultdict(DataArray)
+    _data = defaultdict(OmnesDataArray)
 
     def __getitem__(self, item):
         return self._data[item]
 
     def __setitem__(self, key, value):
-        if type(value) != DataArray:
+        if type(value) != OmnesDataArray:
             try:
-                self._data[key] = DataArray(data=value)
+                self._data[key] = OmnesDataArray(data=value)
             except ValueError as e:
                 logger.error(f"Unexpected data type in DataStore.__setitem__, DataArray cannot be initialized.\n'{e}'")
                 return

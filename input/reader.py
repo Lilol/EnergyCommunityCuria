@@ -83,7 +83,7 @@ class PvgisReader(PvResourceReader):
             {"dim_1": ColumnName.POWER.value, "timestamp": ColumnName.TIME.value}).expand_dims(
             [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
             {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]}).squeeze(
-            ColumnName.POWER.value)
+            ColumnName.POWER.value, drop=True)
         return production
 
 
@@ -99,12 +99,11 @@ class PvsolReader(PvResourceReader):
                               decimal=',', skiprows=range(1, 17), index_col=0, header=0, parse_dates=True,
                               date_format="%d.%m. %H:%M", usecols=["Time", self._production_column_name]).rename(
             columns=self._column_names)
-        production.index -= production.index[0]
         production = OmnesDataArray(data=production).rename(
             {"dim_1": ColumnName.POWER.value, "Time": ColumnName.TIME.value}).expand_dims(
             [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
             {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]}).squeeze(
-            ColumnName.POWER.value)
+            ColumnName.POWER.value, drop=True)
         return production
 
 

@@ -17,10 +17,10 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 
-from transform.extract.utils import ProfileExtractor
+from data_storage.data_store import DataStore
 
 
-# TODO: These all go into 'combination'
+# TODO: no, these all go into 'operation'
 
 # ----------------------------------------------------------------------------
 # 2. METHODS TO SCALE HOURLY LOAD PROFILES IN TYPICAL DAYS TO MONTHLY 
@@ -38,8 +38,8 @@ def scale_gse(x, y_ref):
     ______
     NOTES
     The method evaluates one scaling factor for each tariff time-slot, which 
-    is equal to the actual monthly consumption in that tariff time-slot
-    divided by the consumption associated with the reference load profile. 
+    is equal to the monthly consumption of y_ref in that tariff time-slot
+    divided by the consumption in that tariff time slot associated with the reference load profile.
     The latter is then scaled separately for the time-steps in each time-slot.
     ____________
     PARAMETERS
@@ -61,7 +61,7 @@ def scale_gse(x, y_ref):
         day.
     status : str
         Status of the solution.
-        Can be : 'ok', 'unphysical', 'error'. No, not really.
+        Can be : 'ok', 'unphysical', 'error'.
     _____
     INFO
     Author : G. Lorenti (gianmarco.lorenti@polito.it)
@@ -71,14 +71,20 @@ def scale_gse(x, y_ref):
     # scale reference profiles
     # evaluate the monthly consumption associated with the reference profile
     # divided into tariff time-slots
-    x_ref = ProfileExtractor.get_monthly_consumption(y_ref)
+    # x_ref = ProfileExtractor.get_monthly_consumption(y_ref)
+    m, u = 0, 0
+    x_ref = DataStore()["typical_consumption_profile"].sel(month=m, user_type=u)
     # calculate scaling factors k (one for each tariff time-slot)
     k_scale = x / x_ref
+    k_scale[np.isnan(k_scale)] = 0
     # evaluate load profiles by scaling the reference profiles
     y_scal = y_ref.copy()
     # time-steps belonging to each tariff time-slot are scaled separately
     for if_, f in enumerate(fs):
         y_scal[arera.flatten() == f] = y_ref[arera.flatten() == f] * k_scale[if_]
+    if np.any(k_scale == 0):
+        for i in np.where(k_scale == 0):
+            y_scal[arera.flatten() == i] = x[i] / np.count_nonzero(arera.flatten() == i)
     # ---------------------------------------
     # return
     return y_scal, 'optimal'
@@ -378,5 +384,4 @@ if __name__ == "__main__":
     ax.grid(axis='y')
     fig.subplots_adjust(top=0.98, bottom=0.1, left=0.1, right=0.8)
     plt.show()
-    plt.close(fig)
-    # fig.savefig('test_methods_scaling.png', dpi=300)
+    plt.close(fig)  # fig.savefig('test_methods_scaling.png', dpi=300)

@@ -34,10 +34,10 @@ class TypicalMonthlyConsumptionCalculator(Combine):
         time_of_use_time_slots = data_store["time_of_use_time_slots"]
         day_count = data_store["day_count"]
 
-        dataset = xr.concat([typical_load_profile.isel({ColumnName.DAY_TYPE.value: dt}, {
+        dataset = OmnesDataArray(xr.concat([typical_load_profile.isel({ColumnName.DAY_TYPE.value: dt}, {
             ColumnName.HOUR.value: time_of_use_time_slots.sel({ColumnName.DAY_TYPE.value: 1}) == tou}).sum(
             ColumnName.HOUR.value) * day_count.sel({ColumnName.DAY_TYPE.value: dt}) for tou in
-                             configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
-                             range(configuration.config.getint("time", "number_of_day_types"))],
-                            dim=ColumnName.DAY_TYPE.value).groupby(ColumnName.DAY_TYPE.value).sum()
+                                            configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
+                                            range(configuration.config.getint("time", "number_of_day_types"))],
+                                           dim=ColumnName.DAY_TYPE.value).groupby(ColumnName.DAY_TYPE.value).sum())
         return dataset
