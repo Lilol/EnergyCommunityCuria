@@ -4,7 +4,7 @@ from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 
 
-class StoreData(PipelineStage):
+class Store(PipelineStage):
     stage = Stage.STORE
     _name = "store_data"
 

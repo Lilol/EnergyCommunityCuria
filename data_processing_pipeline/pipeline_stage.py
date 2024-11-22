@@ -6,7 +6,9 @@ class PipelineStage:
     stage = Stage.INVALID
     _name = ""
 
-    def __init__(self, name=_name, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
+        if name is None:
+            name = self._name
         self.name = name
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:

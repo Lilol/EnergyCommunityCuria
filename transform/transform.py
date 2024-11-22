@@ -7,15 +7,20 @@ from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
+from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
-from transform.combine.approach_gse import evaluate
+from transform.combine.methods_scaling import scale_gse
 from transform.extract.utils import ProfileExtractor
 from utility import configuration
 
 
 class DataTransformer(PipelineStage):
     stage = Stage.TRANSFORM
+    _name = "data_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError
@@ -23,6 +28,9 @@ class DataTransformer(PipelineStage):
 
 class UserDataTransformer(DataTransformer):
     _name = "user_data_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
@@ -38,6 +46,9 @@ class UserDataTransformer(DataTransformer):
 
 class BillDataTransformer(DataTransformer):
     _name = "bill_data_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         def get_bill_type(df):
@@ -69,24 +80,25 @@ class ReshaperByYear(DataTransformer):
 class TypicalLoadProfileTransformer(DataTransformer):
     _name = "typical_load_profile_transformer"
 
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
         dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
                                                                 dataset.sel({"dim_1": ColumnName.USER_TYPE}),
                                                                 vectorize=True)
         values = dataset.where(~dataset.dim_1.isin((ColumnName.USER_TYPE, ColumnName.MONTH)), drop=True)
-        day_types = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")) + 1,
-                                           values.dim_1, vectorize=True)
+        day_types = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")) + 1, values.dim_1,
+                                   vectorize=True)
         hour = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), values.dim_1,
                               vectorize=True)
         values.reset_index(dims_or_levels=("dim_0", "dim_1"))
 
-        dims = (ColumnName.DAY_TYPE.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value,
-                ColumnName.MONTH.value)
-        coords = {ColumnName.DAY_TYPE.value: np.unique(day_types),
-                  ColumnName.HOUR.value: np.unique(hour),
+        dims = (ColumnName.DAY_TYPE.value, ColumnName.USER_TYPE.value, ColumnName.HOUR.value, ColumnName.MONTH.value)
+        coords = {ColumnName.DAY_TYPE.value: np.unique(day_types), ColumnName.HOUR.value: np.unique(hour),
                   ColumnName.USER_TYPE.value: np.unique(dataset.loc[:, ColumnName.USER_TYPE]),
-                  ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH])+1}
+                  ColumnName.MONTH.value: np.unique(dataset.loc[:, ColumnName.MONTH]) + 1}
         new_array = OmnesDataArray(dims=dims, coords=coords)
         for user_type, df in values.groupby(dataset.loc[:, ColumnName.USER_TYPE]):
             hours = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), df.dim_1,
@@ -99,6 +111,9 @@ class TypicalLoadProfileTransformer(DataTransformer):
 class PvPlantDataTransformer(DataTransformer):
     _name = "pv_plant_data_transformer"
 
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         return dataset.rename({"dim_1": ColumnName.USER_DATA.value})
 
@@ -106,12 +121,18 @@ class PvPlantDataTransformer(DataTransformer):
 class ProductionDataTransformer(DataTransformer):
     _name = "pv_production_data_transformer"
 
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         return dataset
 
 
 class TariffTransformer(DataTransformer):
     _name = "tariff_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         # Tariff timeslot naming convention: time slot indices start from 0
@@ -125,13 +146,27 @@ class TariffTransformer(DataTransformer):
 class BillLoadProfileTransformer(DataTransformer):
     _name = "bill_load_profile_transformer"
 
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        profiles = evaluate(data_bills[bills_cols].values, nds, pod_type=pod_type, bill_type=bill_type) # group by day
+        data_store = DataStore()
+        typical_load_profiles = data_store["typical_load_profiles_gse"]
+        for m, ds in dataset.groupby(dataset.sel({ColumnName.USER_DATA.value:ColumnName.MONTH})):
+            for user, ds in ds.groupby(ds.sel({ColumnName.USER_DATA.value: ColumnName.USER})):
+                y_ref = typical_load_profiles.sel({ColumnName.USER_TYPE.value: UserType.PDMF, ColumnName.MONTH.value: m}).squeeze()
+                if ds.sel(user_data=ColumnName.BILL_TYPE).values[0] == BillType.MONO:
+                    y_scale = y_ref / np.sum(y_ref) * np.sum(ds)
+                else:
+                    y_scale, _ = scale_gse(ds.values, y_ref)
         return dataset
 
 
 class PvProfileTransformer(DataTransformer):
     _name = "pv_profile_data_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         df_profile, df_plants_year = ProfileExtractor.create_typical_profile_from_yearly_profile(df_plants_year)

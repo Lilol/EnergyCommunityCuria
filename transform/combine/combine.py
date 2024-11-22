@@ -43,4 +43,5 @@ class TypicalMonthlyConsumptionCalculator(Combine):
             (ColumnName.TARIFF_TIME_SLOT.value, ColumnName.DAY_TYPE.value)).assign_coords(
             {ColumnName.TARIFF_TIME_SLOT.value: [tou, ], ColumnName.DAY_TYPE.value: [dt, ]}) for tou in
             configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
-            configuration.config.getarray("time", "day_types", int)], dim=ColumnName.DAY_TYPE.value).sum("day_type"))
+            configuration.config.getarray("time", "day_types", int)], dim=ColumnName.DAY_TYPE.value).sum(
+            ColumnName.DAY_TYPE.value))

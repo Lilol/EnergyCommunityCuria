@@ -73,12 +73,13 @@ def scale_gse(x, y_ref):
     # divided into tariff time-slots
     # x_ref = ProfileExtractor.get_monthly_consumption(y_ref)
     m, u = 0, 0
-    x_ref = DataStore()["typical_consumption_profile"].sel(month=m, user_type=u)
+    x_ref = DataStore()["typical_aggregated_consumption"].sel(month=m, user_type=u)
     # calculate scaling factors k (one for each tariff time-slot)
     k_scale = x / x_ref
     k_scale[np.isnan(k_scale)] = 0
     # evaluate load profiles by scaling the reference profiles
     y_scal = y_ref.copy()
+    arera = DataStore()["time_of_use_time_slots"]
     # time-steps belonging to each tariff time-slot are scaled separately
     for if_, f in enumerate(fs):
         y_scal[arera.flatten() == f] = y_ref[arera.flatten() == f] * k_scale[if_]
