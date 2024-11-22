@@ -2,6 +2,7 @@ import logging
 import os
 from os.path import join
 
+import pandas as pd
 import xarray as xr
 from pandas import read_csv
 
@@ -99,6 +100,8 @@ class PvsolReader(PvResourceReader):
                               decimal=',', skiprows=range(1, 17), index_col=0, header=0, parse_dates=True,
                               date_format="%d.%m. %H:%M", usecols=["Time", self._production_column_name]).rename(
             columns=self._column_names)
+        ref_year = configuration.config.getint("time", "year")
+        production.index = production.index.map(lambda x: x.replace(year=ref_year))
         production = OmnesDataArray(data=production).rename(
             {"dim_1": ColumnName.POWER.value, "Time": ColumnName.TIME.value}).expand_dims(
             [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(

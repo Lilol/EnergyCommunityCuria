@@ -6,6 +6,7 @@ from pandas import date_range, DataFrame
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
+from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName
 from utility import configuration
@@ -25,17 +26,25 @@ class DataExtractor(PipelineStage):
         raise NotImplementedError
 
 
-class TypicalMeteorologicalYearExtractor(DataExtractor):
-    _name = "typical_meteorological_year_extractor"
+class TypicalYearExtractor(DataExtractor):
+    _name = "typical_year_extractor"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        ff = xr.concat([dd.assign_coords(time=dd.time.dt.hour).rename({"time": "hour"}).expand_dims(
-            {"month": [month, ], "day": [day, ]}) for month, df in dataset.groupby(dataset.time.dt.month) for day, dd in
-            df.groupby(df.time.dt.day)], dim="hour")
-        return OmnesDataArray(ff).sel(day=[1, 2, 3]).mean("day")
+        dds = xr.concat([xr.concat([dd.assign_coords({ColumnName.TIME.value: dd.time.dt.hour}).rename(
+            {ColumnName.TIME.value: ColumnName.HOUR.value}).expand_dims(ColumnName.DAY_OF_MONTH.value).assign_coords(
+            {ColumnName.DAY_OF_MONTH.value: [day, ]}) for day, dd in df.groupby(df.time.dt.day)],
+            dim=ColumnName.DAY_OF_MONTH.value).expand_dims(ColumnName.MONTH.value).assign_coords(
+            {ColumnName.MONTH.value: [month, ]}) for month, df in dataset.groupby(dataset.time.dt.month)],
+                        dim=ColumnName.MONTH.value)
+
+        day_types = DataStore()["day_types"]
+        return OmnesDataArray(xr.concat([
+            dds.where(day_types.where(day_types == i)).mean(ColumnName.DAY_OF_MONTH.value, skipna=True).expand_dims(
+                {ColumnName.DAY_TYPE.value: [i, ]}) for i in
+            range(configuration.config.getint("time", "number_of_day_types"))], dim=ColumnName.DAY_TYPE.value))
 
 
 class TariffExtractor(DataExtractor):

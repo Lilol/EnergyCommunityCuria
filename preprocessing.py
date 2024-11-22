@@ -13,7 +13,7 @@ from transform.combine.approach_gse import evaluate
 from transform.combine.combine import TypicalMonthlyConsumptionCalculator
 from transform.definitions import create_profiles
 from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor, \
-    TypicalMeteorologicalYearExtractor
+    TypicalYearExtractor
 from transform.extract.utils import ProfileExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
     PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, BillLoadProfileTransformer, \
@@ -36,8 +36,8 @@ DataProcessingPipeline("typical_aggregated_consumption", workers=(TypicalMonthly
 DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
 DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).execute()
 DataProcessingPipeline("pv_plants", workers=(PvPlantReader(), PvPlantDataTransformer())).execute()
-DataProcessingPipeline("pv_production", workers=(
-ProductionReader(), ProductionDataTransformer(), TypicalMeteorologicalYearExtractor())).execute()
+DataProcessingPipeline("pv_production",
+                       workers=(ProductionReader(), ProductionDataTransformer(), TypicalYearExtractor())).execute()
 
 DataProcessingPipeline("load_profiles_from_bills", workers=(BillLoadProfileTransformer(),)).execute()
 DataProcessingPipeline("pv_profile", workers=(PvProfileTransformer(),)).execute()
