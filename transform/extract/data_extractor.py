@@ -38,30 +38,25 @@ class TypicalYearExtractor(DataExtractor):
             {ColumnName.DAY_OF_MONTH.value: [day, ]}) for day, dd in df.groupby(df.time.dt.day)],
             dim=ColumnName.DAY_OF_MONTH.value).expand_dims(ColumnName.MONTH.value).assign_coords(
             {ColumnName.MONTH.value: [month, ]}) for month, df in dataset.groupby(dataset.time.dt.month)],
-                        dim=ColumnName.MONTH.value)
+            dim=ColumnName.MONTH.value)
 
         day_types = DataStore()["day_types"]
         return OmnesDataArray(xr.concat([
             dds.where(day_types.where(day_types == i)).mean(ColumnName.DAY_OF_MONTH.value, skipna=True).expand_dims(
-                {ColumnName.DAY_TYPE.value: [i, ]}) for i in
-            range(configuration.config.getint("time", "number_of_day_types"))], dim=ColumnName.DAY_TYPE.value))
+                {ColumnName.DAY_TYPE.value: [i, ]}) for i in configuration.config.getarray("time", "day_types", int)],
+            dim=ColumnName.DAY_TYPE.value))
 
 
 class TariffExtractor(DataExtractor):
-    def __init__(self, name="tariff_extractor", *args, **kwargs):
+    _name = "tariff_extractor"
+
+    def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
     """
     ______
-    NOTES
-    Notation used in the variables
-      - 'f' : tariff timeslot index, \in [1, nf] \subset N
-      - 'j' : day-type index, \in [0, n_j) \subset N
-      - 'i' : time step index during one day, \in [0, n_i) \subset N
-      - 'h' : time step index in multiple days, \in [0, n_h) \subset N
-    _____
 
-    # total number and list of tariff time-slots (index f)
+    # Total number and list of tariff time-slots
     # ARERA's day-types depending on subdivision into tariff time-slots
     # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
     #            2 - tariff time-slot F2, evening of work-days, and saturdays
@@ -85,6 +80,8 @@ class TariffExtractor(DataExtractor):
         #            1 - saturdays
         #            2 - sundays and holidays
         configuration.config.set_and_check("time", "number_of_day_types", dataset.shape[0])
+        configuration.config.set_and_check("time", "day_types", list(range(dataset.shape[0])),
+                                           configuration.config.setarray, check=False)
 
         # number of time-steps during each day (index i)
         configuration.config.set_and_check("time", "number_of_time_steps_per_day", dataset.shape[1])

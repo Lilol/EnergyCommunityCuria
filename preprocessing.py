@@ -29,9 +29,9 @@ DataProcessingPipeline("time_of_use_tariff", workers=(
     TariffReader(), TariffTransformer(), TariffExtractor(), StoreData("time_of_use_time_slots"),
     TouExtractor())).execute()
 DataProcessingPipeline("day_count", workers=(DayTypeExtractor(), StoreData("day_types"), DayCountExtractor())).execute()
-DataProcessingPipeline("typical_load_profile_gse",
-                       workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer())).execute()
-DataProcessingPipeline("typical_aggregated_consumption", workers=(TypicalMonthlyConsumptionCalculator(),)).execute()
+DataProcessingPipeline("typical_aggregated_consumption",
+                       workers=(TypicalLoadProfileReader(), TypicalLoadProfileTransformer(), StoreData(),
+                                TypicalMonthlyConsumptionCalculator())).execute()
 
 DataProcessingPipeline("users", workers=(UsersReader(), UserDataTransformer())).execute()
 DataProcessingPipeline("bills", workers=(BillReader(), BillDataTransformer())).execute()
@@ -49,7 +49,6 @@ data_store = DataStore()
 # %% Make yearly profile of families
 ni, nj, nm, ms = 0, 0, 0, 0
 
-bill = BillReader().execute()
 profiles = evaluate(bill, nds_ref, pod_type=UserType.PDMF, bill_type=BillType.TIME_OF_USE)
 profiles = profiles.reshape(nj * nm, ni)
 

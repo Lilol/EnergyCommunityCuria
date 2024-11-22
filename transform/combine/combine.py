@@ -23,6 +23,9 @@ class Combine(PipelineStage):
 
 
 class TypicalMonthlyConsumptionCalculator(Combine):
+    # Class to evaluate monthly consumption from hourly load profiles
+    # evaluate the monthly consumption divided into tariff time-slots from the
+    # hourly load profiles in the day-types
     _name = 'typical_monthly_consumption_calculator'
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -30,14 +33,14 @@ class TypicalMonthlyConsumptionCalculator(Combine):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         data_store = DataStore()
-        typical_load_profile = data_store["typical_load_profile_gse"]
         time_of_use_time_slots = data_store["time_of_use_time_slots"]
         day_count = data_store["day_count"]
 
-        dataset = OmnesDataArray(xr.concat([typical_load_profile.isel({ColumnName.DAY_TYPE.value: dt}, {
-            ColumnName.HOUR.value: time_of_use_time_slots.sel({ColumnName.DAY_TYPE.value: 1}) == tou}).sum(
-            ColumnName.HOUR.value) * day_count.sel({ColumnName.DAY_TYPE.value: dt}) for tou in
-                                            configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
-                                            range(configuration.config.getint("time", "number_of_day_types"))],
-                                           dim=ColumnName.DAY_TYPE.value).groupby(ColumnName.DAY_TYPE.value).sum())
-        return dataset
+        return OmnesDataArray(xr.concat([(dataset.isel({ColumnName.DAY_TYPE.value: dt,
+                                                        ColumnName.HOUR.value: time_of_use_time_slots.sel(
+                                                            {ColumnName.DAY_TYPE.value: dt}) == tou}).sum(
+            ColumnName.HOUR.value) * day_count.sel({ColumnName.DAY_TYPE.value: dt})).expand_dims(
+            (ColumnName.TARIFF_TIME_SLOT.value, ColumnName.DAY_TYPE.value)).assign_coords(
+            {ColumnName.TARIFF_TIME_SLOT.value: [tou, ], ColumnName.DAY_TYPE.value: [dt, ]}) for tou in
+            configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
+            configuration.config.getarray("time", "day_types", int)], dim=ColumnName.DAY_TYPE.value).sum("day_type"))
