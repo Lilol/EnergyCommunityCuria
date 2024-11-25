@@ -1,4 +1,5 @@
 import itertools
+import logging
 
 import numpy as np
 import pandas as pd
@@ -11,9 +12,12 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
-from transform.combine.methods_scaling import scale_gse, scale_mono
+from operation.definitions import Status
+from operation.scale_profile import ScaleFlatTariffProfile, ScaleTimeOfUseProfile
 from transform.extract.utils import ProfileExtractor
 from utility import configuration
+
+logger = logging.getLogger(__name__)
 
 
 class DataTransformer(PipelineStage):
@@ -146,7 +150,9 @@ class TariffTransformer(DataTransformer):
 
 class BillLoadProfileTransformer(DataTransformer):
     _name = "bill_load_profile_transformer"
-    _profile_scaler = {BillType.MONO: scale_mono, BillType.TIME_OF_USE: scale_gse}
+    _profile_scaler = {BillType.MONO: ScaleFlatTariffProfile(), BillType.TIME_OF_USE: ScaleTimeOfUseProfile()}
+    _tariff_coordinates = {BillType.MONO: ColumnName.MONO_TARIFF,
+                           BillType.TIME_OF_USE: configuration.config.getarray("tariff", "time_of_use_labels", str)}
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -165,15 +171,21 @@ class BillLoadProfileTransformer(DataTransformer):
             [dataset.sel(user_data=ColumnName.MONTH).values, dataset.sel(user_data=ColumnName.USER).values],
             names=['month', 'user'], ), dims=['dim_0'], coords={"dim_0": dataset.dim_0.values}, )
         for (month, user), ds in dataset.groupby(grouper):
-            y_ref = typical_load_profiles.sel(
-                {ColumnName.USER_TYPE.value: UserType.PDMF, ColumnName.MONTH.value: month}).squeeze().values
-            user_profiles.loc[user, month, :, :] = self.scale_profile(ds, y_ref,
-                                                                      ds.sel(user_data=ColumnName.BILL_TYPE).values[0])
+            selection = {ColumnName.USER_TYPE.value: UserType.PDMF, ColumnName.MONTH.value: month}
+            reference_profile = typical_load_profiles.sel(selection).squeeze()
+            aggregated_consumption_of_reference_profile = DataStore()["typical_aggregated_consumption"].sel(
+                selection).squeeze()
+            user_profiles.loc[user, month, :, :] = self.scale_profile(ds.sel(user_data=ColumnName.BILL_TYPE).values[0],
+                                                                      ds, reference_profile,
+                                                                      aggregated_consumption_of_reference_profile)
         return dataset
 
     @classmethod
-    def scale_profile(cls, user_profile, reference_profile, bill_type):
-        return cls._profile_scaler[bill_type](user_profile, reference_profile)
+    def scale_profile(cls, bill_type, bill, *args, **kwargs):
+        scaler = cls._profile_scaler[bill_type]
+        if scaler.status not in (Status.OPTIMAL, Status.OK):
+            logger.warning(f"Load profile scaler returned with invalid status: {scaler.status}")
+        return scaler([bill.sel(user_data=cls._tariff_coordinates[bill_type]), *args], **kwargs)
 
 
 class PvProfileTransformer(DataTransformer):
