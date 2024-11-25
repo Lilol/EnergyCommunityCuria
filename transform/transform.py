@@ -1,6 +1,7 @@
 import itertools
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from pandas import timedelta_range, date_range
 from xarray import DataArray
@@ -10,7 +11,7 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
-from transform.combine.methods_scaling import scale_gse
+from transform.combine.methods_scaling import scale_gse, scale_mono
 from transform.extract.utils import ProfileExtractor
 from utility import configuration
 
@@ -145,6 +146,7 @@ class TariffTransformer(DataTransformer):
 
 class BillLoadProfileTransformer(DataTransformer):
     _name = "bill_load_profile_transformer"
+    _profile_scaler = {BillType.MONO: scale_mono, BillType.TIME_OF_USE: scale_gse}
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -152,14 +154,26 @@ class BillLoadProfileTransformer(DataTransformer):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         data_store = DataStore()
         typical_load_profiles = data_store["typical_load_profiles_gse"]
-        for m, ds in dataset.groupby(dataset.sel({ColumnName.USER_DATA.value:ColumnName.MONTH})):
-            for user, ds in ds.groupby(ds.sel({ColumnName.USER_DATA.value: ColumnName.USER})):
-                y_ref = typical_load_profiles.sel({ColumnName.USER_TYPE.value: UserType.PDMF, ColumnName.MONTH.value: m}).squeeze()
-                if ds.sel(user_data=ColumnName.BILL_TYPE).values[0] == BillType.MONO:
-                    y_scale = y_ref / np.sum(y_ref) * np.sum(ds)
-                else:
-                    y_scale, _ = scale_gse(ds.values, y_ref)
+        user_profiles = xr.DataArray(
+            dims=(ColumnName.USER.value, ColumnName.MONTH.value, ColumnName.DAY_TYPE.value, ColumnName.HOUR.value),
+            coords={ColumnName.USER.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.USER})),
+                    ColumnName.MONTH.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.MONTH})),
+                    ColumnName.DAY_TYPE.value: configuration.config.getarray("time", "day_types", int),
+                    ColumnName.HOUR.value: range(24)})
+
+        grouper = xr.DataArray(pd.MultiIndex.from_arrays(
+            [dataset.sel(user_data=ColumnName.MONTH).values, dataset.sel(user_data=ColumnName.USER).values],
+            names=['month', 'user'], ), dims=['dim_0'], coords={"dim_0": dataset.dim_0.values}, )
+        for (month, user), ds in dataset.groupby(grouper):
+            y_ref = typical_load_profiles.sel(
+                {ColumnName.USER_TYPE.value: UserType.PDMF, ColumnName.MONTH.value: month}).squeeze().values
+            user_profiles.loc[user, month, :, :] = self.scale_profile(ds, y_ref,
+                                                                      ds.sel(user_data=ColumnName.BILL_TYPE).values[0])
         return dataset
+
+    @classmethod
+    def scale_profile(cls, user_profile, reference_profile, bill_type):
+        return cls._profile_scaler[bill_type](user_profile, reference_profile)
 
 
 class PvProfileTransformer(DataTransformer):

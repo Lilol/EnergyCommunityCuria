@@ -26,6 +26,10 @@ from data_storage.data_store import DataStore
 # 2. METHODS TO SCALE HOURLY LOAD PROFILES IN TYPICAL DAYS TO MONTHLY 
 # ENERGY CONSUMPTION
 # ----------------------------------------------------------------------------
+def scale_mono(x, y_ref):
+    return y_ref.values / np.sum(y_ref) * np.sum(x)
+
+
 # 2.1 Method 'scale_gse'
 def scale_gse(x, y_ref):
     """
