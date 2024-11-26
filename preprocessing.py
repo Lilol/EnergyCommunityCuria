@@ -13,7 +13,6 @@ from transform.combine.combine import TypicalMonthlyConsumptionCalculator
 from transform.definitions import create_profiles
 from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor, \
     TypicalYearExtractor
-from transform.extract.utils import ProfileExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
     PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, BillLoadProfileTransformer, \
     PvProfileTransformer

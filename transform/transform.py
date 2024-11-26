@@ -13,8 +13,7 @@ from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
 from operation.definitions import Status
-from operation.scale_profile import ScaleFlatTariffProfile, ScaleTimeOfUseProfile
-from transform.extract.utils import ProfileExtractor
+from operation.scale_profile import ProportionateScaler, ScaleTimeOfUseProfile
 from utility import configuration
 
 logger = logging.getLogger(__name__)
@@ -94,7 +93,7 @@ class TypicalLoadProfileTransformer(DataTransformer):
                                                                 dataset.sel({"dim_1": ColumnName.USER_TYPE}),
                                                                 vectorize=True)
         values = dataset.where(~dataset.dim_1.isin((ColumnName.USER_TYPE, ColumnName.MONTH)), drop=True)
-        day_types = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")) + 1, values.dim_1,
+        day_types = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[1].strip("j")), values.dim_1,
                                    vectorize=True)
         hour = xr.apply_ufunc(lambda x: x if type(x) != str else int(x.split("_")[2].strip("i")), values.dim_1,
                               vectorize=True)
@@ -149,10 +148,17 @@ class TariffTransformer(DataTransformer):
 
 
 class BillLoadProfileTransformer(DataTransformer):
+    @classmethod
+    def get_time_of_use_labels(cls, bill_type):
+        if bill_type == BillType.MONO:
+            return ColumnName.MONO_TARIFF
+        elif bill_type == BillType.TIME_OF_USE:
+            return configuration.config.getarray("tariff", "time_of_use_labels", str, fallback=None)
+        else:
+            raise ValueError(f"Invalid bill_type '{bill_type}'")
+
     _name = "bill_load_profile_transformer"
-    _profile_scaler = {BillType.MONO: ScaleFlatTariffProfile(), BillType.TIME_OF_USE: ScaleTimeOfUseProfile()}
-    _tariff_coordinates = {BillType.MONO: ColumnName.MONO_TARIFF,
-                           BillType.TIME_OF_USE: configuration.config.getarray("tariff", "time_of_use_labels", str)}
+    _profile_scaler = {BillType.MONO: ProportionateScaler(), BillType.TIME_OF_USE: ScaleTimeOfUseProfile()}
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -160,7 +166,7 @@ class BillLoadProfileTransformer(DataTransformer):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         data_store = DataStore()
         typical_load_profiles = data_store["typical_load_profiles_gse"]
-        user_profiles = xr.DataArray(
+        user_profiles = OmnesDataArray(
             dims=(ColumnName.USER.value, ColumnName.MONTH.value, ColumnName.DAY_TYPE.value, ColumnName.HOUR.value),
             coords={ColumnName.USER.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.USER})),
                     ColumnName.MONTH.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.MONTH})),
@@ -178,14 +184,16 @@ class BillLoadProfileTransformer(DataTransformer):
             user_profiles.loc[user, month, :, :] = self.scale_profile(ds.sel(user_data=ColumnName.BILL_TYPE).values[0],
                                                                       ds, reference_profile,
                                                                       aggregated_consumption_of_reference_profile)
-        return dataset
+        return user_profiles
 
     @classmethod
     def scale_profile(cls, bill_type, bill, *args, **kwargs):
+        # TODO: turn this part into subclasses instead of dictionaries
         scaler = cls._profile_scaler[bill_type]
+        scaled_profile = scaler(bill.sel(user_data=cls.get_time_of_use_labels(bill_type)), *args, **kwargs)
         if scaler.status not in (Status.OPTIMAL, Status.OK):
             logger.warning(f"Load profile scaler returned with invalid status: {scaler.status}")
-        return scaler([bill.sel(user_data=cls._tariff_coordinates[bill_type]), *args], **kwargs)
+        return scaled_profile
 
 
 class PvProfileTransformer(DataTransformer):
@@ -195,5 +203,4 @@ class PvProfileTransformer(DataTransformer):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        df_profile, df_plants_year = ProfileExtractor.create_typical_profile_from_yearly_profile(df_plants_year)
-        return dataset
+        return create_typical_profile_from_yearly_profile(dataset)

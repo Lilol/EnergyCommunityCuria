@@ -1,7 +1,6 @@
 import numpy as np
 from pandas import DataFrame, concat
 
-from transform.extract.utils import ProfileExtractor
 from utility import configuration
 from input.definitions import ColumnName
 

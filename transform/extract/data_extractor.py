@@ -83,10 +83,10 @@ class TariffExtractor(DataExtractor):
         configuration.config.set_and_check("time", "day_types", list(range(dataset.shape[0])),
                                            configuration.config.setarray, check=False)
 
-        # number of time-steps during each day (index i)
+        # number of time-steps during each day
         configuration.config.set_and_check("time", "number_of_time_steps_per_day", dataset.shape[1])
 
-        # total number of time-steps (index h)
+        # total number of time-steps
         configuration.config.set_and_check("time", "total_number_of_time_steps", dataset.size)
 
         return dataset

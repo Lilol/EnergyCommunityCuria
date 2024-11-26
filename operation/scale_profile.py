@@ -1,14 +1,18 @@
+import logging
 from typing import Iterable
 
 import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
+import xarray as xr
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from operation.definitions import Status
 from operation.operation import Operation
 from utility import configuration
+
+logger = logging.getLogger(__name__)
 
 
 class ProfileScaler(Operation):
@@ -21,7 +25,7 @@ class ProfileScaler(Operation):
         raise NotImplementedError
 
 
-class ScaleFlatTariffProfile(ProfileScaler):
+class ProportionateScaler(ProfileScaler):
     _name = "flat_tariff_profile_scaler"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -29,9 +33,56 @@ class ScaleFlatTariffProfile(ProfileScaler):
 
     def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
         self.status = Status.OPTIMAL
-        y_ref = operands[0]
-        x = operands[1]
-        return y_ref.values / y_ref.sum() * x.sum()
+        reference_profile = operands[0]
+        total_consumption_by_time_slots = operands[1]
+        return reference_profile.values / reference_profile.sum() * total_consumption_by_time_slots.sum()
+
+
+class FlatScaler(ProfileScaler):
+    _name = "flat_scaler"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
+        """
+        ____________
+        DESCRIPTION
+        The function evaluates hourly load profiles (y) in each type of day (j)
+        from the monthly energy consumption divided into tariff time-slots (x).
+        ______
+        NOTES
+        The method assumes the same demand within all time-steps in the same
+        tariff time-slot (f), hence it just spreads the total energy consumption
+        according to the number of hours of each tariff time-slot in the month.
+        ___________
+        PARAMETERS
+        total_consumption_by_tariff_slots : np.ndarray
+            Monthly electricity consumption divided into tariff time-slots
+            Array of shape (nf, ) where 'nf' is the number of tariff time-slots.
+        number_of_days_by_type : np.ndarray
+            Number of days of each day-type in the month
+            Array of shape (nj, ) where 'nj' is the number of day-types (according to ARERA's subdivision into day-types).
+        ________
+        RETURNS
+        y : np.ndarray
+            Estimated hourly load profile in each day-type
+            Array of shape (nj*ni) where 'ni' is the number of time-steps in each
+            day.
+        _____
+        INFO
+        Author : G. Lorenti (gianmarco.lorenti@polito.it)
+        Date : 16.11.2022
+        """
+        # ------------------------------------
+        total_consumption_by_time_slots = operands[0]
+        time_of_use_time_slots = DataStore()["time_of_use_time_slots"]
+        scaled_profile = time_of_use_time_slots.copy()
+        for tariff_time_slot in configuration.config.getarray("tariff", "tariff_time_slots", int):
+            scaled_profile.where(time_of_use_time_slots != tariff_time_slot).fillna(
+                total_consumption_by_time_slots[tariff_time_slot] / np.count_nonzero(
+                    time_of_use_time_slots == tariff_time_slot))
+        return scaled_profile
 
 
 class ScaleTimeOfUseProfile(ProfileScaler):
@@ -72,29 +123,29 @@ class ScaleTimeOfUseProfile(ProfileScaler):
         # scale reference profiles
         # evaluate the monthly consumption associated with the reference profile
         # divided into tariff time-slots
-        # x_ref = ProfileExtractor.get_monthly_consumption(y_ref)
-        x_ref = operands[0]
-        y_ref = operands[1]
-        x = operands[2]
+        total_reference_consumption_by_time_slots = operands[0]
+        reference_profile = operands[1]
+        total_consumption_by_time_slots = operands[2]
 
         # calculate scaling factors (one for each tariff time-slot)
-        scaling_factor = x / x_ref
-        scaling_factor[np.isnan(scaling_factor)] = 0
+        scaling_factor = total_consumption_by_time_slots / total_reference_consumption_by_time_slots.squeeze().values
+        scaling_factor[scaling_factor.isnull()] = 0
 
         # evaluate load profiles by scaling the reference profiles
-        y_scal = y_ref.copy()
         time_of_use_time_slots = DataStore()["time_of_use_time_slots"]
-        # time-steps belonging to each tariff time-slot are scaled separately
-        for day_type in configuration.config.getarray("time", "day_types", int):
-            y_scal[time_of_use_time_slots == day_type] = y_ref[time_of_use_time_slots == day_type] * scaling_factor[
-                day_type]
+        scaled_profile = xr.concat(
+            [reference_profile.where(time_of_use_time_slots == time_slot) * scaling_factor[time_slot] for time_slot in
+             configuration.config.getarray("tariff", "tariff_time_slots", int)], dim="tariff_time_slot").sum(
+            "tariff_time_slot", skipna=True)
 
-        if np.any(scaling_factor == 0):
-            for i in np.where(scaling_factor == 0):
-                y_scal[time_of_use_time_slots == i] = x[i] / np.count_nonzero(time_of_use_time_slots == i)
-        # ---------------------------------------
+        # Substituting missing values with a flat consumption
+        for s in scaling_factor[scaling_factor == 0]:
+            scaled_profile.where(time_of_use_time_slots != s.tariff_time_slot).fillna(
+                total_consumption_by_time_slots[s.tariff_time_slot] / np.count_nonzero(
+                    time_of_use_time_slots == s.tariff_time_slot))
+
         self.status = Status.OPTIMAL
-        return y_scal
+        return scaled_profile
 
 
 class LinearScaler(ProfileScaler):
@@ -141,25 +192,25 @@ class LinearScaler(ProfileScaler):
             Can be : 'ok', 'unphysical', 'error'.
         """
         # evaluate scaling factors to get load profiles
-        y_ref = operands[0]
+        total_consumption_by_time_slots = operands[0]
+        reference_profile = operands[1]
         # energy consumed in reference profiles assigned to each typical day,
-        # divided in tariff time-slots
-        e_ref = np.concatenate(
-            [np.array([[y_ref[ij, arera[ij] == f].sum() * nd[ij] for ij in range(nj)]]) for _, f in enumerate(fs)],
-            axis=0)
+        # divided into tariff time-slots
+        e_ref = DataStore()["typical_aggregated_consumption"]
+
         # scaling factors to respect total consumption
         self.status = Status.OPTIMAL
         try:
-            k = np.dot(lin.inv(e_ref), x[:, np.newaxis])
-            if np.any(k < 0):
+            scaling_factor = np.dot(lin.inv(e_ref.values), total_consumption_by_time_slots.values[:, np.newaxis])
+            if np.any(scaling_factor < 0):
                 self.status = Status.UNPHYSICAL
-        except lin.LinAlgError:
-            k = -1
+        except lin.LinAlgError as e:
+            scaling_factor = -1
             self.status = Status.ERROR
+            logger.warning(f"Error during optimization '{e}'")
         # ------------------------------------
         # get load profiles in day-types and return
-        y_scal = y_ref * k.flatten()[:, np.newaxis]
-        return y_scal.flatten()
+        return reference_profile * scaling_factor.flatten()[:, np.newaxis]
 
 
 class QuadraticOptimizationScaler(ProfileScaler):
@@ -227,8 +278,9 @@ class QuadraticOptimizationScaler(ProfileScaler):
         Author : G. Lorenti (gianmarco.lorenti@polito.it)
         Date : 17.11.2022 (last update: 17.11.2022)
         """
-        x = operands[0]
-        y_ref = operands[2]
+        total_reference_consumption_by_time_slots = operands[0]
+        reference_profile = operands[1]
+        total_consumption_by_time_slots = operands[2]
         y_max = kwargs.pop("y_max", None)
         obj = kwargs.pop("obj", None)
         obj_reg = kwargs.pop("obj_reg", None)
@@ -254,7 +306,7 @@ class QuadraticOptimizationScaler(ProfileScaler):
         for if_, f in enumerate(fs):
             aux = np.concatenate([(arera[ij] == f) * nd[ij] for ij in range(nj)])
             a = np.concatenate((a, aux[np.newaxis, :]), axis=0)
-            b = np.append(b, x[if_])
+            b = np.append(b, total_consumption_by_time_slots[if_])
         # constraint for variables to be positive
         g = np.concatenate((g, -1 * np.eye(nh)))
         h = np.concatenate((h, np.zeros((nh,))))
@@ -270,7 +322,7 @@ class QuadraticOptimizationScaler(ProfileScaler):
         # if obj == 0:
         # p = np.eye(nh)
         p = np.diag(np.repeat(nd / nd.sum(), ni))
-        q = -y_ref * np.repeat(nd / nd.sum(), ni)
+        q = -reference_profile * np.repeat(nd / nd.sum(), ni)
         # q = -y_ref
         # else:
         #     delta = 1e-1

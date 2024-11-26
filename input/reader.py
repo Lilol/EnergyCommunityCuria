@@ -190,7 +190,7 @@ class TariffReader(GlobalConstReader):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        # ARERA's day-types depending on subdivision into tariff time-slots
+        # ARERA's division depending on subdivision into tariff time-slots
         # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
         #            2 - tariff time-slot F2, evening of work-days, and saturdays
         #            3 - tariff times-lot F2, night, sundays and holidays
