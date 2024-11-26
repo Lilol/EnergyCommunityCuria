@@ -172,21 +172,13 @@ class LinearScaler(ProfileScaler):
         ____________
         PARAMETERS
         x : np.ndarray
-            Monthly electricity consumption divided into tariff time-slots
+            Monthly aggregated electricity consumption divided into tariff time-slots
             Array of shape (nf,) where 'nf' is the number of tariff time-slots.
-        nd : np.ndarray
-            Number of days of each day-type in the month
-            Array of shape (nj,) where 'nj' is the number of day-types
-            (according to ARERA's subdivision into day-types).
-        y_ref : np.ndarray
-            Array of shape (nj*ni) where 'ni' is the number of time-steps in each
-            day, containing the reference profiles.
         _______
         RETURNS
         y_scal : np.ndarray
             Estimated hourly load profile in each day-type
-            Array of shape (nj*ni) where 'ni' is the number of time-steps in each
-            day.
+            Array of shape (nj*ni) where 'ni' is the number of time-steps in each day.
         status : str
             Status of the solution.
             Can be : 'ok', 'unphysical', 'error'.
@@ -249,7 +241,7 @@ class QuadraticOptimizationScaler(ProfileScaler):
             Array of shape (nj*ni) where 'ni' is the number of time-steps in each
             day, containing the reference profiles.
         y_max : float or None, optional
-            Maximum value that the demand can assume
+            Maximum value that the demand can assume.
             If None, the related constraint is not applied. Default is None.
             NOTE : convergence may not be reached if y_max is too small.
         obj : int, optional
@@ -296,11 +288,12 @@ class QuadraticOptimizationScaler(ProfileScaler):
         # NOTE : 'nh' variables are to be found
         # coefficients and known term of equality constraints
         # NOTE : equality constraints are written as <a,x> = b
-        a = np.zeros((0, nh))
+        n_time_steps = configuration.config.getint("time", "number_of_time_steps_per_day")
+        a = np.zeros((0, n_time_steps))
         b = np.zeros((0,))
         # coefficients and known term of inequality constraint
         # NOTE : inequality constraints are written as <g,x> <= h
-        g = np.zeros((0, nh))
+        g = np.zeros((0, n_time_steps))
         h = np.zeros((0,))
         # constraint on the total consumption (one for each tariff time slot)
         for if_, f in enumerate(fs):
@@ -308,13 +301,13 @@ class QuadraticOptimizationScaler(ProfileScaler):
             a = np.concatenate((a, aux[np.newaxis, :]), axis=0)
             b = np.append(b, total_consumption_by_time_slots[if_])
         # constraint for variables to be positive
-        g = np.concatenate((g, -1 * np.eye(nh)))
-        h = np.concatenate((h, np.zeros((nh,))))
+        g = np.concatenate((g, -1 * np.eye(n_time_steps)))
+        h = np.concatenate((h, np.zeros((n_time_steps,))))
         # constraint on maximum power
         if y_max:
             assert isinstance(y_max, (float, int)) and y_max > 0, "If given, 'y_max' must be a positive number."
-            g = np.concatenate((g, np.eye(nh)))
-            h = np.concatenate((h, y_max * np.ones((nh,))))
+            g = np.concatenate((g, np.eye(n_time_steps)))
+            h = np.concatenate((h, y_max * np.ones((n_time_steps,))))
         # ------------------------------------
         # objective function
         # NOTE : objective is written as min 0.5*<<x.T, p>, x> + <q.T, x>
@@ -332,10 +325,10 @@ class QuadraticOptimizationScaler(ProfileScaler):
         # regularisation term in the objective
         if obj_reg:
             assert isinstance(obj_reg, float), "If given 'obj_reg' must be a float (weight)."
-            l = np.zeros((nh, nh))
-            for i_h in range(nh):
+            l = np.zeros((n_time_steps, n_time_steps))
+            for i_h in range(n_time_steps):
                 l[i_h, i_h] = 1
-                l[i_h, (i_h + 1) % nh] = -1
+                l[i_h, (i_h + 1) % n_time_steps] = -1
             p += obj_reg * np.dot(l.T, l)  # q += np.zeros((nh,))
         # turn into cvxopt matrices
         P = opt.matrix(p)

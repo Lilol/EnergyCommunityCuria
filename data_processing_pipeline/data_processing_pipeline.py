@@ -2,6 +2,7 @@ from data_processing_pipeline.data_processing_arbiter import DataProcessingArbit
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
+from data_storage.store_data import Store
 
 
 class TwoWayDictionary(dict):
@@ -75,6 +76,4 @@ class DataProcessingPipeline(TwoWayDictionary):
         dataset = None
         for _, processor in iter(self):
             dataset = processor.execute(dataset, *args, **kwargs)
-        # The final dataset gets stored in the Data Store using the name of the pipeline
-        DataStore()[self.name] = dataset
         return dataset

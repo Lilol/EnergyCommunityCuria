@@ -5,6 +5,7 @@ from os.path import join
 import xarray as xr
 from pandas import DataFrame
 
+from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from utility import configuration
@@ -12,6 +13,7 @@ from utility import configuration
 
 class Writer(PipelineStage):
     _name = "output_writer"
+    stage = Stage.WRITE_OUT
     csv_properties = {"sep": ';', "index": False, "float_format": ".4f"}
 
     def __init__(self, name=_name, *args, **kwargs):
