@@ -77,7 +77,6 @@ DataProcessingPipeline("pv_plants", workers=(
     Store("pv_plants"),
     Write("data_plants"),
     Visualize("profiles", vis_profiles),
-    ProfileDataAggregator(),
     Write("data_plants_tou"))).execute()
 
 
@@ -87,5 +86,6 @@ DataProcessingPipeline("pv_production", workers=(
     TypicalYearExtractor(),
     Store("pv_profiles"),
     YearlyProfileCreator(),
+    ProfileDataAggregator(),
     Write("data_plants_year"),
     Visualize("profiles_by_month", by_month_profiles))).execute()

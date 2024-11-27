@@ -53,8 +53,7 @@ class ProductionReader(Reader):
         user_data = DataStore()["pv_plants"]
         self._data = xr.concat(
             [self._pv_resource_reader.execute(self._data, municipality=municipality, user=user) for municipality in
-             municipalities for user in user_data.sel(
-                {ColumnName.USER_DATA.value: ColumnName.USER, ColumnName.MUNICIPALITY.value: municipality}).values],
+             municipalities for user in user_data.sel({ColumnName.MUNICIPALITY.value: municipality})[ColumnName.USER.value].values],
             dim=ColumnName.USER.value)
         return self._data
 

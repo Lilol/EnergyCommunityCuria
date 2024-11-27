@@ -129,7 +129,13 @@ class PvPlantDataTransformer(DataTransformer):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        return dataset.rename({"dim_1": ColumnName.USER_DATA.value})
+        dataset = dataset.rename({"dim_1": ColumnName.USER_DATA.value, "dim_0": ColumnName.USER.value})
+
+        dataset = dataset.assign_coords(
+            {ColumnName.USER.value: dataset.sel({ColumnName.USER_DATA.value: ColumnName.USER}).squeeze().values}).drop(
+            labels=ColumnName.USER, dim=ColumnName.USER_DATA.value)
+
+        return dataset
 
 
 class ProductionDataTransformer(DataTransformer):
@@ -223,7 +229,7 @@ class YearlyProfileCreator(DataTransformer):
         for day in date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"):
             # Retrieve profiles in typical days
             output_data.loc[:, f"{day:%Y-%m-%d}"] = dataset.sel(
-                {ColumnName.DAY_TYPE.value: get_weekday_code(day), ColumnName.MONTH.value: day.month}).values
+                {ColumnName.DAY_TYPE.value: get_weekday_code(day), ColumnName.MONTH.value: day.month}).squeeze().values
         return output_data
 
 
@@ -235,11 +241,15 @@ class ProfileDataAggregator(DataTransformer):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         output_data = OmnesDataArray(0.,
-                                     dims=(ColumnName.USER.value, ColumnName.MONTH.value, ColumnName.TOU_ENERGY.value),
-                                     coords={ColumnName.USER.value: dataset[ColumnName.USER.value],
-                                             ColumnName.MONTH.value: range(1, 13),
-                                             ColumnName.TOU_ENERGY: configuration.config.get("tariff",
-                                                                                             "time_of_use_labels")})
+                                     dims=(ColumnName.USER.value, ColumnName.TOU_ENERGY.value),
+                                     coords={ColumnName.USER.value: dataset[ColumnName.USER.value], ColumnName.TOU_ENERGY.value: [
+                                             *configuration.config.get("tariff", "time_of_use_labels"),
+                                             ColumnName.ANNUAL_ENERGY]})
+        tou_time_slots = DataStore()["time_of_use_time_slots"]
         for day, ds in dataset.groupby(dataset.time.dt.dayofyear):
-            output_data.loc[:, day.month, :] = ds.sel({ColumnName.USER_DATA.value: 20}).sum()
-        return dataset
+            day = pd.to_datetime(ds.time.values[0])
+            ds = ds.assign_coords({"time": ds.time.dt.hour}).rename({"time": "hour"})
+            output_data.loc[:, configuration.config.get("tariff", "time_of_use_labels")] += xr.concat([ds.sel({"hour": tou_time_slots.sel(
+                {ColumnName.DAY_TYPE.value: get_weekday_code(day)}) == tou_time_slot}).sum(dim="hour").assign_coords({"energy": f"energy{tou_time_slot+1}"}).squeeze(drop=True) for tou_time_slot in configuration.config.getarray("tariff", "tariff_time_slots", int)], dim="energy")
+        output_data.loc[:, ColumnName.ANNUAL_ENERGY] = output_data.loc[:, configuration.config.get("tariff", "time_of_use_labels")].sum(dim="energy")
+        return output_data
