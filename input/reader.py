@@ -2,7 +2,6 @@ import logging
 import os
 from os.path import join
 
-import pandas as pd
 import xarray as xr
 from pandas import read_csv
 

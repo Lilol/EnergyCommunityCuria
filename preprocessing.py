@@ -5,7 +5,7 @@ from data_storage.store_data import Store
 from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, TypicalLoadProfileReader, \
     ProductionReader
 from output.writer import Writer
-from transform.combine.combine import TypicalMonthlyConsumptionCalculator
+from transform.combine.combine import TypicalMonthlyConsumptionCalculator, YearlyConsumptionCombiner
 from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor, \
     TypicalYearExtractor
 from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
@@ -27,12 +27,13 @@ DataProcessingPipeline("typical_load_profile", workers=(
     TypicalLoadProfileReader(), TypicalLoadProfileTransformer(), Store("typical_load_profiles_gse"),
     TypicalMonthlyConsumptionCalculator(), Store("typical_aggregated_consumption"))).execute()
 
-DataProcessingPipeline("users",
-                       workers=(UsersReader(), UserDataTransformer(), Store("users"), Writer("data_users"))).execute()
-
 DataProcessingPipeline("load_profiles_from_bills", workers=(
     BillReader(), BillDataTransformer(), Store("bills"), Writer("data_users_bills"), BillLoadProfileTransformer(),
-    Store("load_profiles_from_bills"), YearlyProfileCreator(), Writer("data_users_years"))).execute()
+    Store("load_profiles_from_bills"), YearlyProfileCreator(), Store("yearly_load_profiles_from_bills"),
+    Writer("data_users_years"))).execute()
+
+DataProcessingPipeline("users", workers=(
+    UsersReader(), UserDataTransformer(), YearlyConsumptionCombiner(), Store("users"), Writer("data_users"))).execute()
 
 DataProcessingPipeline("pv_plants", workers=(PvPlantReader(), PvPlantDataTransformer(), Store("pv_plants"))).execute()
 DataProcessingPipeline("pv_production", workers=(

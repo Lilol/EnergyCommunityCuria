@@ -38,13 +38,16 @@ class UserDataTransformer(DataTransformer):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
-                                                                dataset.sel({"dim_1": ColumnName.USER_TYPE}),
-                                                                vectorize=True)
+        dataset = dataset.rename({"dim_1": ColumnName.USER_DATA.value, "dim_0": ColumnName.USER.value}).assign_coords(
+            {ColumnName.USER.value: dataset.sel({"dim_1": ColumnName.USER}).squeeze().values}).drop(
+            labels=ColumnName.USER, dim=ColumnName.USER_DATA.value)
+        dataset.loc[..., ColumnName.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x), dataset.sel(
+            {ColumnName.USER_DATA.value: ColumnName.USER_TYPE}), vectorize=True)
         dataset.loc[..., [ColumnName.USER_ADDRESS, ColumnName.DESCRIPTION]] = xr.apply_ufunc(lambda x: x.strip(),
-                                                                                             dataset.sel({"dim_1": [
-                                                                                                 ColumnName.USER_ADDRESS,
-                                                                                                 ColumnName.DESCRIPTION]}),
+                                                                                             dataset.sel({
+                                                                                                 ColumnName.USER_DATA.value: [
+                                                                                                     ColumnName.USER_ADDRESS,
+                                                                                                     ColumnName.DESCRIPTION]}),
                                                                                              vectorize=True)
         return dataset
 
@@ -62,7 +65,13 @@ class BillDataTransformer(DataTransformer):
         da = DataArray(list(itertools.chain.from_iterable(
             [get_bill_type(df), ] * df.shape[0] for _, df in dataset.groupby(dataset.loc[:, ColumnName.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [ColumnName.BILL_TYPE, ]})
-        dataset = xr.concat([dataset, da], dim="dim_1").rename({"dim_1": ColumnName.USER_DATA.value})
+        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
+            {"dim_1": ColumnName.USER_DATA.value, "dim_0": ColumnName.USER.value}))
+
+        dataset = dataset.assign_coords(
+            {ColumnName.USER.value: dataset.sel({ColumnName.USER_DATA.value: ColumnName.USER}).squeeze().values}).drop(
+            labels=ColumnName.USER, dim=ColumnName.USER_DATA.value)
+
         return dataset
 
 
@@ -165,18 +174,17 @@ class BillLoadProfileTransformer(DataTransformer):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        data_store = DataStore()
-        typical_load_profiles = data_store["typical_load_profiles_gse"]
+        typical_load_profiles = DataStore()["typical_load_profiles_gse"]
         user_profiles = OmnesDataArray(
             dims=(ColumnName.USER.value, ColumnName.MONTH.value, ColumnName.DAY_TYPE.value, ColumnName.HOUR.value),
-            coords={ColumnName.USER.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.USER})),
+            coords={ColumnName.USER.value: dataset[ColumnName.USER.value],
                     ColumnName.MONTH.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.MONTH})),
                     ColumnName.DAY_TYPE.value: configuration.config.getarray("time", "day_types", int),
                     ColumnName.HOUR.value: range(24)})
 
         grouper = xr.DataArray(pd.MultiIndex.from_arrays(
-            [dataset.sel(user_data=ColumnName.MONTH).values, dataset.sel(user_data=ColumnName.USER).values],
-            names=['month', 'user'], ), dims=['dim_0'], coords={"dim_0": dataset.dim_0.values}, )
+            [dataset.sel(user_data=ColumnName.MONTH).values, dataset[ColumnName.USER.value].values],
+            names=['month', 'user'], ), dims=['user'], coords={"user": dataset[ColumnName.USER.value].values}, )
         for (month, user), ds in dataset.groupby(grouper):
             selection = {ColumnName.USER_TYPE.value: UserType.PDMF, ColumnName.MONTH.value: month}
             reference_profile = typical_load_profiles.sel(selection).squeeze()

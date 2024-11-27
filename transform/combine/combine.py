@@ -45,3 +45,21 @@ class TypicalMonthlyConsumptionCalculator(Combine):
             configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
             configuration.config.getarray("time", "day_types", int)], dim=ColumnName.DAY_TYPE.value).sum(
             ColumnName.DAY_TYPE.value))
+
+
+class YearlyConsumptionCombiner(Combine):
+    _name = 'yearly_consumption_combiner'
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        data_bills = DataStore()["bills"]
+        dataset.user = dataset.user.astype(str)
+        dd = xr.concat([ds.sel({ColumnName.USER_DATA.value: [ColumnName.MONO_TARIFF,
+                                                             *configuration.config.getarray("tariff",
+                                                                                            "time_of_use_labels", str),
+                                                             ColumnName.ANNUAL_ENERGY]}).sum(
+            dim=ColumnName.USER.value).assign_coords({ColumnName.USER.value: u}) for u, ds in
+                        data_bills.groupby(ColumnName.USER.value)], dim=ColumnName.USER.value).astype(float)
+        return xr.concat([dd.T, dataset], dim=ColumnName.USER_DATA.value).squeeze()

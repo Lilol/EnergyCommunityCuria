@@ -2,7 +2,6 @@ from enum import Enum
 from os import makedirs
 from os.path import join
 
-import xarray as xr
 from pandas import DataFrame
 
 from data_processing_pipeline.definitions import Stage
@@ -16,6 +15,10 @@ class Writer(PipelineStage):
     stage = Stage.WRITE_OUT
     csv_properties = {"sep": ';', "index": False, "float_format": ".4f"}
 
+    @staticmethod
+    def convert_enum_to_value(x):
+        return x.value if isinstance(x, Enum) else x
+
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self.output_path = configuration.config.get("path", "output")
@@ -24,9 +27,9 @@ class Writer(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
-        output = xr.apply_ufunc(lambda x: x.value if type(x) == Enum else x, dataset, vectorize=True).to_dataframe(
-            name=name)
-        output.to_csv(join(self.output_path, name if ".csv" not in name else f"{name}.csv"), **self.csv_properties)
+        output = dataset.to_pandas().map(self.convert_enum_to_value).rename(columns=self.convert_enum_to_value,
+                                                                            index=self.convert_enum_to_value)
+        output.to_csv(join(self.output_path, name if ".csv" in name else f"{name}.csv"), **self.csv_properties)
         return dataset
 
     def write(self, output: DataFrame, name=None):
