@@ -7,13 +7,14 @@ from pandas import DataFrame
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
+from input.definitions import ColumnName
 from utility import configuration
 
 
-class Writer(PipelineStage):
+class Write(PipelineStage):
     _name = "output_writer"
     stage = Stage.WRITE_OUT
-    csv_properties = {"sep": ';', "index": False, "float_format": ".4f"}
+    csv_properties = {"sep": ';', "index": False, "float_format": '.4f'}
 
     @staticmethod
     def convert_enum_to_value(x):
@@ -27,10 +28,21 @@ class Writer(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
+        if ColumnName.MUNICIPALITY.value not in dataset.dims:
+            self.save_2d_dataarray(dataset, name)
+            return dataset
+
+        for municipality in dataset[ColumnName.MUNICIPALITY.value].values:
+            makedirs(join(self.output_path, municipality), exist_ok=True)
+            self.save_2d_dataarray(dataset.sel({ColumnName.MUNICIPALITY.value: municipality}), name,
+                                   municipality=municipality)
+        return dataset
+
+    def save_2d_dataarray(self, dataset, name, **kwargs):
         output = dataset.to_pandas().map(self.convert_enum_to_value).rename(columns=self.convert_enum_to_value,
                                                                             index=self.convert_enum_to_value)
-        output.to_csv(join(self.output_path, name if ".csv" in name else f"{name}.csv"), **self.csv_properties)
-        return dataset
+        output.to_csv(join(self.output_path, kwargs.pop("municipality", ""), name if ".csv" in name else f"{name}.csv"),
+                      **self.csv_properties)
 
     def write(self, output: DataFrame, name=None):
         self.execute(output.to_xarray(), filename=name)

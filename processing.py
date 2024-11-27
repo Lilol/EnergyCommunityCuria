@@ -10,7 +10,7 @@ from pandas import DataFrame, concat, read_csv
 from utility import configuration
 from input.definitions import ColumnName
 from input.reader import BillReader
-from output.writer import Writer
+from output.write import Write
 from utility.day_of_the_week import df_year
 
 # Data processing
@@ -348,4 +348,4 @@ scenarios['sc_season'] = scenarios['n_fam'].map(sc_season)
 scenarios['sc_year'] = scenarios['n_fam'].map(sc_year)
 
 
-Writer().write(scenarios, "scenarios")
+Write().write(scenarios, "scenarios")

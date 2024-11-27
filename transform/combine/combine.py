@@ -55,7 +55,6 @@ class YearlyConsumptionCombiner(Combine):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         data_bills = DataStore()["bills"]
-        dataset.user = dataset.user.astype(str)
         dd = xr.concat([ds.sel({ColumnName.USER_DATA.value: [ColumnName.MONO_TARIFF,
                                                              *configuration.config.getarray("tariff",
                                                                                             "time_of_use_labels", str),

@@ -21,11 +21,12 @@ class Reader(PipelineStage):
     _name = "reader"
     _input_root = configuration.config.get("path", "input")
     _directory = ""
+    filename = ""
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
         self._path = join(self._input_root, self._directory)
-        self._filename = ""
+        self._filename = kwargs.pop("filename", self.filename)
         self._data = OmnesDataArray()
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
@@ -121,10 +122,10 @@ class PvPlantReader(Reader):
                      }
 
     _directory = "DatiComuni"
+    filename = "lista_impianti.csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._filename = "lista_impianti.csv"  # list of plants
 
 
 class UsersReader(Reader):
@@ -137,10 +138,10 @@ class UsersReader(Reader):
                      }
 
     _directory = "DatiComuni"
+    filename = "lista_pod.csv"  # list of end-users
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._filename = "lista_pod.csv"  # list of end-users
 
 
 class BillReader(Reader):
@@ -157,10 +158,10 @@ class BillReader(Reader):
                      'f0': ColumnName.MONO_TARIFF, **_time_of_use_energy_column_names}
 
     _directory = "DatiComuni"
+    filename = "dati_bollette.csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._filename = "dati_bollette.csv"  # monthly consumption data
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         super().execute(dataset, *args, **kwargs)
@@ -184,16 +185,16 @@ class GlobalConstReader(Reader):
 
 
 class TariffReader(GlobalConstReader):
+    # ARERA's division depending on subdivision into tariff time-slots
+    # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
+    #            2 - tariff time-slot F2, evening of work-days, and saturdays
+    #            3 - tariff times-lot F2, night, sundays and holidays
     _name = "tariff_reader"
     _directory = "Common"
+    filename = "arera.csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        # ARERA's division depending on subdivision into tariff time-slots
-        # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
-        #            2 - tariff time-slot F2, evening of work-days, and saturdays
-        #            3 - tariff times-lot F2, night, sundays and holidays
-        self._filename = "arera.csv"
 
 
 class TypicalLoadProfileReader(GlobalConstReader):
@@ -201,8 +202,8 @@ class TypicalLoadProfileReader(GlobalConstReader):
     _column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user
                      'month': ColumnName.MONTH}
     _directory = "Common"
+    filename = "y_ref_gse.csv"
 
     # Reference profiles from GSE
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._filename = "y_ref_gse.csv"

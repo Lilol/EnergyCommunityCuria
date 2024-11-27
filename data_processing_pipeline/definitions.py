@@ -7,4 +7,5 @@ class Stage(IntEnum):
     TRANSFORM = 2
     STORE = 3
     WRITE_OUT = 4
-    INVALID = 5
+    VISUALIZE = 5
+    INVALID = 6
