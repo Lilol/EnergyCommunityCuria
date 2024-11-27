@@ -24,8 +24,8 @@ class Writer(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
-        output = dataset.map(lambda x: x.value if type(x) == Enum else x)
-        xr.apply_ufunc(lambda x: x.value if type(x) == Enum else x, dataset, vectorize=True)
+        output = xr.apply_ufunc(lambda x: x.value if type(x) == Enum else x, dataset, vectorize=True).to_dataframe(
+            name=name)
         output.to_csv(join(self.output_path, name if ".csv" not in name else f"{name}.csv"), **self.csv_properties)
         return dataset
 

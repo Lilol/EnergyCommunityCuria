@@ -15,6 +15,7 @@ from input.definitions import ColumnName, UserType, BillType
 from operation.definitions import Status
 from operation.scale_profile import ProportionateScaler, ScaleTimeOfUseProfile
 from utility import configuration
+from utility.day_of_the_week import get_weekday_code
 
 logger = logging.getLogger(__name__)
 
@@ -204,32 +205,18 @@ class YearlyProfileCreator(DataTransformer):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         ref_year = configuration.config.getint("time", "year")
-        output_data = OmnesDataArray(0., dims=(ColumnName.USER.value, ColumnName.TIME.value), coords={
-            ColumnName.USER.value: np.unique(dataset.sel({ColumnName.USER_DATA.value: ColumnName.USER})),
-            ColumnName.TIME.value: date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31",
-                                              freq=configuration.config.get("time", "resolution"))})
-        for user, df in user_data.groupby(ColumnName.USER):
-            # Evaluate profiles in typical days
-            months = np.repeat(df.loc[:, ColumnName.MONTH], ni)
-            day_types = np.repeat(df.loc[:, ColumnName.DAY_TYPE], ni)
-            profiles = df.loc[:, 0:].values.flatten()
-            profiles = ProfileExtractor.create_typical_profile_from_yearly_profile(profiles, months, day_types).reshape(
-                (nm, nj * ni))
-            # Evaluate typical profiles in each month
-            nds = df.groupby([ColumnName.MONTH, ColumnName.DAY_TYPE]).count().iloc[:, 0].values.reshape(nm, nj)
-            tou_energy = []
-            for y, nd in zip(profiles, nds):
-                tou_energy.append(ProfileExtractor.get_monthly_consumption(y, nd))
-            # Create dataframe
-            tou_energy = np.concatenate((np.full((nm, 1), np.nan), np.array(tou_energy)), axis=1)
-            tou_energy = DataFrame(tou_energy,
-                                   columns=configuration.config.getarray("tariff", "time_of_use_labels", str))
-            tou_energy.insert(0, ColumnName.USER, user)
-            tou_energy.insert(1, ColumnName.YEAR, configuration.config.getint("time", "year"))
-            tou_energy.insert(2, ColumnName.MONTH, ms)
-            # Concatenate
-            output_df = concat((output_df, tou_energy), axis="rows")
-        return output_df
+        output_data = OmnesDataArray(0., dims=(ColumnName.USER.value, ColumnName.TIME.value),
+                                     coords={ColumnName.USER.value: dataset[ColumnName.USER.value],
+                                             ColumnName.TIME.value: date_range(start=f"{ref_year}-01-01",
+                                                                               end=f"{ref_year + 1}-01-01",
+                                                                               freq=configuration.config.get("time",
+                                                                                                             "resolution"),
+                                                                               inclusive="left")})
+        for day in date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"):
+            # Retrieve profiles in typical days
+            output_data.loc[:, f"{day:%Y-%m-%d}"] = dataset.sel(
+                {ColumnName.DAY_TYPE.value: get_weekday_code(day), ColumnName.MONTH.value: day.month}).values
+        return output_data
 
 
 class ProfileDataAggregator(DataTransformer):
@@ -239,4 +226,12 @@ class ProfileDataAggregator(DataTransformer):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        output_data = OmnesDataArray(0.,
+                                     dims=(ColumnName.USER.value, ColumnName.MONTH.value, ColumnName.TOU_ENERGY.value),
+                                     coords={ColumnName.USER.value: dataset[ColumnName.USER.value],
+                                             ColumnName.MONTH.value: range(1, 13),
+                                             ColumnName.TOU_ENERGY: configuration.config.get("tariff",
+                                                                                             "time_of_use_labels")})
+        for day, ds in dataset.groupby(dataset.time.dt.dayofyear):
+            output_data.loc[:, day.month, :] = ds.sel({ColumnName.USER_DATA.value: 20}).sum()
         return dataset
