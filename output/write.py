@@ -14,7 +14,7 @@ from utility import configuration
 class Write(PipelineStage):
     _name = "output_writer"
     stage = Stage.WRITE_OUT
-    csv_properties = {"sep": ';', "index": False, "float_format": '.4f'}
+    csv_properties = {"sep": ';', "index": True, "float_format": '%.4f'}
 
     @staticmethod
     def convert_enum_to_value(x):
@@ -42,7 +42,7 @@ class Write(PipelineStage):
         output = dataset.to_pandas().map(self.convert_enum_to_value).rename(columns=self.convert_enum_to_value,
                                                                             index=self.convert_enum_to_value)
         output.to_csv(join(self.output_path, kwargs.pop("municipality", ""), name if ".csv" in name else f"{name}.csv"),
-                      **self.csv_properties)
+                      **self.csv_properties, index_label=output.index.name)
 
     def write(self, output: DataFrame, name=None):
         self.execute(output.to_xarray(), filename=name)

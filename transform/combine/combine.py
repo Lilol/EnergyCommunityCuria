@@ -22,7 +22,7 @@ class Combine(PipelineStage):
         return dataset
 
 
-class TypicalMonthlyConsumptionCalculator(Combine):
+class CalculateTypicalMonthlyConsumption(Combine):
     # Class to evaluate monthly consumption from hourly load profiles
     # evaluate the monthly consumption divided into tariff time-slots from the
     # hourly load profiles in the day-types
@@ -47,7 +47,7 @@ class TypicalMonthlyConsumptionCalculator(Combine):
             ColumnName.DAY_TYPE.value))
 
 
-class YearlyConsumptionCombiner(Combine):
+class AddYearlyConsumptionToBillData(Combine):
     _name = 'yearly_consumption_combiner'
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -61,4 +61,4 @@ class YearlyConsumptionCombiner(Combine):
                                                              ColumnName.ANNUAL_ENERGY]}).sum(
             dim=ColumnName.USER.value).assign_coords({ColumnName.USER.value: u}) for u, ds in
                         data_bills.groupby(ColumnName.USER.value)], dim=ColumnName.USER.value).astype(float)
-        return xr.concat([dd.T, dataset], dim=ColumnName.USER_DATA.value).squeeze()
+        return xr.concat([dd, dataset.T], dim=ColumnName.USER_DATA.value)

@@ -14,13 +14,14 @@ from data_storage.dataset import OmnesDataArray
 from input.definitions import ColumnName, UserType, BillType
 from operation.definitions import Status
 from operation.scale_profile import ProportionateScaler, ScaleTimeOfUseProfile
+from transform.extract.data_extractor import Extract
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 
 logger = logging.getLogger(__name__)
 
 
-class DataTransformer(PipelineStage):
+class Transform(PipelineStage):
     stage = Stage.TRANSFORM
     _name = "data_transformer"
 
@@ -31,7 +32,7 @@ class DataTransformer(PipelineStage):
         raise NotImplementedError
 
 
-class UserDataTransformer(DataTransformer):
+class TransformUserData(Transform):
     _name = "user_data_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -52,7 +53,7 @@ class UserDataTransformer(DataTransformer):
         return dataset
 
 
-class BillDataTransformer(DataTransformer):
+class TransformBills(Transform):
     _name = "bill_data_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -75,7 +76,7 @@ class BillDataTransformer(DataTransformer):
         return dataset
 
 
-class ReshaperByYear(DataTransformer):
+class ReshaperByYear(Transform):
     _name = "year_reshaper"
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
@@ -91,7 +92,7 @@ class ReshaperByYear(DataTransformer):
         return dataset
 
 
-class TypicalLoadProfileTransformer(DataTransformer):
+class TypicalLoadProfileTransformer(Transform):
     _name = "typical_load_profile_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -122,7 +123,7 @@ class TypicalLoadProfileTransformer(DataTransformer):
         return new_array
 
 
-class PvPlantDataTransformer(DataTransformer):
+class TransformPvPlantData(Transform):
     _name = "pv_plant_data_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -138,7 +139,7 @@ class PvPlantDataTransformer(DataTransformer):
         return dataset
 
 
-class ProductionDataTransformer(DataTransformer):
+class TransformProduction(Transform):
     _name = "pv_production_data_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -148,7 +149,7 @@ class ProductionDataTransformer(DataTransformer):
         return dataset
 
 
-class TariffTransformer(DataTransformer):
+class TransformTariffData(Transform):
     _name = "tariff_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -163,7 +164,7 @@ class TariffTransformer(DataTransformer):
         return dataset
 
 
-class BillLoadProfileTransformer(DataTransformer):
+class TransformBillsToLoadProfiles(Transform):
     @classmethod
     def get_time_of_use_labels(cls, bill_type):
         if bill_type == BillType.MONO:
@@ -211,7 +212,7 @@ class BillLoadProfileTransformer(DataTransformer):
         return scaled_profile
 
 
-class YearlyProfileCreator(DataTransformer):
+class CreateYearlyProfile(Transform):
     _name = "yearly_profile_creator"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -233,7 +234,7 @@ class YearlyProfileCreator(DataTransformer):
         return output_data
 
 
-class ProfileDataAggregator(DataTransformer):
+class AggregateProfileDataForTimePeriod(Transform):
     _name = "profile_data_aggregator"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -253,3 +254,16 @@ class ProfileDataAggregator(DataTransformer):
                 {ColumnName.DAY_TYPE.value: get_weekday_code(day)}) == tou_time_slot}).sum(dim="hour").assign_coords({"energy": f"energy{tou_time_slot+1}"}).squeeze(drop=True) for tou_time_slot in configuration.config.getarray("tariff", "tariff_time_slots", int)], dim="energy")
         output_data.loc[:, ColumnName.ANNUAL_ENERGY] = output_data.loc[:, configuration.config.get("tariff", "time_of_use_labels")].sum(dim="energy")
         return output_data
+
+
+class TransformTimeOfUseTimeSlots(Transform):
+    _name = "tou_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        return xr.concat([OmnesDataArray(unique_numbers[1], dims=ColumnName.COUNT.value,
+                                         coords={ColumnName.COUNT.value: unique_numbers[0]}).expand_dims(
+            {ColumnName.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
+            (unique_numbers := np.unique(a, return_counts=True))], dim=ColumnName.DAY_TYPE.value)

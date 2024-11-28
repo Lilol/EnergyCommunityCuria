@@ -15,7 +15,7 @@ from utility.day_of_the_week import get_weekday_code
 logger = logging.getLogger(__name__)
 
 
-class DataExtractor(PipelineStage):
+class Extract(PipelineStage):
     stage = Stage.EXTRACT
     _name = "data_extractor"
 
@@ -26,7 +26,7 @@ class DataExtractor(PipelineStage):
         raise NotImplementedError
 
 
-class TypicalYearExtractor(DataExtractor):
+class ExtractTypicalYear(Extract):
     _name = "typical_year_extractor"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -47,7 +47,7 @@ class TypicalYearExtractor(DataExtractor):
             dim=ColumnName.DAY_TYPE.value))
 
 
-class TariffExtractor(DataExtractor):
+class ExtractTimeOfUseParameters(Extract):
     _name = "tariff_extractor"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -92,20 +92,7 @@ class TariffExtractor(DataExtractor):
         return dataset
 
 
-class TouExtractor(DataExtractor):
-    _name = "tou_extractor"
-
-    def __init__(self, name=_name, *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        return xr.concat([OmnesDataArray(unique_numbers[1], dims=ColumnName.COUNT.value,
-                                         coords={ColumnName.COUNT.value: unique_numbers[0]}).expand_dims(
-            {ColumnName.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
-            (unique_numbers := np.unique(a, return_counts=True))], dim=ColumnName.DAY_TYPE.value)
-
-
-class DayTypeExtractor(DataExtractor):
+class ExtractDayTypesInTimeframe(Extract):
     _name = "day_type_extractor"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -123,7 +110,7 @@ class DayTypeExtractor(DataExtractor):
             ref_df.groupby(ref_df.index.month)], dim=ColumnName.MONTH.value)
 
 
-class DayCountExtractor(DataExtractor):
+class ExtractDayCountInTimeframe(Extract):
     _name = "day_count_extractor"
 
     def __init__(self, name=_name, *args, **kwargs):

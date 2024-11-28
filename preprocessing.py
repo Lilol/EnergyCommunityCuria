@@ -1,14 +1,13 @@
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.store_data import Store
-from input.reader import UsersReader, BillReader, PvPlantReader, TariffReader, TypicalLoadProfileReader, \
-    ProductionReader
+from input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, ReadProduction
 from output.write import Write
-from transform.combine.combine import TypicalMonthlyConsumptionCalculator, YearlyConsumptionCombiner
-from transform.extract.data_extractor import TariffExtractor, TouExtractor, DayTypeExtractor, DayCountExtractor, \
-    TypicalYearExtractor
-from transform.transform import TariffTransformer, TypicalLoadProfileTransformer, UserDataTransformer, \
-    PvPlantDataTransformer, BillDataTransformer, ProductionDataTransformer, BillLoadProfileTransformer, \
-    YearlyProfileCreator, ProfileDataAggregator
+from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
+from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
+    ExtractDayCountInTimeframe, ExtractTypicalYear
+from transform.transform import TransformTariffData, TypicalLoadProfileTransformer, TransformUserData, \
+    TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
+    AggregateProfileDataForTimePeriod, TransformTimeOfUseTimeSlots
 from utility.init_logger import init_logger
 from visualization.preprocessing_visualization import vis_profiles, by_month_profiles, consumption_profiles
 from visualization.visualize import Visualize
@@ -17,63 +16,63 @@ init_logger()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("time_of_use", workers=(
-    TariffReader(),
-    TariffTransformer(),
-    TariffExtractor(),
+    ReadTariff(),
+    TransformTariffData(),
+    ExtractTimeOfUseParameters(),
     Store("time_of_use_time_slots"),
-    TouExtractor(),
+    TransformTimeOfUseTimeSlots(),
     Store("time_of_use_tariff"))).execute()
 
 
 DataProcessingPipeline("day_properties", workers=(
-    DayTypeExtractor(),
+    ExtractDayTypesInTimeframe(),
     Store("day_types"),
-    DayCountExtractor(),
+    ExtractDayCountInTimeframe(),
     Store("day_count"))).execute()
 
 
 DataProcessingPipeline("typical_load_profile", workers=(
-    TypicalLoadProfileReader(),
+    ReadTypicalLoadProfile(),
     TypicalLoadProfileTransformer(),
     Store("typical_load_profiles_gse"),
-    TypicalMonthlyConsumptionCalculator(),
+    CalculateTypicalMonthlyConsumption(),
     Store("typical_aggregated_consumption"))).execute()
 
 
 DataProcessingPipeline("load_profiles_from_bills", workers=(
-    BillReader(),
-    BillDataTransformer(),
+    ReadBills(),
+    TransformBills(),
     Store("bills"),
     Write("data_users_bills"),
-    BillLoadProfileTransformer(),
+    TransformBillsToLoadProfiles(),
     Store("load_profiles_from_bills"),
-    YearlyProfileCreator(),
+    CreateYearlyProfile(),
     Store("yearly_load_profiles_from_bills"),
     Write("data_users_years"))).execute()
 
 
 DataProcessingPipeline("users", workers=(
-    UsersReader(),
-    UserDataTransformer(),
-    YearlyConsumptionCombiner(),
+    ReadUserData(),
+    TransformUserData(),
+    AddYearlyConsumptionToBillData(),
     Store("users"),
     Write("data_users"),
     Visualize("consumption_profiles", consumption_profiles))).execute()
 
 
 DataProcessingPipeline("families", workers=(
-    BillReader(filename="bollette_domestici.csv"),
-    BillDataTransformer(),
+    ReadBills(filename="bollette_domestici.csv"),
+    TransformBills(),
     Store("families_bills"),
-    BillLoadProfileTransformer(),
-    YearlyProfileCreator(),
+    TransformBillsToLoadProfiles(),
+    CreateYearlyProfile(),
     Store("yearly_load_profiles_families"),
-    Write("data_families_years"))).execute()
+    Write("data_families_year"))).execute()
 
 
 DataProcessingPipeline("pv_plants", workers=(
-    PvPlantReader(),
-    PvPlantDataTransformer(),
+    ReadPvPlantData(),
+    TransformPvPlantData(),
     Store("pv_plants"),
     Write("data_plants"),
     Visualize("profiles", vis_profiles),
@@ -81,11 +80,11 @@ DataProcessingPipeline("pv_plants", workers=(
 
 
 DataProcessingPipeline("pv_production", workers=(
-    ProductionReader(),
-    ProductionDataTransformer(),
-    TypicalYearExtractor(),
+    ReadProduction(),
+    TransformProduction(),
+    ExtractTypicalYear(),
     Store("pv_profiles"),
-    YearlyProfileCreator(),
-    ProfileDataAggregator(),
+    CreateYearlyProfile(),
+    AggregateProfileDataForTimePeriod(),
     Write("data_plants_year"),
     Visualize("profiles_by_month", by_month_profiles))).execute()

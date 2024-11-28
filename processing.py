@@ -9,7 +9,7 @@ from pandas import DataFrame, concat, read_csv
 
 from utility import configuration
 from input.definitions import ColumnName
-from input.reader import BillReader
+from input.read import ReadBills
 from output.write import Write
 from utility.day_of_the_week import df_year
 
@@ -136,16 +136,16 @@ df_fam = read_csv(os.path.join(directory_data, file_fam_year), sep=';').drop(Col
 
 # Here we manage monthly ToU values, we sum all end users/plants
 cols = [ColumnName.MONTH]
-df_plants_tou = data_plants_tou.groupby(ColumnName.MONTH).sum()[BillReader._time_of_use_energy_column_names].reset_index()
-df_users_tou = data_users_tou.groupby(ColumnName.MONTH).sum()[BillReader._time_of_use_energy_column_names].reset_index()
+df_plants_tou = data_plants_tou.groupby(ColumnName.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
+df_users_tou = data_users_tou.groupby(ColumnName.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
 
 # We create a single dataframe for both production and consumption
 df_months = DataFrame()
 for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants_tou.iterrows(), df_users_tou.iterrows(),
                                                  df_fam_tou.iterrows()):
-    prod = df_prod.loc[BillReader._time_of_use_energy_column_names].values
-    cons = df_cons.loc[BillReader._time_of_use_energy_column_names].values
-    fam = df_f.loc[BillReader._time_of_use_energy_column_names].values
+    prod = df_prod.loc[ReadBills._time_of_use_energy_column_names].values
+    cons = df_cons.loc[ReadBills._time_of_use_energy_column_names].values
+    fam = df_f.loc[ReadBills._time_of_use_energy_column_names].values
 
     df_temp = concat([df_prod[cols]] * len(prod), axis=1).T
     col_tou = 'tou'

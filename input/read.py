@@ -15,7 +15,7 @@ from utility import configuration
 logger = logging.getLogger(__name__)
 
 
-class Reader(PipelineStage):
+class Read(PipelineStage):
     stage = Stage.READ
     _column_names = {}
     _name = "reader"
@@ -41,12 +41,12 @@ class Reader(PipelineStage):
             ColumnName.MUNICIPALITY.value).assign_coords({ColumnName.MUNICIPALITY.value: [municipality]})
 
 
-class ProductionReader(Reader):
+class ReadProduction(Read):
     _name = "production_reader"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._pv_resource_reader = PvResourceReader.create()
+        self._pv_resource_reader = ReadPvProcuction.create()
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
@@ -58,17 +58,17 @@ class ProductionReader(Reader):
         return self._data
 
 
-class PvResourceReader(Reader):
+class ReadPvProcuction(Read):
     _name = "pvresource_reader"
     _directory = "DatiComuni"
 
     @classmethod
     def create(cls, *args, **kwargs):
         source = configuration.config.get("production", "estimator")
-        return PvgisReader(*args, **kwargs) if source == PvDataSource.PVGIS else PvsolReader(*args, **kwargs)
+        return ReadPvgis(*args, **kwargs) if source == PvDataSource.PVGIS else ReadPvSol(*args, **kwargs)
 
 
-class PvgisReader(PvResourceReader):
+class ReadPvgis(ReadPvProcuction):
     _name = "pvgis_reader"
     _production_column_name = 'Irradiance onto horizontal plane '  # hourly production of the plants (kW)
     _column_names = {"power": ColumnName.POWER}
@@ -87,7 +87,7 @@ class PvgisReader(PvResourceReader):
         return production
 
 
-class PvsolReader(PvResourceReader):
+class ReadPvSol(ReadPvProcuction):
     _name = "pvsol_reader"
     _production_column_name = 'Grid Export '  # hourly production of the plants (kW)
     _column_names = {_production_column_name: ColumnName.POWER}
@@ -109,7 +109,7 @@ class PvsolReader(PvResourceReader):
         return production
 
 
-class PvPlantReader(Reader):
+class ReadPvPlantData(Read):
     _name = "pv_plant_reader"
 
     _column_names = {'pod': ColumnName.USER,  # code or name of the associated end user
@@ -127,7 +127,7 @@ class PvPlantReader(Reader):
         super().__init__(name, *args, **kwargs)
 
 
-class UsersReader(Reader):
+class ReadUserData(Read):
     _name = "users_reader"
     _column_names = {'pod': ColumnName.USER,  # code or name of the end user
                      'descrizione': ColumnName.DESCRIPTION,  # description of the end user
@@ -143,7 +143,7 @@ class UsersReader(Reader):
         super().__init__(name, *args, **kwargs)
 
 
-class BillReader(Reader):
+class ReadBills(Read):
     _name = "bill_reader"
     _time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in range(1,
                                                                                                     configuration.config.getint(
@@ -176,14 +176,14 @@ class BillReader(Reader):
         return OmnesDataArray(data=self._data)
 
 
-class GlobalConstReader(Reader):
+class ReadCommonData(Read):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         self._data = read_csv(join(self._path, self._filename), sep=';', index_col=0, header=0).rename(
             columns=self._column_names)
         return OmnesDataArray(data=self._data)
 
 
-class TariffReader(GlobalConstReader):
+class ReadTariff(ReadCommonData):
     # ARERA's division depending on subdivision into tariff time-slots
     # NOTE : f : 1 - tariff time-slot F1, central hours of work-days
     #            2 - tariff time-slot F2, evening of work-days, and saturdays
@@ -196,7 +196,7 @@ class TariffReader(GlobalConstReader):
         super().__init__(name, *args, **kwargs)
 
 
-class TypicalLoadProfileReader(GlobalConstReader):
+class ReadTypicalLoadProfile(ReadCommonData):
     _name = "typical_load_profile_reader"
     _column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user
                      'month': ColumnName.MONTH}
