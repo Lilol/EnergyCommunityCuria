@@ -8,7 +8,7 @@ from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from input.definitions import ColumnName
+from input.definitions import DataKind
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 
@@ -33,18 +33,18 @@ class ExtractTypicalYear(Extract):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        dds = xr.concat([xr.concat([dd.assign_coords({ColumnName.TIME.value: dd.time.dt.hour}).rename(
-            {ColumnName.TIME.value: ColumnName.HOUR.value}).expand_dims(ColumnName.DAY_OF_MONTH.value).assign_coords(
-            {ColumnName.DAY_OF_MONTH.value: [day, ]}) for day, dd in df.groupby(df.time.dt.day)],
-            dim=ColumnName.DAY_OF_MONTH.value).expand_dims(ColumnName.MONTH.value).assign_coords(
-            {ColumnName.MONTH.value: [month, ]}) for month, df in dataset.groupby(dataset.time.dt.month)],
-            dim=ColumnName.MONTH.value)
+        dds = xr.concat([xr.concat([dd.assign_coords({DataKind.TIME.value: dd.time.dt.hour}).rename(
+            {DataKind.TIME.value: DataKind.HOUR.value}).expand_dims(DataKind.DAY_OF_MONTH.value).assign_coords(
+            {DataKind.DAY_OF_MONTH.value: [day, ]}) for day, dd in df.groupby(df.time.dt.day)],
+            dim=DataKind.DAY_OF_MONTH.value).expand_dims(DataKind.MONTH.value).assign_coords(
+            {DataKind.MONTH.value: [month, ]}) for month, df in dataset.groupby(dataset.time.dt.month)],
+            dim=DataKind.MONTH.value)
 
         day_types = DataStore()["day_types"]
         return OmnesDataArray(xr.concat([
-            dds.where(day_types.where(day_types == i)).mean(ColumnName.DAY_OF_MONTH.value, skipna=True).expand_dims(
-                {ColumnName.DAY_TYPE.value: [i, ]}) for i in configuration.config.getarray("time", "day_types", int)],
-            dim=ColumnName.DAY_TYPE.value))
+            dds.where(day_types.where(day_types == i)).mean(DataKind.DAY_OF_MONTH.value, skipna=True).expand_dims(
+                {DataKind.DAY_TYPE.value: [i, ]}) for i in configuration.config.getarray("time", "day_types", int)],
+            dim=DataKind.DAY_TYPE.value))
 
 
 class ExtractTimeOfUseParameters(Extract):
@@ -103,11 +103,11 @@ class ExtractDayTypesInTimeframe(Extract):
         start = kwargs.pop("start", f"{ref_year}-01-01")
         end = kwargs.pop("end", f"{ref_year}-12-31")
         index = date_range(start=start, end=end, freq="d")
-        ref_df = DataFrame(data=index.map(get_weekday_code), index=index, columns=[ColumnName.DAY_TYPE, ])
+        ref_df = DataFrame(data=index.map(get_weekday_code), index=index, columns=[DataKind.DAY_TYPE, ])
         return xr.concat([
-            OmnesDataArray(df.astype(int).set_index(df.index.day).rename(columns={ColumnName.DAY_TYPE: month}),
-                           dims=(ColumnName.DAY_OF_MONTH.value, ColumnName.MONTH.value)) for month, df in
-            ref_df.groupby(ref_df.index.month)], dim=ColumnName.MONTH.value)
+            OmnesDataArray(df.astype(int).set_index(df.index.day).rename(columns={DataKind.DAY_TYPE: month}),
+                           dims=(DataKind.DAY_OF_MONTH.value, DataKind.MONTH.value)) for month, df in
+            ref_df.groupby(ref_df.index.month)], dim=DataKind.MONTH.value)
 
 
 class ExtractDayCountInTimeframe(Extract):
@@ -117,9 +117,9 @@ class ExtractDayCountInTimeframe(Extract):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        dataset = xr.concat([OmnesDataArray(unique_numbers[1], dims=ColumnName.DAY_TYPE.value,
-                                            coords={ColumnName.DAY_TYPE.value: unique_numbers[0]}).expand_dims(
-            {ColumnName.MONTH.value: [i, ]}) for i, da in enumerate(dataset.T, 1) if
-            (unique_numbers := np.unique(da, return_counts=True))], dim=ColumnName.MONTH.value).drop(
-            dim=ColumnName.DAY_TYPE.value, labels=np.nan).fillna(0).astype(int)
-        return dataset.assign_coords({ColumnName.DAY_TYPE.value: dataset[ColumnName.DAY_TYPE.value].astype(int)})
+        dataset = xr.concat([OmnesDataArray(unique_numbers[1], dims=DataKind.DAY_TYPE.value,
+                                            coords={DataKind.DAY_TYPE.value: unique_numbers[0]}).expand_dims(
+            {DataKind.MONTH.value: [i, ]}) for i, da in enumerate(dataset.T, 1) if
+            (unique_numbers := np.unique(da, return_counts=True))], dim=DataKind.MONTH.value).drop(
+            dim=DataKind.DAY_TYPE.value, labels=np.nan).fillna(0).astype(int)
+        return dataset.assign_coords({DataKind.DAY_TYPE.value: dataset[DataKind.DAY_TYPE.value].astype(int)})

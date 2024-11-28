@@ -12,5 +12,5 @@ class Visualize(PipelineStage):
         self.vis_function = args[0]
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        # self.vis_function(dataset, *args, **kwargs)
+        self.vis_function(dataset, *args, **kwargs)
         return dataset

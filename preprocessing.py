@@ -9,7 +9,7 @@ from transform.transform import TransformTariffData, TypicalLoadProfileTransform
     TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
     AggregateProfileDataForTimePeriod, TransformTimeOfUseTimeSlots
 from utility.init_logger import init_logger
-from visualization.preprocessing_visualization import vis_profiles, by_month_profiles, consumption_profiles
+from visualization.preprocessing_visualization import plot_family_profiles, plot_pv_profiles, plot_consumption_profiles
 from visualization.visualize import Visualize
 
 init_logger()
@@ -57,7 +57,7 @@ DataProcessingPipeline("users", workers=(
     AddYearlyConsumptionToBillData(),
     Store("users"),
     Write("data_users"),
-    Visualize("consumption_profiles", consumption_profiles))).execute()
+    Visualize("consumption_profiles", plot_consumption_profiles))).execute()
 
 
 DataProcessingPipeline("families", workers=(
@@ -67,7 +67,8 @@ DataProcessingPipeline("families", workers=(
     TransformBillsToLoadProfiles(),
     CreateYearlyProfile(),
     Store("yearly_load_profiles_families"),
-    Write("data_families_year"))).execute()
+    Write("data_families_year"),
+    Visualize("profiles", plot_family_profiles))).execute()
 
 
 DataProcessingPipeline("pv_plants", workers=(
@@ -75,7 +76,6 @@ DataProcessingPipeline("pv_plants", workers=(
     TransformPvPlantData(),
     Store("pv_plants"),
     Write("data_plants"),
-    Visualize("profiles", vis_profiles),
     Write("data_plants_tou"))).execute()
 
 
@@ -87,4 +87,4 @@ DataProcessingPipeline("pv_production", workers=(
     CreateYearlyProfile(),
     AggregateProfileDataForTimePeriod(),
     Write("data_plants_year"),
-    Visualize("profiles_by_month", by_month_profiles))).execute()
+    Visualize("profiles_by_month", plot_pv_profiles))).execute()

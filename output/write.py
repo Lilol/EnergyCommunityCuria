@@ -7,7 +7,7 @@ from pandas import DataFrame
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
-from input.definitions import ColumnName
+from input.definitions import DataKind
 from utility import configuration
 
 
@@ -28,13 +28,13 @@ class Write(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
-        if ColumnName.MUNICIPALITY.value not in dataset.dims:
+        if DataKind.MUNICIPALITY.value not in dataset.dims:
             self.save_2d_dataarray(dataset, name)
             return dataset
 
-        for municipality in dataset[ColumnName.MUNICIPALITY.value].values:
+        for municipality in dataset[DataKind.MUNICIPALITY.value].values:
             makedirs(join(self.output_path, municipality), exist_ok=True)
-            self.save_2d_dataarray(dataset.sel({ColumnName.MUNICIPALITY.value: municipality}), name,
+            self.save_2d_dataarray(dataset.sel({DataKind.MUNICIPALITY.value: municipality}), name,
                                    municipality=municipality)
         return dataset
 

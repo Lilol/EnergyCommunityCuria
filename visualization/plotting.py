@@ -14,7 +14,7 @@ from matplotlib import gridspec as gs
 from matplotlib import patheffects as pe
 
 # common variables
-from input.definitions import ColumnName
+from input.definitions import DataKind
 from input.read import ReadBills
 from visualization.plotting_utils import get_colors_from_map, pie_chart
 
@@ -59,8 +59,8 @@ if __name__ == '__main__':
     data_results = pd.read_csv(os.path.join(directory_data, file_results), sep=';')
 
     #
-    data_users[ColumnName.USER_TYPE] = data_users[ColumnName.USER_TYPE].str.upper()
-    data_plants[ColumnName.USER_TYPE] = data_plants[ColumnName.USER_TYPE].str.upper()
+    data_users[DataKind.USER_TYPE] = data_users[DataKind.USER_TYPE].str.upper()
+    data_plants[DataKind.USER_TYPE] = data_plants[DataKind.USER_TYPE].str.upper()
     new_cols = {col: f"F{f}" for f, col in enumerate(ReadBills._time_of_use_energy_column_names)}
     data_users = data_users.rename(columns=new_cols)
     data_plants = data_plants.rename(columns=new_cols)
@@ -68,21 +68,21 @@ if __name__ == '__main__':
     data_plants_tou = data_plants_tou.rename(columns=new_cols)
     ReadBills._time_of_use_energy_column_names = list(new_cols.values())
 
-    data_plants_tou[ColumnName.ANNUAL_ENERGY] = data_plants_tou[ReadBills._time_of_use_energy_column_names].sum(axis=1)
+    data_plants_tou[DataKind.ANNUAL_ENERGY] = data_plants_tou[ReadBills._time_of_use_energy_column_names].sum(axis=1)
 
     #
-    data_users[[*ReadBills._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
-    data_plants[[*ReadBills._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
-    data_users_tou[[*ReadBills._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
-    data_plants_tou[[*ReadBills._time_of_use_energy_column_names, ColumnName.ANNUAL_ENERGY]] /= divide_energy
+    data_users[[*ReadBills._time_of_use_energy_column_names, DataKind.ANNUAL_ENERGY]] /= divide_energy
+    data_plants[[*ReadBills._time_of_use_energy_column_names, DataKind.ANNUAL_ENERGY]] /= divide_energy
+    data_users_tou[[*ReadBills._time_of_use_energy_column_names, DataKind.ANNUAL_ENERGY]] /= divide_energy
+    data_plants_tou[[*ReadBills._time_of_use_energy_column_names, DataKind.ANNUAL_ENERGY]] /= divide_energy
 
     # ----------------------------------------------------------------------------
     # %% We analyze the users and plants data sets
 
     # We first define some useful variables
-    municipalities = sorted(set(data_users[ColumnName.MUNICIPALITY]) | set(data_plants[ColumnName.MUNICIPALITY]))
+    municipalities = sorted(set(data_users[DataKind.MUNICIPALITY]) | set(data_plants[DataKind.MUNICIPALITY]))
     n_municipalities = len(municipalities)
-    types = list(set(data_users[ColumnName.USER_TYPE]) | set(data_plants[ColumnName.USER_TYPE]))
+    types = list(set(data_users[DataKind.USER_TYPE]) | set(data_plants[DataKind.USER_TYPE]))
 
     # Setup for these plots
     nrows, ncols = 2, 2
@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
     # Select data and labels to plot
     datas = [data_users, data_plants]
-    cols = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
+    cols = [DataKind.MUNICIPALITY, DataKind.MUNICIPALITY]
     pies_counts, pies_labels = [], []
     for i, data in enumerate(datas):
         col = cols[i]
@@ -167,8 +167,8 @@ if __name__ == '__main__':
 
     # Select data and labels to plot
     datas = [data_users, data_plants]
-    cols_label = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
-    cols_data = [ColumnName.ANNUAL_ENERGY, ColumnName.ANNUAL_ENERGY]
+    cols_label = [DataKind.MUNICIPALITY, DataKind.MUNICIPALITY]
+    cols_data = [DataKind.ANNUAL_ENERGY, DataKind.ANNUAL_ENERGY]
     pies_counts = []
     pies_labels = []
     for i, data in enumerate(datas):
@@ -227,10 +227,10 @@ if __name__ == '__main__':
 
     # Select data and labels to plot
     datas = [data_users, data_plants]
-    cols_group = [ColumnName.MUNICIPALITY, ColumnName.MUNICIPALITY]
-    cols_data = [ColumnName.POWER, ColumnName.POWER]
-    binss = [[0, 3, 6, 10, 16.5, data_users[ColumnName.POWER].max()],  # (SETUP)
-             [0, 20, data_plants[ColumnName.POWER].max()]]  # (SETUP)
+    cols_group = [DataKind.MUNICIPALITY, DataKind.MUNICIPALITY]
+    cols_data = [DataKind.POWER, DataKind.POWER]
+    binss = [[0, 3, 6, 10, 16.5, data_users[DataKind.POWER].max()],  # (SETUP)
+             [0, 20, data_plants[DataKind.POWER].max()]]  # (SETUP)
     labels_from_bins = lambda bins: [
         f'<{b}' if j == 0 else f'{bins[j]}-{b}' if j < len(bins) - 2  # else f'{int(bins[j])}$\leq${int(b)}'
         else f'$\geq${bins[j]}' for j, b in enumerate(bins[1:])]  # (SETUP)
@@ -310,8 +310,8 @@ if __name__ == '__main__':
 
     # Select data and labels to plot
     datas = [data_users, data_plants]
-    cols_group = [ColumnName.USER_TYPE, ColumnName.USER_TYPE]
-    cols_data = [ColumnName.POWER, ColumnName.POWER]
+    cols_group = [DataKind.USER_TYPE, DataKind.USER_TYPE]
+    cols_data = [DataKind.POWER, DataKind.POWER]
     bars_counts, bars_labels, legend_labels = [], [], []
     for i, data in enumerate(datas):
         bins = binss[i]
@@ -388,7 +388,7 @@ if __name__ == '__main__':
 
     # Select data and labels to plot
     datas = [data_users, data_plants]
-    cols_group = [ColumnName.USER_TYPE, ColumnName.USER_TYPE]
+    cols_group = [DataKind.USER_TYPE, DataKind.USER_TYPE]
     cols_data = [ReadBills._time_of_use_energy_column_names, ReadBills._time_of_use_energy_column_names]
     bars_counts, bars_labels, legend_labels = [], [], []
     for i, data in enumerate(datas):
@@ -478,7 +478,7 @@ if __name__ == '__main__':
 
     # Select data and labels to plot
     datas = [data_users_tou, data_plants_tou]
-    cols_group = [ColumnName.MONTH, ColumnName.MONTH]
+    cols_group = [DataKind.MONTH, DataKind.MONTH]
     cols_data = [ReadBills._time_of_use_energy_column_names, ReadBills._time_of_use_energy_column_names]
     bars_counts, legend_labels = [], []
     bars_labels = [list(range(12)), list(range(12))]
@@ -633,16 +633,16 @@ if __name__ == '__main__':
     # Select data
     profiles_plants = {}
     data = data_plants_year.groupby(
-        [ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum().reset_index().groupby(
-        [ColumnName.SEASON, ColumnName.DAY_OF_WEEK]).mean()
-    for season, df in data.groupby(ColumnName.SEASON):
+        [DataKind.SEASON, DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().reset_index().groupby(
+        [DataKind.SEASON, DataKind.DAY_OF_WEEK]).mean()
+    for season, df in data.groupby(DataKind.SEASON):
         profile = df.loc[:, '0':].values.flatten()
         profiles_plants[season] = profile
     profiles_users = {}
     data = data_users_year.groupby(
-        [ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum().reset_index().groupby(
-        [ColumnName.SEASON, ColumnName.DAY_OF_WEEK]).mean()
-    for season, df in data.groupby(ColumnName.SEASON):
+        [DataKind.SEASON, DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().reset_index().groupby(
+        [DataKind.SEASON, DataKind.DAY_OF_WEEK]).mean()
+    for season, df in data.groupby(DataKind.SEASON):
         profile = df.loc[:, '0':].values.flatten()
         profiles_users[season] = profile
 
@@ -692,13 +692,13 @@ if __name__ == '__main__':
 
     # Select data
     profiles_plants = {}
-    data = data_plants_year.groupby([ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum().reset_index()
-    for season, df in data.groupby(ColumnName.SEASON):
+    data = data_plants_year.groupby([DataKind.SEASON, DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().reset_index()
+    for season, df in data.groupby(DataKind.SEASON):
         profile = df.mean().loc['0':].values
         profiles_plants[season] = profile
     profiles_users = {}
-    data = data_users_year.groupby([ColumnName.SEASON, ColumnName.MONTH, ColumnName.DAY_OF_MONTH]).sum().reset_index()
-    for season, df in data.groupby(ColumnName.SEASON):
+    data = data_users_year.groupby([DataKind.SEASON, DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().reset_index()
+    for season, df in data.groupby(DataKind.SEASON):
         profile = df.mean().loc['0':].values
         profiles_users[season] = profile
 

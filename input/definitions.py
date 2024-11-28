@@ -1,9 +1,7 @@
-from enum import Enum
-
 from utility.definitions import OrderedEnum
 
 
-class ColumnName(OrderedEnum):
+class DataKind(OrderedEnum):
     USER = 'user'
     USER_DATA = 'user_data'
     MUNICIPALITY = 'municipality'
@@ -21,11 +19,11 @@ class ColumnName(OrderedEnum):
     SEASON = 'season'  # season (1-Winter-December to February, ...)
     MONTH = 'month'  # number of the month (1-12)
     WEEK = 'week'  # number of week of the year
-    DATE = 'date' # date in pandas.DateTime format
-    TIME = 'time' # time
+    DATE = 'date'  # date in pandas.DateTime format
+    TIME = 'time'  # time
     DAY_OF_MONTH = 'day'  # number of day in the month (1-28, 29 30, 31)
     DAY_TYPE = 'day_type'  # type of day (0-work, 1-Saturday, 2-Sunday/holiday)
-    COUNT = 'count' # Generic count type
+    COUNT = 'count'  # Generic count type
     DAY_OF_WEEK = 'day_week'  # number of day in the week (1-Monday, ...)
     HOUR = 'hour'
     BILL_TYPE = 'bill_type'

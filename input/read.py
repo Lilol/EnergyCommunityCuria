@@ -9,7 +9,7 @@ from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from input.definitions import ColumnName, PvDataSource
+from input.definitions import DataKind, PvDataSource
 from utility import configuration
 
 logger = logging.getLogger(__name__)
@@ -31,14 +31,14 @@ class Read(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        data = xr.concat([self._read_municipality(m) for m in municipalities], dim=ColumnName.MUNICIPALITY.value)
+        data = xr.concat([self._read_municipality(m) for m in municipalities], dim=DataKind.MUNICIPALITY.value)
         return data
 
     def _read_municipality(self, municipality):
         self._data = read_csv(os.path.join(self._path, municipality, self._filename), sep=';',
                               usecols=list(self._column_names.keys())).rename(columns=self._column_names)
         return OmnesDataArray(data=self._data.reset_index(drop=True)).expand_dims(
-            ColumnName.MUNICIPALITY.value).assign_coords({ColumnName.MUNICIPALITY.value: [municipality]})
+            DataKind.MUNICIPALITY.value).assign_coords({DataKind.MUNICIPALITY.value: [municipality]})
 
 
 class ReadProduction(Read):
@@ -53,8 +53,8 @@ class ReadProduction(Read):
         user_data = DataStore()["pv_plants"]
         self._data = xr.concat(
             [self._pv_resource_reader.execute(self._data, municipality=municipality, user=user) for municipality in
-             municipalities for user in user_data.sel({ColumnName.MUNICIPALITY.value: municipality})[ColumnName.USER.value].values],
-            dim=ColumnName.USER.value)
+             municipalities for user in user_data.sel({DataKind.MUNICIPALITY.value: municipality})[DataKind.USER.value].values],
+            dim=DataKind.USER.value)
         return self._data
 
 
@@ -71,7 +71,7 @@ class ReadPvProcuction(Read):
 class ReadPvgis(ReadPvProcuction):
     _name = "pvgis_reader"
     _production_column_name = 'Irradiance onto horizontal plane '  # hourly production of the plants (kW)
-    _column_names = {"power": ColumnName.POWER}
+    _column_names = {"power": DataKind.POWER}
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "location"))
@@ -80,17 +80,17 @@ class ReadPvgis(ReadPvProcuction):
                               index_col=0, parse_dates=True, date_format="%d/%m/%Y %H:%M").rename(
             columns=self._column_names)
         production = OmnesDataArray(data=production).rename(
-            {"dim_1": ColumnName.POWER.value, "timestamp": ColumnName.TIME.value}).expand_dims(
-            [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
-            {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]}).squeeze(
-            ColumnName.POWER.value, drop=True)
+            {"dim_1": DataKind.POWER.value, "timestamp": DataKind.TIME.value}).expand_dims(
+            [DataKind.MUNICIPALITY.value, DataKind.USER.value]).assign_coords(
+            {DataKind.MUNICIPALITY.value: [municipality, ], DataKind.USER.value: [user, ]}).squeeze(
+            DataKind.POWER.value, drop=True)
         return production
 
 
 class ReadPvSol(ReadPvProcuction):
     _name = "pvsol_reader"
     _production_column_name = 'Grid Export '  # hourly production of the plants (kW)
-    _column_names = {_production_column_name: ColumnName.POWER}
+    _column_names = {_production_column_name: DataKind.POWER}
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "location"))
@@ -102,22 +102,22 @@ class ReadPvSol(ReadPvProcuction):
         ref_year = configuration.config.getint("time", "year")
         production.index = production.index.map(lambda x: x.replace(year=ref_year))
         production = OmnesDataArray(data=production).rename(
-            {"dim_1": ColumnName.POWER.value, "Time": ColumnName.TIME.value}).expand_dims(
-            [ColumnName.MUNICIPALITY.value, ColumnName.USER.value]).assign_coords(
-            {ColumnName.MUNICIPALITY.value: [municipality, ], ColumnName.USER.value: [user, ]}).squeeze(
-            ColumnName.POWER.value, drop=True)
+            {"dim_1": DataKind.POWER.value, "Time": DataKind.TIME.value}).expand_dims(
+            [DataKind.MUNICIPALITY.value, DataKind.USER.value]).assign_coords(
+            {DataKind.MUNICIPALITY.value: [municipality, ], DataKind.USER.value: [user, ]}).squeeze(
+            DataKind.POWER.value, drop=True)
         return production
 
 
 class ReadPvPlantData(Read):
     _name = "pv_plant_reader"
 
-    _column_names = {'pod': ColumnName.USER,  # code or name of the associated end user
-                     'descrizione': ColumnName.DESCRIPTION,  # description of the associated end user
-                     'indirizzo': ColumnName.USER_ADDRESS,  # address of the end user
-                     'pv_size': ColumnName.POWER,  # size of the plant (kW)
-                     'produzione annua [kWh]': ColumnName.ANNUAL_ENERGY,  # annual energy produced (kWh)
-                     'rendita specifica [kWh/kWp]': ColumnName.ANNUAL_YIELD,  # specific annual production (kWh/kWp)
+    _column_names = {'pod': DataKind.USER,  # code or name of the associated end user
+                     'descrizione': DataKind.DESCRIPTION,  # description of the associated end user
+                     'indirizzo': DataKind.USER_ADDRESS,  # address of the end user
+                     'pv_size': DataKind.POWER,  # size of the plant (kW)
+                     'produzione annua [kWh]': DataKind.ANNUAL_ENERGY,  # annual energy produced (kWh)
+                     'rendita specifica [kWh/kWp]': DataKind.ANNUAL_YIELD,  # specific annual production (kWh/kWp)
                      }
 
     _directory = "DatiComuni"
@@ -129,11 +129,11 @@ class ReadPvPlantData(Read):
 
 class ReadUserData(Read):
     _name = "users_reader"
-    _column_names = {'pod': ColumnName.USER,  # code or name of the end user
-                     'descrizione': ColumnName.DESCRIPTION,  # description of the end user
-                     'indirizzo': ColumnName.USER_ADDRESS,  # address of the end user
-                     'tipo': ColumnName.USER_TYPE,  # type of end user
-                     'potenza': ColumnName.POWER,  # maximum available power of the end-user (kW)
+    _column_names = {'pod': DataKind.USER,  # code or name of the end user
+                     'descrizione': DataKind.DESCRIPTION,  # description of the end user
+                     'indirizzo': DataKind.USER_ADDRESS,  # address of the end user
+                     'tipo': DataKind.USER_TYPE,  # type of end user
+                     'potenza': DataKind.POWER,  # maximum available power of the end-user (kW)
                      }
 
     _directory = "DatiComuni"
@@ -145,16 +145,16 @@ class ReadUserData(Read):
 
 class ReadBills(Read):
     _name = "bill_reader"
-    _time_of_use_energy_column_names = {f'f{i}': f"{ColumnName.TOU_ENERGY.value}{i}" for i in range(1,
-                                                                                                    configuration.config.getint(
+    _time_of_use_energy_column_names = {f'f{i}': f"{DataKind.TOU_ENERGY.value}{i}" for i in range(1,
+                                                                                                  configuration.config.getint(
                                                                                                         "tariff",
                                                                                                         "number_of_time_of_use_periods") + 1)}
 
-    _column_names = {'pod': ColumnName.USER,  # code or name of the end user
-                     'anno': ColumnName.YEAR,  # year
-                     'mese': ColumnName.MONTH,  # number of the month
-                     'totale': ColumnName.ANNUAL_ENERGY,  # Annual consumption
-                     'f0': ColumnName.MONO_TARIFF, **_time_of_use_energy_column_names}
+    _column_names = {'pod': DataKind.USER,  # code or name of the end user
+                     'anno': DataKind.YEAR,  # year
+                     'mese': DataKind.MONTH,  # number of the month
+                     'totale': DataKind.ANNUAL_ENERGY,  # Annual consumption
+                     'f0': DataKind.MONO_TARIFF, **_time_of_use_energy_column_names}
 
     _directory = "DatiComuni"
     filename = "dati_bollette.csv"
@@ -165,7 +165,7 @@ class ReadBills(Read):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         super().execute(dataset, *args, **kwargs)
         # Check that each user has exactly 12 rows in the bills dataframe
-        if not (self._data[ColumnName.USER].value_counts() == 12).all():
+        if not (self._data[DataKind.USER].value_counts() == 12).all():
             logger.warning(
                 "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
                 " rows.")
@@ -198,8 +198,8 @@ class ReadTariff(ReadCommonData):
 
 class ReadTypicalLoadProfile(ReadCommonData):
     _name = "typical_load_profile_reader"
-    _column_names = {'type': ColumnName.USER_TYPE,  # code or name of the end user
-                     'month': ColumnName.MONTH}
+    _column_names = {'type': DataKind.USER_TYPE,  # code or name of the end user
+                     'month': DataKind.MONTH}
     _directory = "Common"
     filename = "y_ref_gse.csv"
 

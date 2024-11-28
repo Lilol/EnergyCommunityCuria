@@ -4,7 +4,7 @@ import holidays
 from pandas import date_range, DataFrame
 
 from utility import configuration
-from input.definitions import ColumnName
+from input.definitions import DataKind
 
 weekdays = (0, 1, 2, 3, 4)
 weekend = (5, 6)
@@ -28,19 +28,19 @@ def get_weekday_code(day):
 def create_reference_year_dataframe():
     ref_year = configuration.config.get("time", "year")
     ref_df = DataFrame(index=date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"),
-                        columns=[ColumnName.YEAR, ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.WEEK,
-                                 ColumnName.SEASON])
-    ref_df[ColumnName.YEAR] = ref_df.index.year
-    ref_df[ColumnName.MONTH] = ref_df.index.month
-    ref_df[ColumnName.DAY_OF_MONTH] = ref_df.index.day
-    ref_df[ColumnName.DAY_TYPE] = ref_df.index.map(get_weekday_code)
-    ref_df[ColumnName.WEEK] = ref_df.index.isocalendar().week
-    ref_df[ColumnName.SEASON] = ref_df.index.month % 12 // 3 + 1
-    ref_df[ColumnName.DAY_OF_WEEK] = ref_df.index.dayofweek
+                       columns=[DataKind.YEAR, DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.WEEK,
+                                DataKind.SEASON])
+    ref_df[DataKind.YEAR] = ref_df.index.year
+    ref_df[DataKind.MONTH] = ref_df.index.month
+    ref_df[DataKind.DAY_OF_MONTH] = ref_df.index.day
+    ref_df[DataKind.DAY_TYPE] = ref_df.index.map(get_weekday_code)
+    ref_df[DataKind.WEEK] = ref_df.index.isocalendar().week
+    ref_df[DataKind.SEASON] = ref_df.index.month % 12 // 3 + 1
+    ref_df[DataKind.DAY_OF_WEEK] = ref_df.index.dayofweek
     return ref_df
 
 
 df_year = create_reference_year_dataframe()
 
-cols_to_add = [ColumnName.YEAR, ColumnName.MONTH, ColumnName.DAY_OF_MONTH, ColumnName.WEEK, ColumnName.SEASON,
-                ColumnName.DAY_OF_WEEK]
+cols_to_add = [DataKind.YEAR, DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.WEEK, DataKind.SEASON,
+               DataKind.DAY_OF_WEEK]
