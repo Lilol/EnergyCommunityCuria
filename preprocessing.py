@@ -5,7 +5,7 @@ from output.write import Write
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
     ExtractDayCountInTimeframe, ExtractTypicalYear
-from transform.transform import TransformTariffData, TypicalLoadProfileTransformer, TransformUserData, \
+from transform.transform import TransformTariffData, TransformTypicalLoadProfile, TransformUserData, \
     TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
     AggregateProfileDataForTimePeriod, TransformTimeOfUseTimeSlots
 from utility.init_logger import init_logger
@@ -33,7 +33,7 @@ DataProcessingPipeline("day_properties", workers=(
 
 DataProcessingPipeline("typical_load_profile", workers=(
     ReadTypicalLoadProfile(),
-    TypicalLoadProfileTransformer(),
+    TransformTypicalLoadProfile(),
     Store("typical_load_profiles_gse"),
     CalculateTypicalMonthlyConsumption(),
     Store("typical_aggregated_consumption"))).execute()
@@ -48,7 +48,7 @@ DataProcessingPipeline("load_profiles_from_bills", workers=(
     Store("load_profiles_from_bills"),
     CreateYearlyProfile(),
     Store("yearly_load_profiles_from_bills"),
-    Write("data_users_years"))).execute()
+    Write("data_users_year"))).execute()
 
 
 DataProcessingPipeline("users", workers=(
@@ -56,8 +56,11 @@ DataProcessingPipeline("users", workers=(
     TransformUserData(),
     AddYearlyConsumptionToBillData(),
     Store("users"),
-    Write("data_users"),
-    Visualize("consumption_profiles", plot_consumption_profiles))).execute()
+    Write("data_users"))).execute()
+
+
+DataProcessingPipeline("visualize", workers=(
+    Visualize("consumption_profiles", plot_consumption_profiles),)).execute()
 
 
 DataProcessingPipeline("families", workers=(
@@ -85,6 +88,6 @@ DataProcessingPipeline("pv_production", workers=(
     ExtractTypicalYear(),
     Store("pv_profiles"),
     CreateYearlyProfile(),
+    Visualize("profiles_by_month", plot_pv_profiles),
     AggregateProfileDataForTimePeriod(),
-    Write("data_plants_year"),
-    Visualize("profiles_by_month", plot_pv_profiles))).execute()
+    Write("data_plants_year"))).execute()

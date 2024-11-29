@@ -44,7 +44,8 @@ class ExtractTypicalYear(Extract):
         return OmnesDataArray(xr.concat([
             dds.where(day_types.where(day_types == i)).mean(DataKind.DAY_OF_MONTH.value, skipna=True).expand_dims(
                 {DataKind.DAY_TYPE.value: [i, ]}) for i in configuration.config.getarray("time", "day_types", int)],
-            dim=DataKind.DAY_TYPE.value))
+            dim=DataKind.DAY_TYPE.value)).transpose(DataKind.USER.value, DataKind.MONTH.value, DataKind.DAY_TYPE.value,
+                                                    DataKind.HOUR.value, DataKind.MUNICIPALITY.value)
 
 
 class ExtractTimeOfUseParameters(Extract):

@@ -2,6 +2,7 @@ import logging
 import os
 from os.path import join
 
+import numpy as np
 import xarray as xr
 from pandas import read_csv
 
@@ -31,14 +32,14 @@ class Read(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        data = xr.concat([self._read_municipality(m) for m in municipalities], dim=DataKind.MUNICIPALITY.value)
-        return data
+        self._data = xr.concat([self._read_municipality(m) for m in municipalities], dim=DataKind.MUNICIPALITY.value)
+        return self._data
 
     def _read_municipality(self, municipality):
-        self._data = read_csv(os.path.join(self._path, municipality, self._filename), sep=';',
-                              usecols=list(self._column_names.keys())).rename(columns=self._column_names)
-        return OmnesDataArray(data=self._data.reset_index(drop=True)).expand_dims(
-            DataKind.MUNICIPALITY.value).assign_coords({DataKind.MUNICIPALITY.value: [municipality]})
+        data = read_csv(os.path.join(self._path, municipality, self._filename), sep=';',
+                        usecols=list(self._column_names.keys())).rename(columns=self._column_names)
+        return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(DataKind.MUNICIPALITY.value).assign_coords(
+            {DataKind.MUNICIPALITY.value: [municipality]})
 
 
 class ReadProduction(Read):
@@ -53,7 +54,8 @@ class ReadProduction(Read):
         user_data = DataStore()["pv_plants"]
         self._data = xr.concat(
             [self._pv_resource_reader.execute(self._data, municipality=municipality, user=user) for municipality in
-             municipalities for user in user_data.sel({DataKind.MUNICIPALITY.value: municipality})[DataKind.USER.value].values],
+             municipalities for user in
+             user_data.sel({DataKind.MUNICIPALITY.value: municipality})[DataKind.USER.value].values],
             dim=DataKind.USER.value)
         return self._data
 
@@ -147,8 +149,8 @@ class ReadBills(Read):
     _name = "bill_reader"
     _time_of_use_energy_column_names = {f'f{i}': f"{DataKind.TOU_ENERGY.value}{i}" for i in range(1,
                                                                                                   configuration.config.getint(
-                                                                                                        "tariff",
-                                                                                                        "number_of_time_of_use_periods") + 1)}
+                                                                                                      "tariff",
+                                                                                                      "number_of_time_of_use_periods") + 1)}
 
     _column_names = {'pod': DataKind.USER,  # code or name of the end user
                      'anno': DataKind.YEAR,  # year
@@ -165,15 +167,15 @@ class ReadBills(Read):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         super().execute(dataset, *args, **kwargs)
         # Check that each user has exactly 12 rows in the bills dataframe
-        if not (self._data[DataKind.USER].value_counts() == 12).all():
+        users = self._data.sel({"dim_1": DataKind.USER})
+        if not (np.all(users.groupby(users).count()==12)).all():
             logger.warning(
                 "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
                 " rows.")
         # Time of use labels
-        configuration.config.set_and_check("tariff", "time_of_use_labels", self._data.columns[
-            self._data.columns.isin(self._time_of_use_energy_column_names.values())],
+        configuration.config.set_and_check("tariff", "time_of_use_labels", self._data["dim_1"][self._data["dim_1"].isin(list(self._time_of_use_energy_column_names.values()))].values,
                                            setter=configuration.config.setarray, check=False)
-        return OmnesDataArray(data=self._data)
+        return self._data
 
 
 class ReadCommonData(Read):

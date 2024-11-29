@@ -39,15 +39,15 @@ class TransformUserData(Transform):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         dataset = dataset.rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}).assign_coords(
-            {DataKind.USER.value: dataset.sel({"dim_1": DataKind.USER}).squeeze().values}).drop(
-            labels=DataKind.USER, dim=DataKind.USER_DATA.value)
+            {DataKind.USER.value: dataset.sel({"dim_1": DataKind.USER}).squeeze().values}).drop(labels=DataKind.USER,
+                                                                                                dim=DataKind.USER_DATA.value)
         dataset.loc[..., DataKind.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x), dataset.sel(
             {DataKind.USER_DATA.value: DataKind.USER_TYPE}), vectorize=True)
         dataset.loc[..., [DataKind.USER_ADDRESS, DataKind.DESCRIPTION]] = xr.apply_ufunc(lambda x: x.strip(),
                                                                                          dataset.sel({
-                                                                                                 DataKind.USER_DATA.value: [
-                                                                                                     DataKind.USER_ADDRESS,
-                                                                                                     DataKind.DESCRIPTION]}),
+                                                                                             DataKind.USER_DATA.value: [
+                                                                                                 DataKind.USER_ADDRESS,
+                                                                                                 DataKind.DESCRIPTION]}),
                                                                                          vectorize=True)
         return dataset
 
@@ -60,13 +60,14 @@ class TransformBills(Transform):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         def get_bill_type(df):
-            return BillType.TIME_OF_USE if any(df.loc[:, DataKind.MONO_TARIFF].isnull()) else BillType.MONO
+            return BillType.TIME_OF_USE if any(df.loc[..., DataKind.MONO_TARIFF].isnull()) else BillType.MONO
 
         da = DataArray(list(itertools.chain.from_iterable(
-            [get_bill_type(df), ] * df.shape[0] for _, df in dataset.groupby(dataset.loc[:, DataKind.USER]))))
+            [get_bill_type(df.squeeze(drop=True)), ] * df.shape[1] for _, df in
+            dataset.groupby(dataset.squeeze().loc[..., DataKind.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [DataKind.BILL_TYPE, ]})
-        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
-            {"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
+        dataset = (
+        xr.concat([dataset, da], dim="dim_1").rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
 
         dataset = dataset.assign_coords(
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(
@@ -91,7 +92,7 @@ class ReshaperByYear(Transform):
         return dataset
 
 
-class TypicalLoadProfileTransformer(Transform):
+class TransformTypicalLoadProfile(Transform):
     _name = "typical_load_profile_transformer"
 
     def __init__(self, name=_name, *args, **kwargs):
@@ -181,24 +182,30 @@ class TransformBillsToLoadProfiles(Transform):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         typical_load_profiles = DataStore()["typical_load_profiles_gse"]
-        user_profiles = OmnesDataArray(
-            dims=(DataKind.USER.value, DataKind.MONTH.value, DataKind.DAY_TYPE.value, DataKind.HOUR.value),
-            coords={DataKind.USER.value: np.unique(dataset[DataKind.USER.value]),
-                    DataKind.MONTH.value: np.unique(dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH})),
-                    DataKind.DAY_TYPE.value: configuration.config.getarray("time", "day_types", int),
-                    DataKind.HOUR.value: range(24)})
+        user_profiles = OmnesDataArray(dims=(
+            DataKind.USER.value, DataKind.MONTH.value, DataKind.DAY_TYPE.value, DataKind.HOUR.value,
+            DataKind.MUNICIPALITY.value), coords={DataKind.USER.value: np.unique(dataset[DataKind.USER.value]),
+                                                  DataKind.MONTH.value: np.unique(
+                                                      dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH})),
+                                                  DataKind.DAY_TYPE.value: configuration.config.getarray("time",
+                                                                                                         "day_types",
+                                                                                                         int),
+                                                  DataKind.HOUR.value: range(24),
+                                                  DataKind.MUNICIPALITY.value: dataset[DataKind.MUNICIPALITY.value]})
 
-        grouper = xr.DataArray(pd.MultiIndex.from_arrays(
-            [dataset.sel(user_data=DataKind.MONTH).values, dataset[DataKind.USER.value].values],
-            names=['month', 'user'], ), dims=['user'], coords={"user": dataset[DataKind.USER.value].values}, )
-        for (month, user), ds in dataset.groupby(grouper):
-            selection = {DataKind.USER_TYPE.value: UserType.PDMF, DataKind.MONTH.value: month}
-            reference_profile = typical_load_profiles.sel(selection).squeeze()
-            aggregated_consumption_of_reference_profile = DataStore()["typical_aggregated_consumption"].sel(
-                selection).squeeze()
-            user_profiles.loc[user, month, :, :] = self.scale_profile(ds.sel(user_data=DataKind.BILL_TYPE).values[0],
-                                                                      ds, reference_profile,
-                                                                      aggregated_consumption_of_reference_profile)
+        for m, ds in dataset.groupby(DataKind.MUNICIPALITY.value):
+            grouper = xr.DataArray(pd.MultiIndex.from_arrays(
+                [ds.sel(user_data=DataKind.MONTH).squeeze().values, ds[DataKind.USER.value].values],
+                names=[DataKind.MONTH.value, DataKind.USER.value], ), dims=DataKind.USER.value,
+                coords={DataKind.USER.value: ds[DataKind.USER.value].values}, )
+            for (month, user), ds in ds.groupby(grouper):
+                selection = {DataKind.USER_TYPE.value: UserType.PDMF, DataKind.MONTH.value: month}
+                reference_profile = typical_load_profiles.sel(selection).squeeze()
+                aggregated_consumption_of_reference_profile = DataStore()["typical_aggregated_consumption"].sel(
+                    selection).squeeze()
+                user_profiles.loc[user, month, ..., m] = self.scale_profile(
+                    ds.sel(user_data=DataKind.BILL_TYPE).values[0, 0], ds, reference_profile,
+                    aggregated_consumption_of_reference_profile)
         return user_profiles
 
     @classmethod
@@ -219,17 +226,18 @@ class CreateYearlyProfile(Transform):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         ref_year = configuration.config.getint("time", "year")
-        output_data = OmnesDataArray(0., dims=(DataKind.USER.value, DataKind.TIME.value),
+        output_data = OmnesDataArray(0., dims=(DataKind.USER.value, DataKind.TIME.value, DataKind.MUNICIPALITY.value),
                                      coords={DataKind.USER.value: np.unique(dataset[DataKind.USER.value]),
                                              DataKind.TIME.value: date_range(start=f"{ref_year}-01-01",
                                                                              end=f"{ref_year + 1}-01-01",
                                                                              freq=configuration.config.get("time",
-                                                                                                             "resolution"),
-                                                                             inclusive="left")})
+                                                                                                           "resolution"),
+                                                                             inclusive="left"),
+                                             DataKind.MUNICIPALITY.value: dataset[DataKind.MUNICIPALITY.value]})
         for day in date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"):
             # Retrieve profiles in typical days
-            output_data.loc[:, f"{day:%Y-%m-%d}"] = dataset.sel(
-                {DataKind.DAY_TYPE.value: get_weekday_code(day), DataKind.MONTH.value: day.month}).squeeze().values
+            output_data.loc[:, f"{day:%Y-%m-%d}", :] = dataset.sel(
+                {DataKind.DAY_TYPE.value: get_weekday_code(day), DataKind.MONTH.value: day.month}).values
         return output_data
 
 
@@ -241,16 +249,19 @@ class AggregateProfileDataForTimePeriod(Transform):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         tou_labels = configuration.config.get("tariff", "time_of_use_labels")
-        output_data = OmnesDataArray(0., dims=(DataKind.USER.value, DataKind.TOU_ENERGY.value),
+        output_data = OmnesDataArray(0.,
+                                     dims=(DataKind.USER.value, DataKind.TOU_ENERGY.value, DataKind.MUNICIPALITY.value),
                                      coords={DataKind.USER.value: dataset[DataKind.USER.value],
-                                             DataKind.TOU_ENERGY.value: [*tou_labels, DataKind.ANNUAL_ENERGY]})
+                                             DataKind.TOU_ENERGY.value: [*tou_labels, DataKind.ANNUAL_ENERGY],
+                                             DataKind.MUNICIPALITY.value: np.unique(
+                                                 dataset[DataKind.MUNICIPALITY.value])})
         tou_time_slots = DataStore()["time_of_use_time_slots"]
         tou_time_slot_values = configuration.config.getarray("tariff", "tariff_time_slots", int)
         for day, ds in dataset.groupby(dataset.time.dt.dayofyear):
             day = pd.to_datetime(ds.time.values[0])
             ds = ds.assign_coords({DataKind.TIME.value: ds.time.dt.hour}).rename(
                 {DataKind.TIME.value: DataKind.HOUR.value})
-            output_data.loc[:, tou_labels] += xr.concat([ds.sel({DataKind.HOUR.value: tou_time_slots.sel(
+            output_data.loc[:, tou_labels, :] += xr.concat([ds.sel({DataKind.HOUR.value: tou_time_slots.sel(
                 {DataKind.DAY_TYPE.value: get_weekday_code(day)}) == tou_time_slot}).sum(
                 dim=DataKind.HOUR.value).assign_coords(
                 {DataKind.ANNUAL_ENERGY.value: f"energy{tou_time_slot + 1}"}).squeeze(drop=True) for tou_time_slot in
