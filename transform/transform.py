@@ -66,8 +66,8 @@ class TransformBills(Transform):
             [get_bill_type(df.squeeze(drop=True)), ] * df.shape[1] for _, df in
             dataset.groupby(dataset.squeeze().loc[..., DataKind.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [DataKind.BILL_TYPE, ]})
-        dataset = (
-        xr.concat([dataset, da], dim="dim_1").rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
+        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
+            {"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
 
         dataset = dataset.assign_coords(
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(
@@ -181,7 +181,9 @@ class TransformBillsToLoadProfiles(Transform):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        user_type = kwargs.pop("user_type", None)
         typical_load_profiles = DataStore()["typical_load_profiles_gse"]
+        users = DataStore()["users"]
         user_profiles = OmnesDataArray(dims=(
             DataKind.USER.value, DataKind.MONTH.value, DataKind.DAY_TYPE.value, DataKind.HOUR.value,
             DataKind.MUNICIPALITY.value), coords={DataKind.USER.value: np.unique(dataset[DataKind.USER.value]),
@@ -199,7 +201,13 @@ class TransformBillsToLoadProfiles(Transform):
                 names=[DataKind.MONTH.value, DataKind.USER.value], ), dims=DataKind.USER.value,
                 coords={DataKind.USER.value: ds[DataKind.USER.value].values}, )
             for (month, user), ds in ds.groupby(grouper):
-                selection = {DataKind.USER_TYPE.value: UserType.PDMF, DataKind.MONTH.value: month}
+                if user_type is None:
+                    ut = users.sel({DataKind.MUNICIPALITY.value: m, DataKind.USER_DATA.value: DataKind.USER_TYPE,
+                                    DataKind.USER.value: user}).values
+                else:
+                    ut = user_type
+                print(ut)
+                selection = {DataKind.USER_TYPE.value: ut, DataKind.MONTH.value: month}
                 reference_profile = typical_load_profiles.sel(selection).squeeze()
                 aggregated_consumption_of_reference_profile = DataStore()["typical_aggregated_consumption"].sel(
                     selection).squeeze()
@@ -214,7 +222,7 @@ class TransformBillsToLoadProfiles(Transform):
         scaler = cls._profile_scaler[bill_type]
         scaled_profile = scaler(bill.sel(user_data=cls.get_time_of_use_labels(bill_type)), *args, **kwargs)
         if scaler.status not in (Status.OPTIMAL, Status.OK):
-            logger.warning(f"Load profile scaler returned with invalid status: {scaler.status}")
+            logger.warning(f"Load profile scaler returned with error status: '{scaler.status}'")
         return scaled_profile
 
 
@@ -265,7 +273,7 @@ class AggregateProfileDataForTimePeriod(Transform):
                 {DataKind.DAY_TYPE.value: get_weekday_code(day)}) == tou_time_slot}).sum(
                 dim=DataKind.HOUR.value).assign_coords(
                 {DataKind.ANNUAL_ENERGY.value: f"energy{tou_time_slot + 1}"}).squeeze(drop=True) for tou_time_slot in
-                                                         tou_time_slot_values], dim=DataKind.ANNUAL_ENERGY.value)
+                                                            tou_time_slot_values], dim=DataKind.ANNUAL_ENERGY.value)
         output_data.loc[:, DataKind.ANNUAL_ENERGY] = output_data.loc[:, tou_labels].sum(dim="energy")
         return output_data
 

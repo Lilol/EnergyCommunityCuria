@@ -34,14 +34,15 @@ def plot_consumption_profiles(yearly_consumption_profiles):
             # Monthly consumption
             plt.figure()
             real = real.sortby(real.sel({DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).squeeze()).sel(
-                {DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).squeeze()
-            estim = data.groupby(DataKind.USER.value).sum(dim="time").sortby("user")
+                {DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).squeeze().sortby(DataKind.USER.value)
+            estim = data.groupby(DataKind.USER.value).sum(dim=DataKind.TIME.value).sortby(DataKind.USER.value)
             plt.barh(range(0, 2 * len(real), 2), real, label='Real')
             plt.barh(range(1, 1 + 2 * len(estim), 2), estim, label='Estimated')
             plt.legend()
             plt.yticks(range(0, 2 * len(real), 2), real[DataKind.USER.value].values)
             plt.xlabel('Energy, kWh')
-            plt.title(f'Yearly consumption of {user_type.value.upper()} in municipality {m}')
+            plt.title(f'Yearly consumption of {user_type.value.upper()} users in {m}')
+            plt.tight_layout()
             plt.show()
             plt.close()
 
@@ -54,13 +55,17 @@ def plot_monthly_consumption(data, title):
     plt.xlabel('Time, h')
     plt.ylabel('Power, kW')
     plt.title(title)
+    plt.tight_layout()
     plt.show()
+    plt.close()
 
     # Whole year
     plt.figure()
     data.sum(dim=DataKind.USER.value).to_pandas().plot()
+    plt.legend()
     plt.xlabel('Time, h')
     plt.ylabel('Power, kW')
     plt.title(title)
+    plt.tight_layout()
     plt.show()
     plt.close()

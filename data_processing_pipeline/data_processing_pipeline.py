@@ -1,8 +1,6 @@
 from data_processing_pipeline.data_processing_arbiter import DataProcessingArbiter
 from data_processing_pipeline.pipeline_stage import PipelineStage
-from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from data_storage.store_data import Store
 
 
 class TwoWayDictionary(dict):
@@ -63,6 +61,7 @@ class DataProcessingPipeline(TwoWayDictionary):
     def __init__(self, name, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
+        self._dataset = kwargs.pop("dataset", None)
         DataProcessingArbiter().register_pipeline(name, self)
         # Set pipeline workers
         # Pipeline workers' order is determined by their order of appearance
@@ -73,7 +72,7 @@ class DataProcessingPipeline(TwoWayDictionary):
         self.set(worker.stage, worker.name, worker)
 
     def execute(self, *args, **kwargs) -> OmnesDataArray:
-        dataset = None
+        dataset = self._dataset
         for _, processor in iter(self):
             dataset = processor.execute(dataset, *args, **kwargs)
         return dataset

@@ -128,7 +128,7 @@ class ScaleTimeOfUseProfile(ProfileScaler):
         total_consumption_by_time_slots = operands[2]
 
         # calculate scaling factors (one for each tariff time-slot)
-        scaling_factor = total_consumption_by_time_slots / total_reference_consumption_by_time_slots.squeeze().values
+        scaling_factor = total_reference_consumption_by_time_slots.squeeze().values / total_consumption_by_time_slots
         scaling_factor[scaling_factor.isnull()] = 0
 
         # evaluate load profiles by scaling the reference profiles
