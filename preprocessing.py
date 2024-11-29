@@ -4,6 +4,7 @@ from data_storage.store_data import Store
 from input.definitions import UserType
 from input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, ReadProduction
 from output.write import Write
+from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
     ExtractDayCountInTimeframe, ExtractTypicalYear
@@ -46,6 +47,7 @@ DataProcessingPipeline("users", workers=(
 DataProcessingPipeline("load_profiles_from_bills", workers=(
     ReadBills(),
     TransformBills(),
+    CheckAnnualSum(),
     Store("bills"),
     Write("data_users_bills"),
     TransformBillsToLoadProfiles(),
@@ -67,6 +69,7 @@ DataProcessingPipeline("visualize", workers=(
 DataProcessingPipeline("families", workers=(
     ReadBills(filename="bollette_domestici.csv"),
     TransformBills(),
+    CheckAnnualSum(),
     Store("families_bills"),
     TransformBillsToLoadProfiles(),
     CreateYearlyProfile(),

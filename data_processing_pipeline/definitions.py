@@ -1,11 +1,12 @@
-from enum import IntEnum
+from enum import IntEnum, auto
 
 
 class Stage(IntEnum):
     READ = 0
-    EXTRACT = 1
-    TRANSFORM = 2
-    STORE = 3
-    WRITE_OUT = 4
-    VISUALIZE = 5
-    INVALID = 6
+    EXTRACT = auto()
+    TRANSFORM = auto()
+    CHECK = auto()
+    STORE = auto()
+    WRITE_OUT = auto()
+    VISUALIZE = auto()
+    INVALID = auto()

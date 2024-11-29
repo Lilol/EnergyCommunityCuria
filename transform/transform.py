@@ -206,7 +206,6 @@ class TransformBillsToLoadProfiles(Transform):
                                     DataKind.USER.value: user}).values
                 else:
                     ut = user_type
-                print(ut)
                 selection = {DataKind.USER_TYPE.value: ut, DataKind.MONTH.value: month}
                 reference_profile = typical_load_profiles.sel(selection).squeeze()
                 aggregated_consumption_of_reference_profile = DataStore()["typical_aggregated_consumption"].sel(

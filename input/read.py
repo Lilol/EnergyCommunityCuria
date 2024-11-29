@@ -168,12 +168,13 @@ class ReadBills(Read):
         super().execute(dataset, *args, **kwargs)
         # Check that each user has exactly 12 rows in the bills dataframe
         users = self._data.sel({"dim_1": DataKind.USER})
-        if not (np.all(users.groupby(users).count()==12)).all():
+        if not (np.all(users.groupby(users).count() == 12)).all():
             logger.warning(
                 "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
                 " rows.")
         # Time of use labels
-        configuration.config.set_and_check("tariff", "time_of_use_labels", self._data["dim_1"][self._data["dim_1"].isin(list(self._time_of_use_energy_column_names.values()))].values,
+        configuration.config.set_and_check("tariff", "time_of_use_labels", self._data["dim_1"][
+            self._data["dim_1"].isin(list(self._time_of_use_energy_column_names.values()))].values,
                                            setter=configuration.config.setarray, check=False)
         return self._data
 

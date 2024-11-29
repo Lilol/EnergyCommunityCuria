@@ -4,17 +4,17 @@ from data_storage.data_store import DataStore
 from input.definitions import DataKind
 
 
-def plot_family_profiles(data_fam_year):
+def plot_family_profiles(data_fam_year, **kwargs):
     for m, ds in data_fam_year.groupby(DataKind.MUNICIPALITY.value):
         plot_monthly_consumption(ds.squeeze(dim="municipality"), f'Families profiles in municipality {m}')
 
 
-def plot_pv_profiles(data_plants_year):
+def plot_pv_profiles(data_plants_year, **kwargs):
     for m, ds in data_plants_year.groupby(DataKind.MUNICIPALITY.value):
         plot_monthly_consumption(ds.squeeze(dim="municipality"), f'Production profiles in municipality {m}')
 
 
-def plot_consumption_profiles(yearly_consumption_profiles):
+def plot_consumption_profiles(yearly_consumption_profiles, **kwargs):
     # Consumption profiles
     data_store = DataStore()
     user_data = data_store["users"]
@@ -62,7 +62,6 @@ def plot_monthly_consumption(data, title):
     # Whole year
     plt.figure()
     data.sum(dim=DataKind.USER.value).to_pandas().plot()
-    plt.legend()
     plt.xlabel('Time, h')
     plt.ylabel('Power, kW')
     plt.title(title)

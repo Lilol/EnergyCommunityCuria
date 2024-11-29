@@ -123,12 +123,12 @@ class ScaleTimeOfUseProfile(ProfileScaler):
         # scale reference profiles
         # evaluate the monthly consumption associated with the reference profile
         # divided into tariff time-slots
-        total_reference_consumption_by_time_slots = operands[0]
+        total_consumption_by_time_slots = operands[0]
         reference_profile = operands[1]
-        total_consumption_by_time_slots = operands[2]
+        total_reference_consumption_by_time_slots = operands[2]
 
         # calculate scaling factors (one for each tariff time-slot)
-        scaling_factor = total_reference_consumption_by_time_slots.squeeze().values / total_consumption_by_time_slots
+        scaling_factor = total_consumption_by_time_slots.squeeze().values / total_reference_consumption_by_time_slots
         scaling_factor[scaling_factor.isnull()] = 0
 
         # evaluate load profiles by scaling the reference profiles
