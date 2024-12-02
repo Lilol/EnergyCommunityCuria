@@ -32,7 +32,7 @@ class CheckAnnualSum(Check):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         time_of_use_labels = configuration.config.getarray("tariff", "time_of_use_labels", str)
-        groups = grouper(dataset, DataKind.USER_DATA.value, user_data=DataKind.MONTH)
+        groups = grouper(dataset, DataKind.USER.value, user_data=DataKind.MONTH)
         for (user, month), ds in dataset.groupby(groups):
             time_of_use_consumption = ds.sel({DataKind.USER_DATA.value: time_of_use_labels}).sum()
             annual_consumption = ds.sel({DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).sum()

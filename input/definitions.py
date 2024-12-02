@@ -29,6 +29,7 @@ class DataKind(OrderedEnum):
     BILL_TYPE = 'bill_type'
     MONO_TARIFF = 'mono_tariff'
     TARIFF_TIME_SLOT = "tariff_time_slot"
+    TOU = "tou"
 
 
 class BillType(OrderedEnum):

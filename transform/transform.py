@@ -228,7 +228,7 @@ class TransformBillsToLoadProfiles(Transform):
 
         for m, ds in dataset.groupby(DataKind.MUNICIPALITY.value):
             groups = grouper(ds, DataKind.USER.value, user_data=DataKind.MONTH)
-            for (month, user), ds in ds.groupby(groups):
+            for (user, month), ds in ds.groupby(groups):
                 if user_type is None:
                     ut = users.sel({DataKind.MUNICIPALITY.value: m, DataKind.USER_DATA.value: DataKind.USER_TYPE,
                                     DataKind.USER.value: user}).values

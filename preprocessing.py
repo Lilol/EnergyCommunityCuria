@@ -77,7 +77,7 @@ DataProcessingPipeline("families", workers=(
     CreateYearlyProfile(),
     Store("yearly_load_profiles_families"),
     Write("data_families_year"),
-    Apply(lambda x: x * configuration.config.getint('rec', 'number_of_families')),
+    Apply(operation=lambda x: x * configuration.config.getint('rec', 'number_of_families')),
     Write(f"families_{configuration.config.getint('rec', 'number_of_families')}"),
     Visualize("profiles", plot_family_profiles))).execute(user_type=UserType.PDMF)
 

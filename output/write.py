@@ -39,8 +39,10 @@ class Write(PipelineStage):
     def save_2d_data_array(self, dataset, name, **kwargs):
         output = dataset.to_pandas().map(convert_enum_to_value).rename(columns=convert_enum_to_value,
                                                                        index=convert_enum_to_value)
-        output.to_csv(join(self.output_path, kwargs.pop("municipality", ""), name if ".csv" in name else f"{name}.csv"),
-                      **self.csv_properties, index_label=output.index.name, **kwargs)
+        output_path = join(self.output_path, kwargs.pop("municipality", ""), kwargs.pop("subdirectory", ""))
+        makedirs(output_path, exist_ok=True)
+        output.to_csv(join(output_path, name if ".csv" in name else f"{name}.csv"), **self.csv_properties,
+                      index_label=output.index.name, **kwargs)
 
     def write(self, output: DataFrame, name=None):
         self.execute(output.to_xarray(), filename=name)
@@ -67,10 +69,9 @@ class WriteSeparately(Write):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self.output_path = join(self.output_path, kwargs.get("subdirectory"))
-        makedirs(self.output_path, exist_ok=True)
+        self.subdirectory = kwargs.get("subdirectory")
         self.separate_by = kwargs.get("separate_by", "user")
 
     def write_array(self, dataset: OmnesDataArray, name, **kwargs):
         for idx, da in dataset.groupby(self.separate_by):
-            self.save_2d_data_array(da, idx)
+            self.save_2d_data_array(da, idx, subdirectory=self.subdirectory, **kwargs)

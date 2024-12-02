@@ -7,14 +7,15 @@ import numpy as np
 from numpy import arange
 from pandas import DataFrame, concat, read_csv
 
-from utility import configuration
 from input.definitions import DataKind
 from input.read import ReadBills
 from output.write import Write
+from utility import configuration
 from utility.day_of_the_week import df_year
 
 # Data processing
 ref_year = configuration.config.getint("time", "year")
+
 
 # ----------------------------------------------------------------------------
 # Useful functions
@@ -39,7 +40,7 @@ def find_n_fam(sc, n_fam_max, p_plants, p_users, p_fam, step=25):
         corresponding shared energy ratio.
     """
 
-    # Helper function - fin closest-step integer
+    # Helper function - find closest-step integer
     def find_closer(n_fam):
         """Return closer integer to n_fam, considering the step."""
         if n_fam % step == 0:
@@ -81,7 +82,6 @@ def find_n_fam(sc, n_fam_max, p_plants, p_users, p_fam, step=25):
         return n_fam_high, sc_high
 
     # Loop to find best value
-    # TODO: kill it with fire
     while True:
         # Stopping criterion (considering that n_fam is integer)
         if n_fam_high - n_fam_low <= step:
@@ -111,8 +111,9 @@ n_fams_ = configuration.config.getarray("rec", "number_of_families", int)  # [0,
 # Directory with files
 directory_data = 'DatiProcessati'
 
+# 1.) Reading previously dumped files
+
 # Names of the files to load https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
-# TODO: filenames always into config, or kill it with fire
 # file_plants = "data_plants.csv"  # list of plants
 # file_users = "data_users.csv"  # list of end users
 file_plants_tou = "data_plants_tou.csv"  # monthly production data
@@ -125,8 +126,8 @@ file_fam_year = "data_fam_year.csv"  # one-year hourly family consumption data
 # Load data
 data_plants_tou = read_csv(os.path.join(directory_data, file_plants_tou), sep=';')
 data_users_tou = read_csv(os.path.join(directory_data, file_users_tou), sep=';')
-df_fam_tou = read_csv(os.path.join(directory_data, file_fam_tou), sep=';').drop([DataKind.USER, DataKind.YEAR], axis=1).fillna(
-    0)
+df_fam_tou = read_csv(os.path.join(directory_data, file_fam_tou), sep=';').drop([DataKind.USER, DataKind.YEAR],
+                                                                                axis=1).fillna(0)
 data_plants_year = read_csv(os.path.join(directory_data, file_plants_year), sep=';')
 data_users_year = read_csv(os.path.join(directory_data, file_users_year), sep=';')
 df_fam = read_csv(os.path.join(directory_data, file_fam_year), sep=';').drop(DataKind.USER, axis=1)
@@ -135,11 +136,14 @@ df_fam = read_csv(os.path.join(directory_data, file_fam_year), sep=';').drop(Dat
 # Get total production and consumption data
 
 # Here we manage monthly ToU values, we sum all end users/plants
+
+# 2.) Get total consumption and production by months and time of use
 cols = [DataKind.MONTH]
 df_plants_tou = data_plants_tou.groupby(DataKind.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
 df_users_tou = data_users_tou.groupby(DataKind.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
 
 # We create a single dataframe for both production and consumption
+# 3.) 2D frame with rows: TOU time slots, cols are families, users and production
 df_months = DataFrame()
 for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants_tou.iterrows(), df_users_tou.iterrows(),
                                                  df_fam_tou.iterrows()):
@@ -148,23 +152,27 @@ for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants_tou.iterrows(), df_us
     fam = df_f.loc[ReadBills._time_of_use_energy_column_names].values
 
     df_temp = concat([df_prod[cols]] * len(prod), axis=1).T
-    col_tou = 'tou'
-    df_temp[col_tou] = arange(len(prod))
+    df_temp[DataKind.TOU] = arange(len(prod))
     df_temp[DataKind.PRODUCTION] = prod
     df_temp[DataKind.CONSUMPTION] = cons
     df_temp[DataKind.FAMILY] = fam
 
     df_months = concat((df_months, df_temp), axis=0)
 
+
+# 4.) Merge aggregated consumption/production data into user info dataframe
 # Here, we manage hourly data, we sum all end users/plants
 # cols = [ColumnName.YEAR, ColumnName.SEASON, ColumnName.MONTH, ColumnName.WEEK, ColumnName.DAY_OF_MONTH, ColumnName.DAY_OF_WEEK, ColumnName.DAY_TYPE]
 df_plants = df_year.loc[df_year[DataKind.YEAR] == ref_year, cols]
-df_plants = df_plants.merge(data_plants_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
-                            on=[DataKind.MONTH, DataKind.DAY_OF_MONTH])
+df_plants = df_plants.merge(
+    data_plants_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
+    on=[DataKind.MONTH, DataKind.DAY_OF_MONTH])
 df_users = df_year.loc[df_year[DataKind.YEAR] == ref_year, cols]
-df_users = df_users.merge(data_users_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
-                          on=[DataKind.MONTH, DataKind.DAY_OF_MONTH])
+df_users = df_users.merge(
+    data_users_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
+    on=[DataKind.MONTH, DataKind.DAY_OF_MONTH])
 
+# 5.) I thought we already did this, but this is for hourly data, not aggregated
 # We create a single dataframe for both production and consumption
 df_hours = DataFrame()
 for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(), df_users.iterrows(), df_fam.iterrows()):
@@ -243,8 +251,8 @@ def aggregated_sc(groupby, n_fam):
 
 # Setup to aggregate in time
 groupbys = dict(sc_year=DataKind.YEAR, sc_season=DataKind.SEASON, sc_month=DataKind.MONTH, sc_week=DataKind.WEEK,
-                sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH], sc_hour=[DataKind.MONTH, DataKind.DAY_OF_MONTH,
-                                                                         DataKind.HOUR])
+                sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH],
+                sc_hour=[DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.HOUR])
 
 results = {label: [] for label in groupbys.keys()}
 results['sc_tou'] = []
@@ -284,7 +292,8 @@ for n_fam in n_fams:
     df_hhours['shared'] = shared
 
     sh1 = df_hhours.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum()['shared'].values
-    sh2 = np.minimum(*df_hhours.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH])[['injections', 'withdrawals']].sum().values.T)
+    sh2 = np.minimum(
+        *df_hhours.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH])[['injections', 'withdrawals']].sum().values.T)
 
     plt.figure()
     plt.plot(np.diff(sorted(sh2 - sh1)), label=f"{n_fam}", color='lightgrey')
@@ -328,7 +337,6 @@ for i, n_fam in enumerate(n_fams):
 
 scenarios = DataFrame(scenarios)
 
-
 # TODO: use lambda or kill it with fire
 # Add limit SC
 # sc_target = {n_fam: met_targets[i] for i, n_fam in enumerate(n_fams)}
@@ -346,6 +354,5 @@ scenarios['sc_week'] = scenarios['n_fam'].map(sc_week)
 scenarios['sc_month'] = scenarios['n_fam'].map(sc_month)
 scenarios['sc_season'] = scenarios['n_fam'].map(sc_season)
 scenarios['sc_year'] = scenarios['n_fam'].map(sc_year)
-
 
 Write().write(scenarios, "scenarios")
