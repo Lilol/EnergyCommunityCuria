@@ -1,9 +1,23 @@
 # ----------------------------------------------------------------------------
 # Import statement
-import numpy as np
 from collections.abc import Iterable
+
+import matplotlib
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
+
+alpha = 0.8
+
+# General setup for plots
+def init_plot_properties():
+    cm_to_inch = 2.54
+    fig_width = 16 / cm_to_inch  # inch
+    fig_height = 8 / cm_to_inch  # inch
+    fontsize = 16
+    global alpha
+    alpha = 0.8
+    matplotlib.rcParams.update({'font.size': fontsize, 'figure.figsize': (fig_width, fig_height)})
 
 
 # Check if colormap is discrete
@@ -72,8 +86,7 @@ def get_colors(labels, colors):
 
 
 # Make a figure with one or two subplot(s)
-def make_fig(make_legend=False, figsize=(12, 10), legend_loc='column',
-             gridspec_kw=None):
+def make_fig(make_legend=False, figsize=(12, 10), legend_loc='column', gridspec_kw=None):
     """
     Create a figure with one or two subplots based on the specified parameters.
 
@@ -106,14 +119,12 @@ def make_fig(make_legend=False, figsize=(12, 10), legend_loc='column',
         elif legend_loc == 'row':
             nrows, ncols = 2, 1
         else:
-            raise ValueError(
-                "Invalid legend_loc value. Should be 'column' or 'row'.")
+            raise ValueError("Invalid legend_loc value. Should be 'column' or 'row'.")
     else:
         nrows, ncols = 1, 1
 
     # Create the figure and subplots based on the specified parameters
-    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize,
-                           gridspec_kw=gridspec_kw)
+    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, gridspec_kw=gridspec_kw)
 
     # If there are multiple subplots, assign the first subplot to ax and the
     # second subplot to ax_leg
@@ -125,37 +136,23 @@ def make_fig(make_legend=False, figsize=(12, 10), legend_loc='column',
     return fig, ax, ax_leg
 
 
-
 # Personalized pie/doughnut chart
-def pie_chart(counts, labels=None, autopct='', labels_pos=None, pcts_pos=None,
-              colors=None, ax=None, ax_leg=None, plot_zeros=False, **kwargs):
-    """
-
-    """
-
-    # Check parameters
-    if autopct is None:
-        autopct = '' #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
+def pie_chart(counts, labels=None, autopct='', labels_pos=None, pcts_pos=None, colors=None, ax=None, ax_leg=None,
+              plot_zeros=False, **kwargs):
     # Manage optional parameters
     # # Fontsize for everything
     # fontsize = kwargs.pop('fontsize', 15)
     # Colormap
     cmap = kwargs.pop('cmap', None)
     #
-    makefig_kw = {'figsize': (12, 10), 'make_legend': False,
-                  **kwargs.pop('makefig_kw', dict())}
+    makefig_kw = {'figsize': (12, 10), 'make_legend': False, **kwargs.pop('makefig_kw', dict())}
     #
     # Annotation kwargs
-    annotate_props = {'arrowprops': dict(arrowstyle='-'),
-                      #'fontsize': fontsize,
-                      'bbox': dict(boxstyle="square,pad=0.3", fc='w', ec='k',
-                                   lw=0.72),
-                      'zorder': 0,
-                      'va': 'center',
+    annotate_props = {'arrowprops': dict(arrowstyle='-'),  # 'fontsize': fontsize,
+                      'bbox': dict(boxstyle="square,pad=0.3", fc='w', ec='k', lw=0.72), 'zorder': 0, 'va': 'center',
                       **kwargs.pop('annotate_props', dict())}
     # Legend kwargs
-    legend_props = {'loc': 'center', #'fontsize': fontsize,
+    legend_props = {'loc': 'center',  # 'fontsize': fontsize,
                     **kwargs.pop('legend_props', dict())}
 
     # Pie kwargs
@@ -173,12 +170,10 @@ def pie_chart(counts, labels=None, autopct='', labels_pos=None, pcts_pos=None,
 
     # Select data
     if not plot_zeros:
-        counts, labels = zip(*[(count, label) for count, label in
-                               zip(counts, labels) if count > 0])
+        counts, labels = zip(*[(count, label) for count, label in zip(counts, labels) if count > 0])
 
     # Make pie plot
-    wedges, texts, autotexts = ax.pie(counts, labels=labels, colors=colors,
-                                      autopct=autopct, **kwargs)
+    wedges, texts, autotexts = ax.pie(counts, labels=labels, colors=colors, autopct=autopct, **kwargs)
 
     #
     if pcts_pos == labels_pos is not None:
@@ -200,18 +195,14 @@ def pie_chart(counts, labels=None, autopct='', labels_pos=None, pcts_pos=None,
                 x = np.cos(np.deg2rad(ang))
                 horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
                 connectionstyle = f"angle,angleA=0,angleB={ang}"
-                annotate_props["arrowprops"].update(
-                    {"connectionstyle": connectionstyle})
-                ax.annotate(text_list[i].get_text(), xy=(x, y),
-                            xytext=(1.35 * np.sign(x), 1.4 * y),
-                            horizontalalignment=horizontalalignment,
-                            **annotate_props)
+                annotate_props["arrowprops"].update({"connectionstyle": connectionstyle})
+                ax.annotate(text_list[i].get_text(), xy=(x, y), xytext=(1.35 * np.sign(x), 1.4 * y),
+                            horizontalalignment=horizontalalignment, **annotate_props)
 
         #
         elif pos == 'legend':
-            legend_elements = [Patch(label=text.get_text(),
-                                     color=wedge.get_facecolor())
-                               for text, wedge in zip(text_list, wedges)]
+            legend_elements = [Patch(label=text.get_text(), color=wedge.get_facecolor()) for text, wedge in
+                               zip(text_list, wedges)]
             if ax_leg is None:
                 ax.legend(handles=legend_elements, **legend_props)
             else:
@@ -223,16 +214,6 @@ def pie_chart(counts, labels=None, autopct='', labels_pos=None, pcts_pos=None,
             text.remove()
 
     return ax
-
-
-labels1 = 'Cats', 'Pigs', 'Dogs', 'Mice'
-sizes1 = [15, 30, 45, 10]
-
-labels2 = ['Brown', 'Black', 'White'] * len(labels1)
-sizes2 = [1, 9, 5,
-          20, 10, 0,
-          15, 15, 15,
-          2, 2, 6]
 
 
 # #%%

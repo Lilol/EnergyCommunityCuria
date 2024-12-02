@@ -20,12 +20,6 @@ from visualization.plotting_utils import get_colors_from_map, pie_chart
 
 if __name__ == '__main__':
     # ----------------------------------------------------------------------------
-    # General setup for plots
-    fig_width = 16 / 2.54  # inch (SETUP)
-    fig_height = 8 / 2.54  # inch (SETUP)
-    fontsize = 16  # (SETUP)
-    alpha = 0.8  # (SETUP)
-    mpl.rcParams.update({'font.size': fontsize, 'figure.figsize': (fig_width, fig_height)})
     divide_energy = 1000
     if divide_energy == 1:
         unit_energy = 'kWh'

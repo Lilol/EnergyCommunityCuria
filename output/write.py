@@ -1,4 +1,3 @@
-from enum import Enum
 from os import makedirs
 from os.path import join
 
@@ -9,16 +8,13 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from utility import configuration
+from utility.enum_definitions import convert_enum_to_value
 
 
 class Write(PipelineStage):
     _name = "output_writer"
     stage = Stage.WRITE_OUT
     csv_properties = {"sep": ';', "index": True, "float_format": '%.4f'}
-
-    @staticmethod
-    def convert_enum_to_value(x):
-        return x.value if isinstance(x, Enum) else x
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -29,20 +25,35 @@ class Write(PipelineStage):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
         if DataKind.MUNICIPALITY.value not in dataset.dims:
-            self.save_2d_dataarray(dataset, name)
+            self.save_2d_data_array(dataset, name)
             return dataset
 
         for municipality in dataset[DataKind.MUNICIPALITY.value].values:
             makedirs(join(self.output_path, municipality), exist_ok=True)
-            self.save_2d_dataarray(dataset.sel({DataKind.MUNICIPALITY.value: municipality}), name,
-                                   municipality=municipality)
+            self.save_2d_data_array(dataset.sel({DataKind.MUNICIPALITY.value: municipality}), name,
+                                    municipality=municipality)
         return dataset
 
-    def save_2d_dataarray(self, dataset, name, **kwargs):
-        output = dataset.to_pandas().map(self.convert_enum_to_value).rename(columns=self.convert_enum_to_value,
-                                                                            index=self.convert_enum_to_value)
+    def save_2d_data_array(self, dataset, name, **kwargs):
+        output = dataset.to_pandas().map(convert_enum_to_value).rename(columns=convert_enum_to_value,
+                                                                       index=convert_enum_to_value)
         output.to_csv(join(self.output_path, kwargs.pop("municipality", ""), name if ".csv" in name else f"{name}.csv"),
-                      **self.csv_properties, index_label=output.index.name)
+                      **self.csv_properties, index_label=output.index.name, **kwargs)
 
     def write(self, output: DataFrame, name=None):
         self.execute(output.to_xarray(), filename=name)
+
+
+class WriteGseProfile(Write):
+    _name = "output_writer"
+    csv_properties = {"sep": ';', "index": True, "float_format": '%.8f'}
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+        self.output_path = configuration.config.get("path", "reference_profile_source")
+        self.filename = kwargs.get("filename", "gse_ref_profiles")
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        name = kwargs.get("filename", self.filename)
+        self.save_2d_data_array(dataset, name)
+        return dataset

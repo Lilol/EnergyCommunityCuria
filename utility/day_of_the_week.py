@@ -15,7 +15,7 @@ year = configuration.config.getint("time", "year")
 def get_weekday_code(day):
     # 0: Weekdays
     # 1: Saturday
-    # 2: Sunday and holidays
+    # 2: Sunday and holiday
     hds = holidays.country_holidays(configuration.config.get("global", "country"), years=day.year)
     if day in hds:
         return 2

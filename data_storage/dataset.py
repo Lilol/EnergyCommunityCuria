@@ -2,4 +2,4 @@ from xarray import DataArray
 
 
 class OmnesDataArray(DataArray):
-    pass
+    __slots__ = []

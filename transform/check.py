@@ -8,6 +8,7 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from utility import configuration
+from utility.definitions import grouper
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +32,8 @@ class CheckAnnualSum(Check):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         time_of_use_labels = configuration.config.getarray("tariff", "time_of_use_labels", str)
-        grouper = xr.DataArray(pd.MultiIndex.from_arrays(
-            [dataset.sel(user_data=DataKind.MONTH).squeeze().values, dataset[DataKind.USER.value].values],
-            names=[DataKind.MONTH.value, DataKind.USER.value], ), dims=DataKind.USER.value,
-            coords={DataKind.USER.value: dataset[DataKind.USER.value].values}, )
-        for (month, user), ds in dataset.groupby(grouper):
+        groups = grouper(dataset, DataKind.USER_DATA.value, user_data=DataKind.MONTH)
+        for (user, month), ds in dataset.groupby(groups):
             time_of_use_consumption = ds.sel({DataKind.USER_DATA.value: time_of_use_labels}).sum()
             annual_consumption = ds.sel({DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).sum()
             if time_of_use_consumption.values != annual_consumption.values:

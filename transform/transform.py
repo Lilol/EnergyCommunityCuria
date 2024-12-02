@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pandas import timedelta_range, date_range
+from pandas import timedelta_range, date_range, to_datetime
 from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
@@ -16,6 +16,7 @@ from operation.definitions import Status
 from operation.scale_profile import ProportionateScaler, ScaleTimeOfUseProfile
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
+from utility.definitions import grouper
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,35 @@ class Transform(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError
+
+
+class TransformReferenceProfile(PipelineStage):
+    _name = "ref_profile_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        dataset = dataset.rename({"dim_1": DataKind.USER_DATA.value}).assign_coords(
+            {"date": to_datetime(dataset.date.date, format="ISO8601").floor("h")})
+        da = OmnesDataArray(xr.apply_ufunc(get_weekday_code, dataset.date.dt.date, vectorize=True),
+                            dims=DataKind.DATE.value, coords={DataKind.DATE.value: dataset.date}).expand_dims(
+            DataKind.USER_DATA.value).assign_coords({DataKind.USER_DATA.value: [DataKind.DAY_TYPE, ]})
+        dataset = xr.concat([dataset, da], dim=DataKind.USER_DATA.value)
+
+        typical_profiles = None
+        for user_type in UserType:
+            if user_type == UserType.PV:
+                continue
+            da = xr.concat([xr.concat([dk.sel(user_data=user_type).groupby(dk.date.dt.hour).mean(skipna=True,
+                                                                                                 keep_attrs=False).assign_coords(
+                hour=[f'y_j{int(dt)}_i{int(h)}' for h in range(24)], month=int(m)).squeeze(drop=True) for dt, dk in
+                                       dk.groupby(dk.sel({DataKind.USER_DATA.value: DataKind.DAY_TYPE}))],
+                                      dim=DataKind.HOUR.value).squeeze(drop=True) for m, dk in
+                dataset.groupby(dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH}))], dim="type").assign_coords(
+                type=[user_type.value] * 12).drop({DataKind.USER_DATA.value: user_type})
+            typical_profiles = xr.concat([typical_profiles, da], dim="type") if typical_profiles is not None else da
+        return typical_profiles.set_index(type="type")
 
 
 class TransformUserData(Transform):
@@ -196,11 +226,8 @@ class TransformBillsToLoadProfiles(Transform):
                                                   DataKind.MUNICIPALITY.value: dataset[DataKind.MUNICIPALITY.value]})
 
         for m, ds in dataset.groupby(DataKind.MUNICIPALITY.value):
-            grouper = xr.DataArray(pd.MultiIndex.from_arrays(
-                [ds.sel(user_data=DataKind.MONTH).squeeze().values, ds[DataKind.USER.value].values],
-                names=[DataKind.MONTH.value, DataKind.USER.value], ), dims=DataKind.USER.value,
-                coords={DataKind.USER.value: ds[DataKind.USER.value].values}, )
-            for (month, user), ds in ds.groupby(grouper):
+            groups = grouper(ds, DataKind.USER.value, user_data=DataKind.MONTH)
+            for (month, user), ds in ds.groupby(groups):
                 if user_type is None:
                     ut = users.sel({DataKind.MUNICIPALITY.value: m, DataKind.USER_DATA.value: DataKind.USER_TYPE,
                                     DataKind.USER.value: user}).values

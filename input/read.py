@@ -4,7 +4,7 @@ from os.path import join
 
 import numpy as np
 import xarray as xr
-from pandas import read_csv
+from pandas import read_csv, read_excel
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
@@ -12,6 +12,7 @@ from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind, PvDataSource
 from utility import configuration
+from utility.enum_definitions import convert_enum_to_value, convert_value_to_enum
 
 logger = logging.getLogger(__name__)
 
@@ -209,3 +210,19 @@ class ReadTypicalLoadProfile(ReadCommonData):
     # Reference profiles from GSE
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
+
+
+class ReadGseDatabase(ReadTypicalLoadProfile):
+    _name = "gse_database_reader"
+    _column_names = convert_value_to_enum
+    _directory = "DatabaseGSE"
+    filename = "gse_ref_profiles.xlsx"
+
+    # Reference profiles from GSE
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        self._data = read_excel(join(self._path, self._filename), index_col=0, header=0, parse_dates=True,
+                                date_format="%d.%m.%Y %H.%M").rename(columns=lambda x: ReadGseDatabase._column_names(x))
+        return OmnesDataArray(data=self._data)
