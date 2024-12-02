@@ -270,6 +270,7 @@ class QuadraticOptimizationScaler(ProfileScaler):
         Author : G. Lorenti (gianmarco.lorenti@polito.it)
         Date : 17.11.2022 (last update: 17.11.2022)
         """
+        # TODO: implement it in xarray
         total_reference_consumption_by_time_slots = operands[0]
         reference_profile = operands[1]
         total_consumption_by_time_slots = operands[2]

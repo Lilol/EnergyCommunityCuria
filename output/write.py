@@ -25,14 +25,16 @@ class Write(PipelineStage):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         name = kwargs.get("filename", self.filename)
         if DataKind.MUNICIPALITY.value not in dataset.dims:
-            self.save_2d_data_array(dataset, name)
+            self.write_array(dataset, name)
             return dataset
 
         for municipality in dataset[DataKind.MUNICIPALITY.value].values:
             makedirs(join(self.output_path, municipality), exist_ok=True)
-            self.save_2d_data_array(dataset.sel({DataKind.MUNICIPALITY.value: municipality}), name,
-                                    municipality=municipality)
+            self.write_array(dataset.sel({DataKind.MUNICIPALITY.value: municipality}), name, municipality=municipality)
         return dataset
+
+    def write_array(self, dataset: OmnesDataArray, name, **kwargs):
+        self.save_2d_data_array(dataset, name, **kwargs)
 
     def save_2d_data_array(self, dataset, name, **kwargs):
         output = dataset.to_pandas().map(convert_enum_to_value).rename(columns=convert_enum_to_value,
@@ -57,3 +59,18 @@ class WriteGseProfile(Write):
         name = kwargs.get("filename", self.filename)
         self.save_2d_data_array(dataset, name)
         return dataset
+
+
+class WriteSeparately(Write):
+    _name = "separated_writer"
+    csv_properties = {"sep": ';', "index": True, "float_format": '%.8f'}
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+        self.output_path = join(self.output_path, kwargs.get("subdirectory"))
+        makedirs(self.output_path, exist_ok=True)
+        self.separate_by = kwargs.get("separate_by", "user")
+
+    def write_array(self, dataset: OmnesDataArray, name, **kwargs):
+        for idx, da in dataset.groupby(self.separate_by):
+            self.save_2d_data_array(da, idx)

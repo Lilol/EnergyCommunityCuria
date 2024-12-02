@@ -57,6 +57,7 @@ class TransformReferenceProfile(PipelineStage):
                                       dim=DataKind.HOUR.value).squeeze(drop=True) for m, dk in
                 dataset.groupby(dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH}))], dim="type").assign_coords(
                 type=[user_type.value] * 12).drop({DataKind.USER_DATA.value: user_type})
+            # TODO: add month info to frame as a column
             typical_profiles = xr.concat([typical_profiles, da], dim="type") if typical_profiles is not None else da
         return typical_profiles.set_index(type="type")
 
@@ -315,3 +316,14 @@ class TransformTimeOfUseTimeSlots(Transform):
                                          coords={DataKind.COUNT.value: unique_numbers[0]}).expand_dims(
             {DataKind.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
             (unique_numbers := np.unique(a, return_counts=True))], dim=DataKind.DAY_TYPE.value)
+
+
+class Apply(Transform):
+    _name = "apply"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+        self.operation = kwargs.pop("operation", lambda x: x)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        return self.operation(dataset)

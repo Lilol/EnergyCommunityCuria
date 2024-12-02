@@ -3,14 +3,15 @@ from data_storage.data_store import DataStore
 from data_storage.store_data import Store
 from input.definitions import UserType
 from input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, ReadProduction
-from output.write import Write
+from output.write import Write, WriteSeparately
 from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
     ExtractDayCountInTimeframe, ExtractTypicalYear
 from transform.transform import TransformTariffData, TransformTypicalLoadProfile, TransformUserData, \
     TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
-    AggregateProfileDataForTimePeriod, TransformTimeOfUseTimeSlots
+    AggregateProfileDataForTimePeriod, TransformTimeOfUseTimeSlots, Apply
+from utility import configuration
 from utility.init_logger import init_logger
 from visualization.preprocessing_visualization import plot_family_profiles, plot_pv_profiles, plot_consumption_profiles
 from visualization.visualize import Visualize
@@ -54,7 +55,8 @@ DataProcessingPipeline("load_profiles_from_bills", workers=(
     Store("load_profiles_from_bills"),
     CreateYearlyProfile(),
     Store("yearly_load_profiles_from_bills"),
-    Write("data_users_year"))).execute()
+    Write("data_users_year"),
+    WriteSeparately(subdirectory="Loads"))).execute()
 
 DataProcessingPipeline("annual_consumption_to_bill_data",
                        dataset=DataStore()["users"],
@@ -75,6 +77,8 @@ DataProcessingPipeline("families", workers=(
     CreateYearlyProfile(),
     Store("yearly_load_profiles_families"),
     Write("data_families_year"),
+    Apply(lambda x: x * configuration.config.getint('rec', 'number_of_families')),
+    Write(f"families_{configuration.config.getint('rec', 'number_of_families')}"),
     Visualize("profiles", plot_family_profiles))).execute(user_type=UserType.PDMF)
 
 DataProcessingPipeline("pv_plants", workers=(
@@ -92,4 +96,5 @@ DataProcessingPipeline("pv_production", workers=(
     CreateYearlyProfile(),
     Visualize("profiles_by_month", plot_pv_profiles),
     AggregateProfileDataForTimePeriod(),
-    Write("data_plants_year"))).execute()
+    Write("data_plants_year"),
+    WriteSeparately(subdirectory="Generators"))).execute()
