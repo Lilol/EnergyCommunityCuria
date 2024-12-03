@@ -1,14 +1,15 @@
 # Data management
-import os
 
 # Visualization
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy import arange
-from pandas import DataFrame, concat, read_csv
+from pandas import DataFrame, concat
 
+from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
+from data_storage.store_data import Store
 from input.definitions import DataKind
-from input.read import ReadBills
+from input.read import ReadBills, Read
 from output.write import Write
 from utility import configuration
 from utility.day_of_the_week import df_year
@@ -116,27 +117,27 @@ directory_data = 'DatiProcessati'
 # Names of the files to load https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
 # file_plants = "data_plants.csv"  # list of plants
 # file_users = "data_users.csv"  # list of end users
-file_plants_tou = "data_plants_tou.csv"  # monthly production data
-file_users_tou = "data_users_tou.csv"  # monthly consumption data
-file_fam_tou = "data_fam_tou.csv"  # monthly family consumption data
-file_plants_year = "data_plants_year.csv"  # one-year hourly production data
-file_users_year = "data_users_year.csv"  # one-year hourly consumption data
-file_fam_year = "data_fam_year.csv"  # one-year hourly family consumption data
 
-# Load data
-data_plants_tou = read_csv(os.path.join(directory_data, file_plants_tou), sep=';')
-data_users_tou = read_csv(os.path.join(directory_data, file_users_tou), sep=';')
-df_fam_tou = read_csv(os.path.join(directory_data, file_fam_tou), sep=';').drop([DataKind.USER, DataKind.YEAR],
-                                                                                axis=1).fillna(0)
-data_plants_year = read_csv(os.path.join(directory_data, file_plants_year), sep=';')
-data_users_year = read_csv(os.path.join(directory_data, file_users_year), sep=';')
-df_fam = read_csv(os.path.join(directory_data, file_fam_year), sep=';').drop(DataKind.USER, axis=1)
+input_properties = {"input_root": configuration.config.get("path", "output")}
+
+DataProcessingPipeline("read_and_store",
+                       workers=(
+                        Read(filename="data_plants_tou", **input_properties),
+                       Store("pv_plants"),
+                       Read(filename="data_users_tou", **input_properties),
+                       Store("users"),
+                       Read(filename="data_fam_tou", **input_properties),
+                       Store("families"),
+                       Read(filename="data_plants_year", **input_properties),
+                       Store("pv_profiles"),
+                       Read(filename="data_users_year", **input_properties),
+                       Store("user_profiles"),
+                       Read(filename="data_families_year", **input_properties),
+                       Store("family_profiles"))).execute()
 
 # ----------------------------------------------------------------------------
 # Get total production and consumption data
-
 # Here we manage monthly ToU values, we sum all end users/plants
-
 # 2.) Get total consumption and production by months and time of use
 cols = [DataKind.MONTH]
 df_plants_tou = data_plants_tou.groupby(DataKind.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
@@ -337,7 +338,6 @@ for i, n_fam in enumerate(n_fams):
 
 scenarios = DataFrame(scenarios)
 
-# TODO: use lambda or kill it with fire
 # Add limit SC
 # sc_target = {n_fam: met_targets[i] for i, n_fam in enumerate(n_fams)}
 sc_tou = {n_fam: results['sc_tou'][i] for i, n_fam in enumerate(n_fams)}

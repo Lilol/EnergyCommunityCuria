@@ -7,6 +7,10 @@ from pandas import MultiIndex
 from xarray import DataArray
 
 
+def append_extension(name, ext='.csv'):
+    return name if ext in name else f"{name}{ext}"
+
+
 @functools.total_ordering
 class OrderedEnum(Enum):
     @classmethod
@@ -21,14 +25,13 @@ class OrderedEnum(Enum):
         return NotImplemented
 
 
-
-
 def grouper(data_array, *grouper_dims, **grouper_vars):
     def check_grouper_vars(**gv):
         for key, val in gv.items():
             if not isinstance(val, Iterable):
-                gv[key] = [val,]
+                gv[key] = [val, ]
         return gv
+
     grouper_vars = check_grouper_vars(**grouper_vars)
     if grouper_dims:
         grouper_coords = {grouper_dims[0]: data_array[grouper_dims[0]].values}
@@ -40,5 +43,5 @@ def grouper(data_array, *grouper_dims, **grouper_vars):
     return DataArray(MultiIndex.from_arrays((*[data_array[gc].values for gc in grouper_dims],
                                              *[data_array.sel({key: value}).squeeze().values for key, values in
                                                grouper_vars.items() for value in values]),
-        names=list(grouper_dims) + list(*grouper_vars.values())), dims=list(grouper_coords.keys()),
-        coords=grouper_coords, )
+                                            names=list(grouper_dims) + list(*grouper_vars.values())),
+                     dims=list(grouper_coords.keys()), coords=grouper_coords, )

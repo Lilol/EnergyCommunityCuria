@@ -12,23 +12,26 @@ from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind, PvDataSource
 from utility import configuration
-from utility.enum_definitions import convert_enum_to_value, convert_value_to_enum
+from utility.definitions import append_extension
+from utility.enum_definitions import convert_value_to_enum
 
 logger = logging.getLogger(__name__)
 
 
 class Read(PipelineStage):
     stage = Stage.READ
-    _column_names = {}
+    _column_names = convert_value_to_enum
     _name = "reader"
     _input_root = configuration.config.get("path", "input")
     _directory = ""
-    filename = ""
+    _filename = ""
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
+        self._filename = kwargs.pop("filename", self.__class__._filename)
+        self._directory = kwargs.pop("directory", self.__class__._directory)
+        self._input_root = kwargs.pop("input_root", self.__class__._input_root)
         self._path = join(self._input_root, self._directory)
-        self._filename = kwargs.pop("filename", self.filename)
         self._data = OmnesDataArray()
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
@@ -37,8 +40,8 @@ class Read(PipelineStage):
         return self._data
 
     def _read_municipality(self, municipality):
-        data = read_csv(os.path.join(self._path, municipality, self._filename), sep=';',
-                        usecols=list(self._column_names.keys())).rename(columns=self._column_names)
+        data = read_csv(os.path.join(self._path, municipality, append_extension(self._filename, '.csv')),
+                        sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
         return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(DataKind.MUNICIPALITY.value).assign_coords(
             {DataKind.MUNICIPALITY.value: [municipality]})
 
@@ -124,7 +127,7 @@ class ReadPvPlantData(Read):
                      }
 
     _directory = "DatiComuni"
-    filename = "lista_impianti.csv"
+    _filename = "lista_impianti.csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -140,7 +143,7 @@ class ReadUserData(Read):
                      }
 
     _directory = "DatiComuni"
-    filename = "lista_pod.csv"  # list of end-users
+    _filename = "lista_pod.csv"  # list of end-users
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -160,7 +163,7 @@ class ReadBills(Read):
                      'f0': DataKind.MONO_TARIFF, **_time_of_use_energy_column_names}
 
     _directory = "DatiComuni"
-    filename = "dati_bollette.csv"
+    _filename = "dati_bollette.csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -181,6 +184,7 @@ class ReadBills(Read):
 
 
 class ReadCommonData(Read):
+    _column_names = {}
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         self._data = read_csv(join(self._path, self._filename), sep=';', index_col=0, header=0).rename(
             columns=self._column_names)
@@ -194,7 +198,7 @@ class ReadTariff(ReadCommonData):
     #            3 - tariff times-lot F2, night, sundays and holidays
     _name = "tariff_reader"
     _directory = "Common"
-    filename = "arera.csv"
+    _filename = "arera.csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -205,7 +209,7 @@ class ReadTypicalLoadProfile(ReadCommonData):
     _column_names = {'type': DataKind.USER_TYPE,  # code or name of the end user
                      'month': DataKind.MONTH}
     _directory = "Common"
-    filename = "y_ref_gse.csv"
+    _filename = "y_ref_gse.csv"
 
     # Reference profiles from GSE
     def __init__(self, name=_name, *args, **kwargs):
@@ -216,7 +220,7 @@ class ReadGseDatabase(ReadTypicalLoadProfile):
     _name = "gse_database_reader"
     _column_names = convert_value_to_enum
     _directory = "DatabaseGSE"
-    filename = "gse_ref_profiles.xlsx"
+    _filename = "gse_ref_profiles.xlsx"
 
     # Reference profiles from GSE
     def __init__(self, name=_name, *args, **kwargs):

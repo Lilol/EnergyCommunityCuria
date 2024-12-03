@@ -50,15 +50,17 @@ class TransformReferenceProfile(PipelineStage):
         for user_type in UserType:
             if user_type == UserType.PV:
                 continue
-            da = xr.concat([xr.concat([dk.sel(user_data=user_type).groupby(dk.date.dt.hour).mean(skipna=True,
-                                                                                                 keep_attrs=False).assign_coords(
-                hour=[f'y_j{int(dt)}_i{int(h)}' for h in range(24)], month=int(m)).squeeze(drop=True) for dt, dk in
-                                       dk.groupby(dk.sel({DataKind.USER_DATA.value: DataKind.DAY_TYPE}))],
-                                      dim=DataKind.HOUR.value).squeeze(drop=True) for m, dk in
-                dataset.groupby(dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH}))], dim="type").assign_coords(
-                type=[user_type.value] * 12).drop({DataKind.USER_DATA.value: user_type})
-            # TODO: add month info to frame as a column
-            typical_profiles = xr.concat([typical_profiles, da], dim="type") if typical_profiles is not None else da
+            da = xr.concat([xr.concat([
+                dk.sel(user_data=user_type).groupby(dk.date.dt.hour).mean(skipna=True, keep_attrs=False).assign_coords(
+                    hour=[f'y_j{int(dt)}_i{int(h)}' for h in range(24)], month=int(m)) for dt, dk in
+                dk.groupby(dk.sel({DataKind.USER_DATA.value: DataKind.DAY_TYPE}))], dim=DataKind.HOUR.value) for m, dk
+                in dataset.groupby(dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH}))],
+                dim=DataKind.USER_TYPE.value).assign_coords(type=[user_type.value] * 12).drop(
+                {DataKind.USER_DATA.value: user_type})
+            typical_profiles = typical_profiles.stack(
+                {DataKind.DESCRIPTION.value: [DataKind.MONTH.value, DataKind.USER_TYPE.value]})
+            typical_profiles = xr.concat([typical_profiles, da],
+                                         dim=DataKind.USER_TYPE.value) if typical_profiles is not None else da
         return typical_profiles.set_index(type="type")
 
 
@@ -284,24 +286,28 @@ class AggregateProfileDataForTimePeriod(Transform):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         tou_labels = configuration.config.get("tariff", "time_of_use_labels")
-        output_data = OmnesDataArray(0.,
-                                     dims=(DataKind.USER.value, DataKind.TOU_ENERGY.value, DataKind.MUNICIPALITY.value),
+        output_data = OmnesDataArray(0., dims=(
+            DataKind.USER.value, DataKind.TOU_ENERGY.value, DataKind.MONTH.value, DataKind.MUNICIPALITY.value),
                                      coords={DataKind.USER.value: dataset[DataKind.USER.value],
                                              DataKind.TOU_ENERGY.value: [*tou_labels, DataKind.ANNUAL_ENERGY],
-                                             DataKind.MUNICIPALITY.value: np.unique(
-                                                 dataset[DataKind.MUNICIPALITY.value])})
+                                             DataKind.MONTH.value: range(1, 13), DataKind.MUNICIPALITY.value: np.unique(
+                                             dataset[DataKind.MUNICIPALITY.value])})
         tou_time_slots = DataStore()["time_of_use_time_slots"]
         tou_time_slot_values = configuration.config.getarray("tariff", "tariff_time_slots", int)
         for day, ds in dataset.groupby(dataset.time.dt.dayofyear):
             day = pd.to_datetime(ds.time.values[0])
             ds = ds.assign_coords({DataKind.TIME.value: ds.time.dt.hour}).rename(
                 {DataKind.TIME.value: DataKind.HOUR.value})
-            output_data.loc[:, tou_labels, :] += xr.concat([ds.sel({DataKind.HOUR.value: tou_time_slots.sel(
+            output_data.loc[:, tou_labels, day.month, :] += xr.concat([ds.sel({DataKind.HOUR.value: tou_time_slots.sel(
                 {DataKind.DAY_TYPE.value: get_weekday_code(day)}) == tou_time_slot}).sum(
                 dim=DataKind.HOUR.value).assign_coords(
                 {DataKind.ANNUAL_ENERGY.value: f"energy{tou_time_slot + 1}"}).squeeze(drop=True) for tou_time_slot in
-                                                            tou_time_slot_values], dim=DataKind.ANNUAL_ENERGY.value)
+                                                                       tou_time_slot_values],
+                                                                      dim=DataKind.ANNUAL_ENERGY.value)
         output_data.loc[:, DataKind.ANNUAL_ENERGY] = output_data.loc[:, tou_labels].sum(dim="energy")
+        output_data = output_data.stack({DataKind.DESCRIPTION.value: [DataKind.MONTH.value, DataKind.USER.value]})
+        output_data = output_data.transpose(DataKind.DESCRIPTION.value, DataKind.TOU_ENERGY.value,
+                                            DataKind.MUNICIPALITY.value)
         return output_data
 
 

@@ -8,6 +8,7 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from utility import configuration
+from utility.definitions import append_extension
 from utility.enum_definitions import convert_enum_to_value
 
 
@@ -41,7 +42,7 @@ class Write(PipelineStage):
                                                                        index=convert_enum_to_value)
         output_path = join(self.output_path, kwargs.pop("municipality", ""), kwargs.pop("subdirectory", ""))
         makedirs(output_path, exist_ok=True)
-        output.to_csv(join(output_path, name if ".csv" in name else f"{name}.csv"), **self.csv_properties,
+        output.to_csv(join(output_path, append_extension(name, '.csv')), **self.csv_properties,
                       index_label=output.index.name, **kwargs)
 
     def write(self, output: DataFrame, name=None):

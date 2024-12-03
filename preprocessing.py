@@ -56,7 +56,9 @@ DataProcessingPipeline("load_profiles_from_bills", workers=(
     CreateYearlyProfile(),
     Store("yearly_load_profiles_from_bills"),
     Write("data_users_year"),
-    WriteSeparately(subdirectory="Loads"))).execute()
+    WriteSeparately(subdirectory="Loads"),
+    AggregateProfileDataForTimePeriod(),
+    Write("data_users_tou"))).execute()
 
 DataProcessingPipeline("annual_consumption_to_bill_data",
                        dataset=DataStore()["users"],
@@ -77,16 +79,18 @@ DataProcessingPipeline("families", workers=(
     CreateYearlyProfile(),
     Store("yearly_load_profiles_families"),
     Write("data_families_year"),
-    Apply(operation=lambda x: x * configuration.config.getint('rec', 'number_of_families')),
-    Write(f"families_{configuration.config.getint('rec', 'number_of_families')}"),
-    Visualize("profiles", plot_family_profiles))).execute(user_type=UserType.PDMF)
+    Visualize("profiles", plot_family_profiles),
+    AggregateProfileDataForTimePeriod(),
+    Write("data_families_tou"))
+    # Apply(operation=lambda x: x * configuration.config.getint('rec', 'number_of_families')),
+    # Write(f"families_{configuration.config.getint('rec', 'number_of_families')}"))
+                       ).execute(user_type=UserType.PDMF)
 
 DataProcessingPipeline("pv_plants", workers=(
     ReadPvPlantData(),
     TransformPvPlantData(),
     Store("pv_plants"),
-    Write("data_plants"),
-    Write("data_plants_tou"))).execute()
+    Write("data_plants"))).execute()
 
 DataProcessingPipeline("pv_production", workers=(
     ReadProduction(),
@@ -94,7 +98,8 @@ DataProcessingPipeline("pv_production", workers=(
     ExtractTypicalYear(),
     Store("pv_profiles"),
     CreateYearlyProfile(),
-    Visualize("profiles_by_month", plot_pv_profiles),
-    AggregateProfileDataForTimePeriod(),
     Write("data_plants_year"),
-    WriteSeparately(subdirectory="Generators"))).execute()
+    Visualize("profiles_by_month", plot_pv_profiles),
+    WriteSeparately(subdirectory="Generators"),
+    AggregateProfileDataForTimePeriod(),
+    Write("data_plants_tou"))).execute()
