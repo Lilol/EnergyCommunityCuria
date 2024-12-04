@@ -50,18 +50,22 @@ class TransformReferenceProfile(PipelineStage):
         for user_type in UserType:
             if user_type == UserType.PV:
                 continue
-            da = xr.concat([xr.concat([
-                dk.sel(user_data=user_type).groupby(dk.date.dt.hour).mean(skipna=True, keep_attrs=False).assign_coords(
-                    hour=[f'y_j{int(dt)}_i{int(h)}' for h in range(24)], month=int(m)) for dt, dk in
-                dk.groupby(dk.sel({DataKind.USER_DATA.value: DataKind.DAY_TYPE}))], dim=DataKind.HOUR.value) for m, dk
-                in dataset.groupby(dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH}))],
-                dim=DataKind.USER_TYPE.value).assign_coords(type=[user_type.value] * 12).drop(
-                {DataKind.USER_DATA.value: user_type})
-            typical_profiles = typical_profiles.stack(
-                {DataKind.DESCRIPTION.value: [DataKind.MONTH.value, DataKind.USER_TYPE.value]})
+
+            user_type_dataset = dataset.sel({DataKind.USER_DATA.value: [user_type, DataKind.DAY_TYPE, DataKind.MONTH]})
+            da = xr.concat([xr.concat([dk.sel({"user_data": user_type}).groupby(dk.date.dt.hour).mean(skipna=True,
+                                                                                                      keep_attrs=False).assign_coords(
+                {DataKind.HOUR.value: [f'y_j{int(dt)}_i{int(h)}' for h in range(24)]}) for dt, dk in
+                dk.groupby(dk.sel({DataKind.USER_DATA.value: DataKind.DAY_TYPE}))],
+                dim=DataKind.HOUR.value).assign_coords({DataKind.MONTH.value: int(m)}) for m, dk in
+                            user_type_dataset.groupby(
+                                user_type_dataset.sel({DataKind.USER_DATA.value: DataKind.MONTH}))],
+                           dim=DataKind.USER_TYPE.value).assign_coords(
+                {DataKind.USER_TYPE.value: [user_type.value] * 12}).drop({DataKind.USER_DATA.value: user_type})
             typical_profiles = xr.concat([typical_profiles, da],
                                          dim=DataKind.USER_TYPE.value) if typical_profiles is not None else da
-        return typical_profiles.set_index(type="type")
+        typical_profiles = typical_profiles.set_index(
+            {DataKind.DESCRIPTION.value: [DataKind.MONTH.value, DataKind.USER_TYPE.value]})
+        return typical_profiles
 
 
 class TransformUserData(Transform):
