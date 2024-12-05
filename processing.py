@@ -7,6 +7,7 @@ from numpy import arange
 from pandas import DataFrame, concat
 
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
+from data_storage.data_store import DataStore
 from data_storage.store_data import Store
 from input.definitions import DataKind
 from input.read import ReadBills, Read
@@ -120,31 +121,27 @@ directory_data = 'DatiProcessati'
 
 input_properties = {"input_root": configuration.config.get("path", "output")}
 
-DataProcessingPipeline("read_and_store",
-                       workers=(
-                        Read(filename="data_plants_tou", **input_properties),
-                       Store("pv_plants"),
-                       Read(filename="data_users_tou", **input_properties),
-                       Store("users"),
-                       Read(filename="data_fam_tou", **input_properties),
-                       Store("families"),
-                       Read(filename="data_plants_year", **input_properties),
-                       Store("pv_profiles"),
-                       Read(filename="data_users_year", **input_properties),
-                       Store("user_profiles"),
-                       Read(filename="data_families_year", **input_properties),
-                       Store("family_profiles"))).execute()
+DataProcessingPipeline("read_and_store", workers=(
+    Read(name="pv_plants", filename="data_plants_tou", **input_properties), Store("pv_plants"),
+    Read(name="users", filename="data_users_tou", **input_properties), Store("users"),
+    Read(name="families", filename="data_families_tou", **input_properties), Store("families"),
+    Read(name="pv_profiles", filename="data_plants_year", **input_properties), Store("pv_profiles"),
+    Read(name="user_profiles", filename="data_users_year", **input_properties), Store("user_profiles"),
+    Read(name="family_profiles", filename="data_families_year", **input_properties),
+    Store("family_profiles"))).execute()
 
 # ----------------------------------------------------------------------------
 # Get total production and consumption data
 # Here we manage monthly ToU values, we sum all end users/plants
 # 2.) Get total consumption and production by months and time of use
-cols = [DataKind.MONTH]
-df_plants_tou = data_plants_tou.groupby(DataKind.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
-df_users_tou = data_users_tou.groupby(DataKind.MONTH).sum()[ReadBills._time_of_use_energy_column_names].reset_index()
+ds = DataStore()
+plants = ds["pv_plants"]
+plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sum()
+users = ds["users"]
+users.groupby(users.sel({"dim_1": DataKind.MONTH})).sum()
 
 # We create a single dataframe for both production and consumption
-# 3.) 2D frame with rows: TOU time slots, cols are families, users and production
+# 3.) 2D frame with rows: TOU time slots, cols are families, users and PV producers
 df_months = DataFrame()
 for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants_tou.iterrows(), df_users_tou.iterrows(),
                                                  df_fam_tou.iterrows()):
@@ -159,7 +156,6 @@ for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants_tou.iterrows(), df_us
     df_temp[DataKind.FAMILY] = fam
 
     df_months = concat((df_months, df_temp), axis=0)
-
 
 # 4.) Merge aggregated consumption/production data into user info dataframe
 # Here, we manage hourly data, we sum all end users/plants
@@ -299,7 +295,7 @@ for n_fam in n_fams:
     plt.figure()
     plt.plot(np.diff(sorted(sh2 - sh1)), label=f"{n_fam}", color='lightgrey')
     plt.yticks([])
-    plt.xlabel('Numero giorni dell\'anno')
+    plt.xlabel('Numero giorni dell\' anno')
 
     plt.twinx().plot(sorted(sh2 - sh1), label=f"{n_fam}")
     plt.ylabel('Gap tra energia condivisa oraria e giornaliera (kWh)')

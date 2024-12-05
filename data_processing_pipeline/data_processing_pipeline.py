@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from data_processing_pipeline.data_processing_arbiter import DataProcessingArbiter
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
@@ -6,7 +8,7 @@ from data_storage.dataset import OmnesDataArray
 class TwoWayDictionary(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._key_map = {}
+        self._key_map = OrderedDict()
 
     def set(self, key1, key2, value):
         combined_key = frozenset((key1, key2))
