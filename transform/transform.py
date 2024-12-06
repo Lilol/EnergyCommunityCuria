@@ -86,14 +86,14 @@ class TransformCoordinateIntoDimension(Transform):
         key = next(iter(coordinate))
         value = next(iter(coordinate.values()))
         if self.are_values_unique(dataset.sel(coordinate)):
-            dataset = dataset.rename({key: new_dimension_name}).assign_coords(
-                {new_dimension_name: np.unique(dataset.sel(coordinate))})
+            dataset = dataset.rename({to_replace_dimension: new_dimension_name}).assign_coords(
+                {new_dimension_name: np.unique(dataset.sel(coordinate))}).drop(labels=value, dim=key)
         else:
             dataset = dataset.assign_coords({to_replace_dimension: dataset.sel(coordinate).squeeze().values}).drop(
                 labels=value, dim=key)
             dataset = xr.concat([df.expand_dims(new_dimension_name).assign_coords(
                 {new_dimension_name: [i, ], to_replace_dimension: range(len(df[to_replace_dimension]))}) for i, df in
-                                 dataset.groupby(to_replace_dimension)], dim=new_dimension_name)
+                dataset.groupby(to_replace_dimension)], dim=new_dimension_name)
         return dataset
 
 
@@ -132,8 +132,8 @@ class TransformBills(Transform):
             [get_bill_type(df.squeeze(drop=True)), ] * df.shape[1] for _, df in
             dataset.groupby(dataset.squeeze().loc[..., DataKind.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [DataKind.BILL_TYPE, ]})
-        dataset = (
-        xr.concat([dataset, da], dim="dim_1").rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
+        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
+            {"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
 
         dataset = dataset.assign_coords(
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(

@@ -4,7 +4,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-from pandas import DataFrame, concat
+from pandas import DataFrame, concat, to_datetime
 
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
@@ -15,6 +15,7 @@ from output.write import Write
 from transform.transform import TransformCoordinateIntoDimension
 from utility import configuration
 from utility.day_of_the_week import df_year
+from visualization.processing_visualization import plot_sci, plot_shared_energy
 
 # Data processing
 ref_year = configuration.config.getint("time", "year")
@@ -122,16 +123,15 @@ directory_data = 'DatiProcessati'
 
 input_properties = {"input_root": configuration.config.get("path", "output")}
 
-tr = TransformCoordinateIntoDimension(coordinate={"dim_1": DataKind.USER}, to_replace_dimension="dim_0",
-                                     new_dimension="user")
+mm = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0", "new_dimension": "user"}
 DataProcessingPipeline("read_and_store", workers=(
-    Read(name="pv_plants", filename="data_plants_tou", **input_properties),
-    tr, Store("pv_plants"),
-    Read(name="users", filename="data_users_tou", **input_properties), tr.set_name("users"), Store("users"),
-    Read(name="families", filename="data_families_tou", **input_properties), tr, Store("families"),
-    Read(name="pv_profiles", filename="data_plants_year", **input_properties), Store("pv_profiles"),
-    Read(name="user_profiles", filename="data_users_year", **input_properties), Store("user_profiles"),
-    Read(name="family_profiles", filename="data_families_year", **input_properties),
+    Read(name="pv_plants", filename="data_plants_tou", **input_properties), TransformCoordinateIntoDimension("pv_plants", **mm),
+    Store("pv_plants"), Read(name="users", filename="data_users_tou", **input_properties),
+    TransformCoordinateIntoDimension("users", **mm), Store("users"),
+    Read(name="families", filename="data_families_tou", **input_properties), TransformCoordinateIntoDimension("families", **mm),
+    Store("families"), Read(name="pv_profiles", filename="data_plants_year", **input_properties), TransformCoordinateIntoDimension("pv_profiles", **mm), Store("pv_profiles"),
+    Read(name="user_profiles", filename="data_users_year", **input_properties), TransformCoordinateIntoDimension("user_profiles", **mm), Store("user_profiles"),
+    Read(name="family_profiles", filename="data_families_year", **input_properties), TransformCoordinateIntoDimension("family_profiles", **mm),
     Store("family_profiles"))).execute()
 
 # ----------------------------------------------------------------------------
@@ -157,45 +157,27 @@ tou_months = xr.concat([users, families, plants], dim="user").assign_coords(
 # Here, we manage hourly data, we sum all end users/plants
 # cols = [ColumnName.YEAR, ColumnName.SEASON, ColumnName.MONTH, ColumnName.WEEK, ColumnName.DAY_OF_MONTH, ColumnName.DAY_OF_WEEK, ColumnName.DAY_TYPE]
 
-plants_year = ds["pv_profiles"]
-plants = plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
-users_year = ds["user_profiles"]
-users = users.groupby(users.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
-families_year = ds["family_profiles"]
-families = families.groupby(families.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
-
-df_plants = df_year.loc[df_year[DataKind.YEAR] == ref_year, cols]
-df_plants = df_plants.merge(
-    data_plants_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
-    on=[DataKind.MONTH, DataKind.DAY_OF_MONTH])
-df_users = df_year.loc[df_year[DataKind.YEAR] == ref_year, cols]
-df_users = df_users.merge(
-    data_users_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),
-    on=[DataKind.MONTH, DataKind.DAY_OF_MONTH])
-
 # 5.) I thought we already did this, but this is for hourly data, not aggregated
 # We create a single dataframe for both production and consumption
-df_hours = DataFrame()
-for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(), df_users.iterrows(), df_fam.iterrows()):
-    prod = df_prod.loc['0':].values
-    cons = df_cons.loc['0':].values
-    fam = df_f.loc['0':].values
+plants_year = ds["pv_profiles"]
+plants_year = plants_year.assign_coords(dim_1=to_datetime(plants_year.dim_1)).sum("user")
 
-    df_temp = concat([df_prod[cols]] * len(prod), axis=1).T
-    df_temp[DataKind.HOUR] = np.arange(len(prod))
-    df_temp[DataKind.PRODUCTION] = prod
-    df_temp[DataKind.CONSUMPTION] = cons
-    df_temp[DataKind.FAMILY] = fam
+users_year = ds["user_profiles"]
+users_year = users_year.assign_coords(dim_1=to_datetime(users_year.dim_1)).sum("user")
 
-    df_hours = concat((df_hours, df_temp), axis=0)
+families_year = ds["family_profiles"]
+families_year = families_year.assign_coords(dim_1=to_datetime(families_year.dim_1)).sum("user")
+
+energy_year = xr.concat([users_year, families_year, plants_year], dim="user").assign_coords(
+    {"user": ["users", "families", "plants"]})
 
 # ----------------------------------------------------------------------------
 # Here we evaluate the number of families to reach the set targets
 
 # Get data arrays
-p_prod = df_hours[DataKind.PRODUCTION].values
-p_cons = df_hours[DataKind.CONSUMPTION].values
-p_fam = df_hours[DataKind.FAMILY].values
+p_prod = energy_year[DataKind.PRODUCTION].values
+p_cons = energy_year[DataKind.CONSUMPTION].values
+p_fam = energy_year[DataKind.FAMILY].values
 
 # Initialize results
 n_fams = []
@@ -223,10 +205,9 @@ for n_fam in n_fams_:
 # %% Here, we evaluate the need for daily/seasonal storage depending on the
 # number of families
 
-
 # Function to evaluate a "theoretical" limit to shared energy/self-consumption
 # given the ToU monthly energy values
-def calculate_theoretical_limit_of_self_consumption(n_fam):
+def calculate_theoretical_limit_of_self_consumption(df_months, n_fam):
     prod = df_months[DataKind.PRODUCTION]
     cons = df_months[DataKind.CONSUMPTION]
     fam = df_months[DataKind.FAMILY] * n_fam
@@ -236,7 +217,7 @@ def calculate_theoretical_limit_of_self_consumption(n_fam):
 
 
 # Function to evaluate SC with different aggregations in time
-def aggregate_sc(groupby, n_fam):
+def aggregate_sc(df_hours, groupby, n_fam):
     """Evaluate SC with given temporal aggregation and number of families."""
     # Get values
     cols = [DataKind.PRODUCTION, DataKind.CONSUMPTION, DataKind.FAMILY]
@@ -265,23 +246,14 @@ for n_fam in n_fams:
         sc = aggregate_sc(groupby, n_fam)
         results[label].append(sc)
 
-plt.figure()
-for label in groupbys:
-    plt.plot(n_fams, results[label], label=label)
-plt.plot(n_fams, results['sc_tou'], label='sc_tou', color='lightgrey', ls='--')
-# plt.scatter(n_fams, scs, label='evaluated')
-plt.xlabel('Numero famiglie')
-plt.ylabel('SCI')
-plt.legend()
-plt.show()
-plt.close()
+plot_sci(groupbys, n_fams, results, label)
 
 # ----------------------------------------------------------------------------
 # %% Here, we check which storage sizes should be considered for each number of
 # families
 
 for n_fam in n_fams:
-    df_hhours = df_hours.copy()
+    df_hhours = energy_year.copy()
 
     prod, cons, fam = df_hhours[[DataKind.PRODUCTION, DataKind.CONSUMPTION, DataKind.FAMILY]].values.T
     inj = prod
@@ -296,19 +268,7 @@ for n_fam in n_fams:
     sh2 = np.minimum(
         *df_hhours.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH])[['injections', 'withdrawals']].sum().values.T)
 
-    plt.figure()
-    plt.plot(np.diff(sorted(sh2 - sh1)), label=f"{n_fam}", color='lightgrey')
-    plt.yticks([])
-    plt.xlabel('Numero giorni dell\' anno')
-
-    plt.twinx().plot(sorted(sh2 - sh1), label=f"{n_fam}")
-    plt.ylabel('Gap tra energia condivisa oraria e giornaliera (kWh)')
-    plt.gca().yaxis.set_label_position("left")
-    plt.gca().yaxis.tick_left()
-
-    plt.title(f"Numero famiglie: {int(n_fam)}")
-    plt.show()
-    plt.close()
+    plot_shared_energy(sh1, sh2, n_fam)
 
 # %% Manually insert bess sizes for each number of families
 bess_sizes = [[0] for _ in n_fams]
