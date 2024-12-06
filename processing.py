@@ -135,19 +135,23 @@ DataProcessingPipeline("read_and_store", workers=(
 # Here we manage monthly ToU values, we sum all end users/plants
 # 2.) Get total consumption and production by months and time of use
 ds = DataStore()
+tou_columns = configuration.config.getarray("tariff", "time_of_use_labels")
 plants = ds["pv_plants"]
-plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sum()
+plants = plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sel({"dim_1": tou_columns}).sum()
 users = ds["users"]
-users.groupby(users.sel({"dim_1": DataKind.MONTH})).sum()
+users = users.groupby(users.sel({"dim_1": DataKind.MONTH})).sel({"dim_1": tou_columns}).sum()
+families = ds["families"]
+families = families.groupby(families.sel({"dim_1": DataKind.MONTH})).sel({"dim_1": tou_columns}).sum()
+
 
 # We create a single dataframe for both production and consumption
 # 3.) 2D frame with rows: TOU time slots, cols are families, users and PV producers
 df_months = DataFrame()
-for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants_tou.iterrows(), df_users_tou.iterrows(),
-                                                 df_fam_tou.iterrows()):
-    prod = df_prod.loc[ReadBills._time_of_use_energy_column_names].values
-    cons = df_cons.loc[ReadBills._time_of_use_energy_column_names].values
-    fam = df_f.loc[ReadBills._time_of_use_energy_column_names].values
+for (_, df_prod), (_, df_cons), (_, df_f) in zip(plants.iterrows(), users.iterrows(),
+                                                 families.iterrows()):
+    prod = df_prod.values
+    cons = df_cons.values
+    fam = df_f.values
 
     df_temp = concat([df_prod[cols]] * len(prod), axis=1).T
     df_temp[DataKind.TOU] = arange(len(prod))
@@ -222,7 +226,7 @@ for n_fam in n_fams_:
 
 # Function to evaluate a "theoretical" limit to shared energy/self-consumption
 # given the ToU monthly energy values
-def sc_lim_tou(n_fam):
+def calculate_theoretical_limit_of_self_consumption(n_fam):
     prod = df_months[DataKind.PRODUCTION]
     cons = df_months[DataKind.CONSUMPTION]
     fam = df_months[DataKind.FAMILY] * n_fam
@@ -232,7 +236,7 @@ def sc_lim_tou(n_fam):
 
 
 # Function to evaluate SC with different aggregations in time
-def aggregated_sc(groupby, n_fam):
+def aggregate_sc(groupby, n_fam):
     """Evaluate SC with given temporal aggregation and number of families."""
     # Get values
     cols = [DataKind.PRODUCTION, DataKind.CONSUMPTION, DataKind.FAMILY]
@@ -256,9 +260,9 @@ results['sc_tou'] = []
 
 # for n_fam, sc in zip(n_fams, scs):
 for n_fam in n_fams:
-    results['sc_tou'].append(sc_lim_tou(n_fam))
+    results['sc_tou'].append(calculate_theoretical_limit_of_self_consumption(n_fam))
     for label, groupby in groupbys.items():
-        sc = aggregated_sc(groupby, n_fam)
+        sc = aggregate_sc(groupby, n_fam)
         results[label].append(sc)
 
 plt.figure()

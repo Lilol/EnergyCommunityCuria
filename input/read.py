@@ -40,8 +40,8 @@ class Read(PipelineStage):
         return self._data
 
     def _read_municipality(self, municipality):
-        data = read_csv(os.path.join(self._path, municipality, append_extension(self._filename, '.csv')),
-                        sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
+        data = read_csv(os.path.join(self._path, municipality, append_extension(self._filename, '.csv')), sep=';',
+                        parse_dates=True).rename(columns=self.__class__._column_names)
         return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(DataKind.MUNICIPALITY.value).assign_coords(
             {DataKind.MUNICIPALITY.value: [municipality]})
 
@@ -151,10 +151,8 @@ class ReadUserData(Read):
 
 class ReadBills(Read):
     _name = "bill_reader"
-    _time_of_use_energy_column_names = {f'f{i}': f"{DataKind.TOU_ENERGY.value}{i}" for i in range(1,
-                                                                                                  configuration.config.getint(
-                                                                                                      "tariff",
-                                                                                                      "number_of_time_of_use_periods") + 1)}
+    _time_of_use_energy_column_names = {f'f{i}': tou_energy_name for i, tou_energy_name in
+                                        enumerate(configuration.config.getarray("tariff", "time_of_use_labels", str))}
 
     _column_names = {'pod': DataKind.USER,  # code or name of the end user
                      'anno': DataKind.YEAR,  # year
@@ -185,6 +183,7 @@ class ReadBills(Read):
 
 class ReadCommonData(Read):
     _column_names = {}
+
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         self._data = read_csv(join(self._path, self._filename), sep=';', index_col=0, header=0).rename(
             columns=self._column_names)

@@ -6,7 +6,7 @@ from os.path import join, dirname
 from sys import argv
 from typing import Iterable
 
-from input.definitions import PvDataSource
+from input.definitions import PvDataSource, DataKind
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,8 @@ class ConfigurationManager:
         self.__config = RawConfigParser(allow_no_value=True, interpolation=ExtendedInterpolation())
         self.__config.read_file(open(config_filename))
         self._registered_entries = {"production": {"estimator": self._process_pv_estimator},
-                                    "rec": {"municipalities": self._get_municipalities}}
+                                    "rec": {"municipalities": self._get_municipalities},
+                                    "tariff": {"time_of_use_labels": self._get_tou_labels}}
 
     def _process_pv_estimator(self):
         pv_data_source = self.__config.get("production", "estimator")
@@ -31,6 +32,11 @@ class ConfigurationManager:
         return list(
             filter(lambda x: os.path.isdir(join(input_dir, x)), os.listdir(input_dir))) if municipality == "all" else (
             municipality if isinstance(municipality, Iterable) else (municipality,))
+
+    def _get_tou_labels(self):
+        return self.getarray("tariff", "time_of_use_labels", str,
+                                   fallback=[f"{DataKind.TOU_ENERGY.value}{i}" for i in
+                                             range(1, self.getint("tariff", "number_of_time_of_use_periods") + 1)])
 
     def get(self, section, key, fallback=None):
         if section not in self._registered_entries or key not in self._registered_entries[section]:
