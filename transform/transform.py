@@ -68,6 +68,35 @@ class TransformReferenceProfile(PipelineStage):
         return typical_profiles
 
 
+class TransformCoordinateIntoDimension(Transform):
+    _name = "dimension_transformer"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    @classmethod
+    def are_values_unique(cls, arr):
+        unique, counts = np.unique(arr, return_counts=True)
+        return np.all(counts == 1)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        coordinate = self.kwargs.pop("coordinate")
+        to_replace_dimension = self.kwargs.pop("to_replace_dimension")
+        new_dimension_name = self.kwargs.pop("new_dimension")
+        key = next(iter(coordinate))
+        value = next(iter(coordinate.values()))
+        if self.are_values_unique(dataset.sel(coordinate)):
+            dataset = dataset.rename({key: new_dimension_name}).assign_coords(
+                {new_dimension_name: np.unique(dataset.sel(coordinate))})
+        else:
+            dataset = dataset.assign_coords({to_replace_dimension: dataset.sel(coordinate).squeeze().values}).drop(
+                labels=value, dim=key)
+            dataset = xr.concat([df.expand_dims(new_dimension_name).assign_coords(
+                {new_dimension_name: [i, ], to_replace_dimension: range(len(df[to_replace_dimension]))}) for i, df in
+                                 dataset.groupby(to_replace_dimension)], dim=new_dimension_name)
+        return dataset
+
+
 class TransformUserData(Transform):
     _name = "user_data_transformer"
 
@@ -103,8 +132,8 @@ class TransformBills(Transform):
             [get_bill_type(df.squeeze(drop=True)), ] * df.shape[1] for _, df in
             dataset.groupby(dataset.squeeze().loc[..., DataKind.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [DataKind.BILL_TYPE, ]})
-        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
-            {"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
+        dataset = (
+        xr.concat([dataset, da], dim="dim_1").rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
 
         dataset = dataset.assign_coords(
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(

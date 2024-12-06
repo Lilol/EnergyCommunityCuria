@@ -3,15 +3,16 @@
 # Visualization
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import arange
+import xarray as xr
 from pandas import DataFrame, concat
 
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
 from data_storage.store_data import Store
 from input.definitions import DataKind
-from input.read import ReadBills, Read
+from input.read import Read
 from output.write import Write
+from transform.transform import TransformCoordinateIntoDimension
 from utility import configuration
 from utility.day_of_the_week import df_year
 
@@ -121,10 +122,13 @@ directory_data = 'DatiProcessati'
 
 input_properties = {"input_root": configuration.config.get("path", "output")}
 
+tr = TransformCoordinateIntoDimension(coordinate={"dim_1": DataKind.USER}, to_replace_dimension="dim_0",
+                                     new_dimension="user")
 DataProcessingPipeline("read_and_store", workers=(
-    Read(name="pv_plants", filename="data_plants_tou", **input_properties), Store("pv_plants"),
-    Read(name="users", filename="data_users_tou", **input_properties), Store("users"),
-    Read(name="families", filename="data_families_tou", **input_properties), Store("families"),
+    Read(name="pv_plants", filename="data_plants_tou", **input_properties),
+    tr, Store("pv_plants"),
+    Read(name="users", filename="data_users_tou", **input_properties), tr.set_name("users"), Store("users"),
+    Read(name="families", filename="data_families_tou", **input_properties), tr, Store("families"),
     Read(name="pv_profiles", filename="data_plants_year", **input_properties), Store("pv_profiles"),
     Read(name="user_profiles", filename="data_users_year", **input_properties), Store("user_profiles"),
     Read(name="family_profiles", filename="data_families_year", **input_properties),
@@ -133,37 +137,33 @@ DataProcessingPipeline("read_and_store", workers=(
 # ----------------------------------------------------------------------------
 # Get total production and consumption data
 # Here we manage monthly ToU values, we sum all end users/plants
-# 2.) Get total consumption and production by months and time of use
+# 2.) Get total consumption and production for all users separated months and time of use
 ds = DataStore()
-tou_columns = configuration.config.getarray("tariff", "time_of_use_labels")
+tou_columns = configuration.config.get("tariff", "time_of_use_labels")
 plants = ds["pv_plants"]
-plants = plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sel({"dim_1": tou_columns}).sum()
+plants = plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
 users = ds["users"]
-users = users.groupby(users.sel({"dim_1": DataKind.MONTH})).sel({"dim_1": tou_columns}).sum()
+users = users.groupby(users.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
 families = ds["families"]
-families = families.groupby(families.sel({"dim_1": DataKind.MONTH})).sel({"dim_1": tou_columns}).sum()
-
+families = families.groupby(families.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
 
 # We create a single dataframe for both production and consumption
 # 3.) 2D frame with rows: TOU time slots, cols are families, users and PV producers
-df_months = DataFrame()
-for (_, df_prod), (_, df_cons), (_, df_f) in zip(plants.iterrows(), users.iterrows(),
-                                                 families.iterrows()):
-    prod = df_prod.values
-    cons = df_cons.values
-    fam = df_f.values
 
-    df_temp = concat([df_prod[cols]] * len(prod), axis=1).T
-    df_temp[DataKind.TOU] = arange(len(prod))
-    df_temp[DataKind.PRODUCTION] = prod
-    df_temp[DataKind.CONSUMPTION] = cons
-    df_temp[DataKind.FAMILY] = fam
-
-    df_months = concat((df_months, df_temp), axis=0)
+tou_months = xr.concat([users, families, plants], dim="user").assign_coords(
+    {"user": ["users", "families", "plants"]}).rename({"dim_1": "tou", "group": "month"})
 
 # 4.) Merge aggregated consumption/production data into user info dataframe
 # Here, we manage hourly data, we sum all end users/plants
 # cols = [ColumnName.YEAR, ColumnName.SEASON, ColumnName.MONTH, ColumnName.WEEK, ColumnName.DAY_OF_MONTH, ColumnName.DAY_OF_WEEK, ColumnName.DAY_TYPE]
+
+plants_year = ds["pv_profiles"]
+plants = plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
+users_year = ds["user_profiles"]
+users = users.groupby(users.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
+families_year = ds["family_profiles"]
+families = families.groupby(families.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
+
 df_plants = df_year.loc[df_year[DataKind.YEAR] == ref_year, cols]
 df_plants = df_plants.merge(
     data_plants_year.groupby([DataKind.MONTH, DataKind.DAY_OF_MONTH]).sum().loc[:, '0':].reset_index(),

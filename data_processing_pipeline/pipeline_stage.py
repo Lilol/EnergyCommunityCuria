@@ -10,6 +10,12 @@ class PipelineStage:
         if name is None:
             name = self._name
         self.name = name
+        self.args = args
+        self.kwargs = kwargs
+
+    def set_name(self, name):
+        self.name = name
+        return self
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError(

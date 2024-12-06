@@ -152,7 +152,7 @@ class ReadUserData(Read):
 class ReadBills(Read):
     _name = "bill_reader"
     _time_of_use_energy_column_names = {f'f{i}': tou_energy_name for i, tou_energy_name in
-                                        enumerate(configuration.config.getarray("tariff", "time_of_use_labels", str))}
+                                        enumerate(configuration.config.get("tariff", "time_of_use_labels"))}
 
     _column_names = {'pod': DataKind.USER,  # code or name of the end user
                      'anno': DataKind.YEAR,  # year

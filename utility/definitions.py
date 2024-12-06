@@ -6,9 +6,6 @@ import numpy as np
 from pandas import MultiIndex
 from xarray import DataArray
 
-from input.definitions import DataKind
-from utility import configuration
-
 
 def append_extension(name, ext='.csv'):
     return name if ext in name else f"{name}{ext}"
