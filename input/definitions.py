@@ -13,8 +13,12 @@ class DataKind(OrderedEnum):
     ANNUAL_YIELD = 'yield'  # specific annual production (kWh/kWp)
     TOU_ENERGY = "energy"
     PRODUCTION = 'production'
-    CONSUMPTION = 'consumption'
-    FAMILY = 'family'
+    CONSUMPTION_OF_RESIDENTIAL = 'consumption_of_residential'
+    CONSUMPTION_OF_FAMILIES = 'consumption_of_families'
+    CONSUMPTION = "consumption"
+    SHARED = 'shared'
+    NUMBER_OF_FAMILIES = 'number_of_families'
+    BATTERY_SIZE = 'battery_size'
     YEAR = 'year'
     SEASON = 'season'  # season (1-Winter-December to February, ...)
     MONTH = 'month'  # number of the month (1-12)

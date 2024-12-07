@@ -240,8 +240,8 @@ for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(), df_users.
     df_temp = pd.concat([df_prod[cols]] * len(prod), axis=1).T
     df_temp[DataKind.HOUR] = np.arange(len(prod))
     df_temp[DataKind.PRODUCTION] = prod
-    df_temp[DataKind.CONSUMPTION] = cons
-    df_temp[DataKind.FAMILY] = fam
+    df_temp[DataKind.CONSUMPTION_OF_RESIDENTIAL] = cons
+    df_temp[DataKind.CONSUMPTION_OF_FAMILIES] = fam
 
     df_hours = pd.concat((df_hours, df_temp), axis=0)
 
@@ -250,8 +250,8 @@ for (_, df_prod), (_, df_cons), (_, df_f) in zip(df_plants.iterrows(), df_users.
 
 # Get data arrays
 p_prod = df_hours[DataKind.PRODUCTION].values
-p_cons = df_hours[DataKind.CONSUMPTION].values
-p_fam = df_hours[DataKind.FAMILY].values
+p_cons = df_hours[DataKind.CONSUMPTION_OF_RESIDENTIAL].values
+p_fam = df_hours[DataKind.CONSUMPTION_OF_FAMILIES].values
 
 # Initialize results
 results = dict(scenarios)

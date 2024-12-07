@@ -16,13 +16,13 @@ def plot_shared_energy(sh1, sh2, n_fam):
     plt.close()
 
 
-def plot_sci(groupbys, n_fams, results, label):
+def plot_sci(time_resolution, n_fams, results):
     plt.figure()
-    for label in groupbys:
+    for label in time_resolution:
         plt.plot(n_fams, results[label], label=label)
     plt.plot(n_fams, results['sc_tou'], label='sc_tou', color='lightgrey', ls='--')
     # plt.scatter(n_fams, scs, label='evaluated')
-    plt.xlabel('Numero famiglie')
+    plt.xlabel(f'Numero famiglie: {n_fams}')
     plt.ylabel('SCI')
     plt.legend()
     plt.show()
