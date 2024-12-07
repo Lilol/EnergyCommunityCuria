@@ -3,8 +3,8 @@ from calendar import weekday
 import holidays
 from pandas import date_range, DataFrame
 
-from utility import configuration
 from input.definitions import DataKind
+from utility import configuration
 
 weekdays = (0, 1, 2, 3, 4)
 weekend = (5, 6)
@@ -26,10 +26,8 @@ def get_weekday_code(day):
 
 
 def create_reference_year_dataframe():
-    ref_year = configuration.config.get("time", "year")
-    ref_df = DataFrame(index=date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"),
-                       columns=[DataKind.YEAR, DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.WEEK,
-                                DataKind.SEASON])
+    ref_df = DataFrame(index=date_range(start=f"{year}-01-01", end=f"{year}-12-31", freq="d"),
+                       columns=[DataKind.YEAR, DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.WEEK, DataKind.SEASON])
     ref_df[DataKind.YEAR] = ref_df.index.year
     ref_df[DataKind.MONTH] = ref_df.index.month
     ref_df[DataKind.DAY_OF_MONTH] = ref_df.index.day
@@ -41,6 +39,3 @@ def create_reference_year_dataframe():
 
 
 df_year = create_reference_year_dataframe()
-
-cols_to_add = [DataKind.YEAR, DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.WEEK, DataKind.SEASON,
-               DataKind.DAY_OF_WEEK]

@@ -104,7 +104,8 @@ mm = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0", "
 DataProcessingPipeline("read_and_store", workers=(
     Read(name="pv_plants", filename="data_plants_tou", **input_properties),
     TransformCoordinateIntoDimension("pv_plants", **mm), Store("pv_plants"),
-    Read(name="users", filename="data_users_tou", **input_properties), TransformCoordinateIntoDimension("users", **mm),
+    Read(name="users", filename="data_users_tou", **input_properties),
+    TransformCoordinateIntoDimension("users", **mm),
     Store("users"), Read(name="families", filename="data_families_tou", **input_properties),
     TransformCoordinateIntoDimension("families", **mm), Store("families"),
     Read(name="pv_profiles", filename="data_plants_year", **input_properties),
@@ -153,11 +154,6 @@ energy_year = xr.concat([users_year, families_year, plants_year], dim="user").as
 # ----------------------------------------------------------------------------
 # Here we evaluate the number of families to reach the set targets
 
-# Get data arrays
-p_prod = energy_year[DataKind.PRODUCTION].values
-p_cons = energy_year[DataKind.CONSUMPTION_OF_RESIDENTIAL].values
-p_fam = energy_year[DataKind.CONSUMPTION_OF_FAMILIES].values
-
 # Initialize results
 n_fams = []
 met_targets = []
@@ -165,10 +161,10 @@ scs = []
 
 # Do we need this? We don't know. We can have a PipelineStep for it
 n_fams_ = configuration.config.getarray("rec", "number_of_families", int)  # [0, 15, 30, 45, 60]
-sc_targets = [0, 0.10, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+sc_targets = []
 # Evaluate number of families for each target
 sc = 0
-for i, sc_target in enumerate(sc_targets):
+for i, sc_target in enumerate((0, 0.10, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)):
     # # Skip if previous target was already higher than this
     if i > 0 and sc > sc_target:
         met_targets[-1] = sc_target
@@ -192,8 +188,7 @@ for i, sc_target in enumerate(sc_targets):
 
 
 # ----------------------------------------------------------------------------
-# %% Here, we evaluate the need for daily/seasonal storage depending on the
-# number of families
+# %% Here, we evaluate the need for daily/seasonal storage depending on the number of families
 def calc_sum_consumption(df, n_fam):
     df[DataKind.CONSUMPTION] = df[DataKind.CONSUMPTION_OF_FAMILIES] * n_fam + df[DataKind.CONSUMPTION_OF_RESIDENTIAL]
 
@@ -207,8 +202,7 @@ def calculate_sc(df):
     return df[DataKind.SHARED].sum() / df[DataKind.PRODUCTION].sum()
 
 
-# Function to evaluate a "theoretical" limit to shared energy/self-consumption
-# given the ToU monthly energy values
+# Function to evaluate a "theoretical" limit to shared energy/self-consumption given the ToU monthly energy values
 def calculate_theoretical_limit_of_self_consumption(df_months, n_fam):
     calculate_shared_energy(df_months, n_fam)
     return calculate_sc(df_months)
@@ -237,35 +231,34 @@ plot_sci(time_resolution, n_fams, results)
 for n_fam in n_fams:
     calculate_shared_energy(energy_year, n_fam)
     sh1 = energy_year.groupby(time_resolution["sc_day"]).sum()[DataKind.SHARED]
-    sh2 = energy_year.groupby(time_resolution["sc_day"]).sum()[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].min(
+    sh2 = energy_year.groupby(time_resolution["sc_day"])[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(
         axis="rows")
     plot_shared_energy(sh1, sh2, n_fam)
+
+
 # ----------------------------------------------------------------------------
 # %% Here, we check which storage sizes should be considered for each number of families
 # Manually insert bess sizes for each number of families
 bess_sizes = [[0, ] for _ in n_fams]
+print("Manually insert number of sizes for number of families.")
 for i, n_fam in enumerate(n_fams):
-    print("Manually insert number of sizes for this number of families.")
     if i > 0:
         print("Push 'enter' to copy BESS sizes of the previous n of families")
-    bess = input(f"Insert BESS sizes for {n_fam} families:")
-    bess = bess.strip(" ,").split(",")
+    bess = input(f"Insert BESS sizes for {n_fam} families:").strip(" ,").split(",")
 
     if i > 0 and bess == [""]:
         bess_sizes[i] = bess_sizes[i - 1].copy()
         continue
     try:
-        bess = [int(s.strip()) for s in bess]
+        bess_sizes[i] += [int(s.strip()) for s in bess]
     except ValueError:
         raise ValueError("Something wrong, retry")
-
-    bess_sizes[i] += bess
 
 scenarios = DataFrame(
     data=((np.ones_like(bess_size) * n_fam), bess_size for n_fam, bess_size in zip(n_fams, bess_sizes)),
     columns=[DataKind.NUMBER_OF_FAMILIES, DataKind.BATTERY_SIZE])
 
 scenarios[list(results.keys())] = scenarios[DataKind.NUMBER_OF_FAMILIES].apply(
-    lambda x: (r for i, r in results.items()))
+    lambda x: (r[x] for _, r in results.items()))
 
 Write().write(scenarios, "scenarios")

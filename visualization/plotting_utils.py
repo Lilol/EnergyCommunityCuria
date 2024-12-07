@@ -8,13 +8,16 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Patch
 
 alpha = 0.8
+fig_width, fig_height = 0, 0
+fontsize = 16
+
 
 # General setup for plots
 def init_plot_properties():
     cm_to_inch = 2.54
+    global fig_width, fig_height
     fig_width = 16 / cm_to_inch  # inch
     fig_height = 8 / cm_to_inch  # inch
-    fontsize = 16
     global alpha
     alpha = 0.8
     matplotlib.rcParams.update({'font.size': fontsize, 'figure.figsize': (fig_width, fig_height)})
@@ -214,7 +217,6 @@ def pie_chart(counts, labels=None, autopct='', labels_pos=None, pcts_pos=None, c
             text.remove()
 
     return ax
-
 
 # #%%
 # ax = pie_chart(sizes1,

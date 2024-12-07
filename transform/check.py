@@ -1,8 +1,5 @@
 import logging
 
-import pandas as pd
-import xarray as xr
-
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray

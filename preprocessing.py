@@ -81,10 +81,14 @@ DataProcessingPipeline("families", workers=(
     Write("data_families_year"),
     Visualize("profiles", plot_family_profiles),
     AggregateProfileDataForTimePeriod(),
-    Write("data_families_tou"))
-    # Apply(operation=lambda x: x * configuration.config.getint('rec', 'number_of_families')),
-    # Write(f"families_{configuration.config.getint('rec', 'number_of_families')}"))
-                       ).execute(user_type=UserType.PDMF)
+    Write("data_families_tou"))).execute(user_type=UserType.PDMF)
+
+n_families = configuration.config.getint('rec', 'number_of_families')
+DataProcessingPipeline(f"yearly_load_profiles_families_{n_families}",
+                       dataset=DataStore()["yearly_load_profiles_families"],
+                       workers=(
+                           Apply(operation=lambda x: x * n_families),
+                           Write(f"families_{n_families}"))).execute()
 
 DataProcessingPipeline("pv_plants", workers=(
     ReadPvPlantData(),

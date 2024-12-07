@@ -5,7 +5,6 @@
 import os
 
 # Plotting
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,9 +15,11 @@ from matplotlib import patheffects as pe
 # common variables
 from input.definitions import DataKind
 from input.read import ReadBills
-from visualization.plotting_utils import get_colors_from_map, pie_chart
+from visualization.plotting_utils import get_colors_from_map, pie_chart, init_plot_properties, alpha, fig_width, \
+    fig_height
 
 if __name__ == '__main__':
+    init_plot_properties()
     # ----------------------------------------------------------------------------
     divide_energy = 1000
     if divide_energy == 1:
@@ -731,7 +732,8 @@ if __name__ == '__main__':
                         color=c_fromgrid, alpha=alpha)
         ax.fill_between(t_plot, p_plants, p_users, where=p_plants > p_users, label='$E_\mathrm{\\rightarrow rete}$',
                         color=c_togrid, alpha=alpha)
-        ax.fill_between(t_plot, np.minimum(p_plants, p_users), label='$E_\mathrm{condivisa}$', color=c_shared, alpha=alpha)
+        ax.fill_between(t_plot, np.minimum(p_plants, p_users), label='$E_\mathrm{condivisa}$', color=c_shared,
+                        alpha=alpha)
 
         # Set ticks
         ax.tick_params(**tickparams_kw)
@@ -836,7 +838,8 @@ if __name__ == '__main__':
     figsize = (fig_width, fig_height)
     nrows, ncols = 1, 2
     x = list(data['n_fam'])
-    ys = [[1 * round(ss * 100 / 1) for ss in list(data['ss'])], [1 * round(esr * 100 / 1) for esr in list(data['esr'])], ]
+    ys = [[1 * round(ss * 100 / 1) for ss in list(data['ss'])],
+          [1 * round(esr * 100 / 1) for esr in list(data['esr'])], ]
     y_right = [1 * round(sc * 100 / 1) for sc in list(data['sc'])]
     xticks = x.copy()
     plot_kw = dict(lw=3, path_effects=path_effect(lw), zorder=1)
