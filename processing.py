@@ -5,6 +5,7 @@ from pandas import DataFrame, to_datetime
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
 from data_storage.store_data import Store
+from analysis.evaluating import eval_co2, eval_capex, energy, eval_rec, manage_bess
 from input.definitions import DataKind
 from input.read import Read
 from output.write import Write
@@ -104,8 +105,7 @@ mm = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0", "
 DataProcessingPipeline("read_and_store", workers=(
     Read(name="pv_plants", filename="data_plants_tou", **input_properties),
     TransformCoordinateIntoDimension("pv_plants", **mm), Store("pv_plants"),
-    Read(name="users", filename="data_users_tou", **input_properties),
-    TransformCoordinateIntoDimension("users", **mm),
+    Read(name="users", filename="data_users_tou", **input_properties), TransformCoordinateIntoDimension("users", **mm),
     Store("users"), Read(name="families", filename="data_families_tou", **input_properties),
     TransformCoordinateIntoDimension("families", **mm), Store("families"),
     Read(name="pv_profiles", filename="data_plants_year", **input_properties),
@@ -235,7 +235,6 @@ for n_fam in n_fams:
         axis="rows")
     plot_shared_energy(sh1, sh2, n_fam)
 
-
 # ----------------------------------------------------------------------------
 # %% Here, we check which storage sizes should be considered for each number of families
 # Manually insert bess sizes for each number of families
@@ -262,3 +261,51 @@ scenarios[list(results.keys())] = scenarios[DataKind.NUMBER_OF_FAMILIES].apply(
     lambda x: (r[x] for _, r in results.items()))
 
 Write().write(scenarios, "scenarios")
+
+# Get plants sizes and number of users
+n_users = len(ds["data_users"])
+data_plants = ds["data_plants"]
+pv_sizes = list(data_plants.loc[data_plants[DataKind.USER_TYPE] == 'pv', DataKind.POWER])
+if len(pv_sizes) < len(data_plants):
+    raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
+
+# Initialize results
+results = DataFrame(index=scenarios.index,
+                    columns=['e_prod', 'e_cons', 'e_inj', 'e_with', 'e_sh', 'e_tot', 'em_base', 'sc', 'ss', 'esr',
+                             'capex'])
+
+p_prod = energy_year[DataKind.PRODUCTION]
+p_cons = energy_year[DataKind.CONSUMPTION_OF_RESIDENTIAL]
+p_fam = energy_year[DataKind.CONSUMPTION_OF_FAMILIES]
+
+# Evaluate each scenario
+for i, scenario in scenarios.iterrows():
+    # Get configuration
+    n_fam = scenario[DataKind.NUMBER_OF_FAMILIES]
+    bess_size = scenario[DataKind.BATTERY_SIZE]
+
+    # Manage BESS, if present
+    p_with = p_cons + n_fam * p_fam
+    if bess_size > 0:
+        p_bess = manage_bess(p_prod, p_with, bess_size)
+        p_inj = p_prod - p_bess
+    else:
+        p_inj = p_prod.copy()
+
+    # Eval REC
+    e_prod = energy(p_prod)
+    e_cons = energy(p_with)
+    sc, ss, e_sh = eval_rec(p_inj, p_with)
+    e_inj = e_sh / sc
+    e_with = e_sh / ss
+
+    # Evaluate emissions
+    esr, em_tot, em_base = eval_co2(e_sh, e_cons=e_with, e_inj=e_inj, e_prod=e_prod)
+
+    # Evaluate CAPEX
+    capex = eval_capex(pv_sizes, bess_size=bess_size, n_users=n_users + n_fam)
+
+    # Update results
+    results.loc[i, :] = (e_prod, e_cons, e_inj, e_with, e_sh, em_tot, em_base, sc, ss, esr, capex)
+
+Write().write(results, "results")

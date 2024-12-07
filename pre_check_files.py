@@ -107,9 +107,7 @@ def test_check(series, check, **kwargs):
 
 
 # ----------------------------------------------------------------------------
-# Data checking
-# --------------------------------------
-# data loading
+# Data checking, data loading
 
 # file with PODs list
 df_pods = pd.read_excel(input_path / fname_pods)
