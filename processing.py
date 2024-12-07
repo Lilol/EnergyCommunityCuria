@@ -5,7 +5,9 @@ from pandas import DataFrame, to_datetime
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
 from data_storage.store_data import Store
-from analysis.evaluating import eval_co2, eval_capex, energy, eval_rec, manage_bess
+from analysis.evaluating import eval_co2, eval_capex, energy, eval_rec, manage_bess, \
+    find_the_optimal_number_of_families_for_sc_ratio, calculate_shared_energy, \
+    calculate_theoretical_limit_of_self_consumption, calculate_sc_for_specific_time_aggregation
 from input.definitions import DataKind
 from input.read import Read
 from output.write import Write
@@ -14,83 +16,6 @@ from utility import configuration
 from visualization.processing_visualization import plot_sci, plot_shared_energy
 
 ref_year = configuration.config.getint("time", "year")
-
-
-def eval_sc(df, n_fam):
-    calculate_shared_energy(df, n_fam)
-    return calculate_sc(df)
-
-
-# ----------------------------------------------------------------------------
-# Utility functions
-# Helper function - find closest-step integer
-def find_closer(n_fam, step):
-    """Return closer integer to n_fam, considering the step."""
-    if n_fam % step == 0:
-        return n_fam
-    if n_fam % step >= step / 2:
-        return (n_fam // step) + 1
-    else:
-        return n_fam // step
-
-
-def find_best_value(df, n_fam_high, n_fam_low, step, sc):
-    # Stopping criterion (considering that n_fam is integer)
-    if n_fam_high - n_fam_low <= step:
-        print("Procedure ended without exact match.")
-        return n_fam_high, eval_sc(df, n_fam_high)
-
-    # Bisection of the current space
-    n_fam_mid = find_closer((n_fam_low + n_fam_high) / 2, step)
-    sc_mid = eval_sc(df, n_fam_mid)
-
-    # Evaluate and update
-    if sc_mid - sc == 0:  # Check if exact match is found
-        print("Found exact match.")
-        return n_fam_mid, sc_mid
-
-    elif sc_mid < sc:
-        return find_best_value(df, n_fam_high, n_fam_mid, step, sc)
-    else:
-        return find_best_value(df, n_fam_mid, n_fam_low, step, sc)
-
-
-# Find the optimal number of families to satisfy a given self-consumption ratio
-def find_the_optimal_number_of_families_for_sc_ratio(df, sc, n_fam_max, step=25):
-    """
-    Finds the optimal number of families to satisfy a given self-consumption
-    ratio.
-
-    Parameters:
-    - sc (float): Target self consumption ratio.
-    - n_fam_max (int): Maximum number of families.
-    - p_plants (numpy.ndarray): Array of power values from plants.
-    - p_users (numpy.ndarray): Array of power values consumed by users.
-    - p_fam (numpy.ndarray): Array of power values consumed by each family.
-    - step (int): Step in the number of families.
-
-    Returns:
-    - tuple: Tuple containing the optimal number of families and the
-        corresponding shared energy ratio.
-    """
-
-    # Evaluate starting point
-    n_fam_low = 0
-    sc_low = eval_sc(df, n_fam_low)
-    if sc_low >= sc:  # Check if requirement is already satisfied
-        print("Requirement already satisfied!")
-        return n_fam_low, sc_low
-
-    # Evaluate point that can be reached
-    n_fam_high = n_fam_max
-    sc_high = eval_sc(df, n_fam_high)
-    if sc_high <= sc:  # Check if requirement is satisfied
-        print("Requirement cannot be satisfied!")
-        return n_fam_high, sc_high
-
-    # Loop to find best value
-    return find_best_value(df, n_fam_high, n_fam_low, step, sc)
-
 
 # ----------------------------------------------------------------------------
 # Setup and data loading
@@ -136,8 +61,6 @@ tou_months = xr.concat([users, families, plants], dim="user").assign_coords(
 
 # 4.) Merge aggregated consumption/production data into user info dataframe
 # Here, we manage hourly data, we sum all end users/plants
-
-# 5.) I thought we already did this, but this is for hourly data, not aggregated
 # We create a single dataframe for both production and consumption
 plants_year = ds["pv_profiles"]
 plants_year = plants_year.assign_coords(dim_1=to_datetime(plants_year.dim_1)).sum("user")
@@ -188,34 +111,8 @@ for i, sc_target in enumerate((0, 0.10, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 
 
 
 # ----------------------------------------------------------------------------
-# %% Here, we evaluate the need for daily/seasonal storage depending on the number of families
-def calc_sum_consumption(df, n_fam):
-    df[DataKind.CONSUMPTION] = df[DataKind.CONSUMPTION_OF_FAMILIES] * n_fam + df[DataKind.CONSUMPTION_OF_RESIDENTIAL]
-
-
-def calculate_shared_energy(df, n_fam):
-    calc_sum_consumption(df, n_fam)
-    df[DataKind.SHARED] = df[[DataKind.PRODUCTION, DataKind.CONSUMPTION]].min(axis="rows")
-
-
-def calculate_sc(df):
-    return df[DataKind.SHARED].sum() / df[DataKind.PRODUCTION].sum()
-
-
-# Function to evaluate a "theoretical" limit to shared energy/self-consumption given the ToU monthly energy values
-def calculate_theoretical_limit_of_self_consumption(df_months, n_fam):
-    calculate_shared_energy(df_months, n_fam)
-    return calculate_sc(df_months)
-
-
-# Function to evaluate SC with different aggregations in time
-def calculate_sc_for_specific_time_aggregation(df_hours, time_resolution, n_fam):
-    """Evaluate SC with given temporal aggregation and number of families."""
-    calculate_shared_energy(df_hours.groupby(time_resolution).sum(), n_fam)
-    return calculate_sc(df_hours)
-
-
 # Setup to aggregate in time
+# Function to evaluate SC with different aggregations in time
 time_resolution = dict(sc_year=DataKind.YEAR, sc_season=DataKind.SEASON, sc_month=DataKind.MONTH, sc_week=DataKind.WEEK,
                        sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH],
                        sc_hour=[DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.HOUR])
