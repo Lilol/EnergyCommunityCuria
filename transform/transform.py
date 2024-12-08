@@ -12,8 +12,9 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind, UserType, BillType
+from operation import ScaleProfile
 from operation.definitions import Status
-from operation.scale_profile import ScaleInProportion, ScaleTimeOfUseProfile
+from operation.scale_profile import ScaleInProportion
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 from utility.definitions import grouper
@@ -132,8 +133,8 @@ class TransformBills(Transform):
             [get_bill_type(df.squeeze(drop=True)), ] * df.shape[1] for _, df in
             dataset.groupby(dataset.squeeze().loc[..., DataKind.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [DataKind.BILL_TYPE, ]})
-        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
-            {"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
+        dataset = (
+        xr.concat([dataset, da], dim="dim_1").rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
 
         dataset = dataset.assign_coords(
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(
@@ -241,7 +242,7 @@ class TransformBillsToLoadProfiles(Transform):
             raise ValueError(f"Invalid bill_type '{bill_type}'")
 
     _name = "bill_load_profile_transformer"
-    _profile_scaler = {BillType.MONO: ScaleInProportion(), BillType.TIME_OF_USE: ScaleTimeOfUseProfile()}
+    _profile_scaler = {BillType.MONO: ScaleInProportion(), BillType.TIME_OF_USE: ScaleProfile.create()}
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -261,19 +262,20 @@ class TransformBillsToLoadProfiles(Transform):
                                                   DataKind.HOUR.value: range(24),
                                                   DataKind.MUNICIPALITY.value: dataset[DataKind.MUNICIPALITY.value]})
 
-        for m, ds in dataset.groupby(DataKind.MUNICIPALITY.value):
+        for municipality, ds in dataset.groupby(DataKind.MUNICIPALITY.value):
             groups = grouper(ds, DataKind.USER.value, user_data=DataKind.MONTH)
             for (user, month), ds in ds.groupby(groups):
                 if user_type is None:
-                    ut = users.sel({DataKind.MUNICIPALITY.value: m, DataKind.USER_DATA.value: DataKind.USER_TYPE,
-                                    DataKind.USER.value: user}).values
+                    ut = users.sel(
+                        {DataKind.MUNICIPALITY.value: municipality, DataKind.USER_DATA.value: DataKind.USER_TYPE,
+                         DataKind.USER.value: user}).values
                 else:
                     ut = user_type
                 selection = {DataKind.USER_TYPE.value: ut, DataKind.MONTH.value: month}
                 reference_profile = typical_load_profiles.sel(selection).squeeze()
                 aggregated_consumption_of_reference_profile = DataStore()["typical_aggregated_consumption"].sel(
                     selection).squeeze()
-                user_profiles.loc[user, month, ..., m] = self.scale_profile(
+                user_profiles.loc[user, month, ..., municipality] = self.scale_profile(
                     ds.sel(user_data=DataKind.BILL_TYPE).values[0, 0], ds, reference_profile,
                     aggregated_consumption_of_reference_profile)
         return user_profiles
@@ -342,19 +344,6 @@ class AggregateProfileDataForTimePeriod(Transform):
         output_data = output_data.transpose(DataKind.DESCRIPTION.value, DataKind.TOU_ENERGY.value,
                                             DataKind.MUNICIPALITY.value)
         return output_data
-
-
-class TransformTimeOfUseTimeSlots(Transform):
-    _name = "tou_transformer"
-
-    def __init__(self, name=_name, *args, **kwargs):
-        super().__init__(name, *args, **kwargs)
-
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        return xr.concat([OmnesDataArray(unique_numbers[1], dims=DataKind.COUNT.value,
-                                         coords={DataKind.COUNT.value: unique_numbers[0]}).expand_dims(
-            {DataKind.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
-            (unique_numbers := np.unique(a, return_counts=True))], dim=DataKind.DAY_TYPE.value)
 
 
 class Apply(Transform):

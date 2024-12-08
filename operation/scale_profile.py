@@ -8,6 +8,7 @@ import xarray as xr
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
+from input.definitions import DataKind
 from operation.definitions import Status, ScalingMethod
 from operation.operation import Operation
 from utility import configuration
@@ -30,30 +31,34 @@ class ScaleProfile(Operation):
         super().__init_subclass__(**kwargs)
         cls.subclasses[cls._method] = cls
 
-    def __new__(cls, *args, **kwargs):
-        return cls.subclasses[configuration.config.get("profile", "scaling_method")](*args, **kwargs)
+    @classmethod
+    def create(cls, name=_name, *args, **kwargs):
+        return cls.subclasses[configuration.config.get("profile", "scaling_method")](name, *args, **kwargs)
 
 
 class ScaleInProportion(ScaleProfile):
-    _name = "flat_tariff_profile_scaler"
+    _name = "proportional_profile_scaler"
     _method = ScalingMethod.IN_PROPORTION
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
+        self.status = Status.OPTIMAL
 
     def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
-        self.status = Status.OPTIMAL
-        reference_profile = operands[0]
-        total_consumption_by_time_slots = operands[1]
-        return reference_profile.values / reference_profile.sum() * total_consumption_by_time_slots.sum()
+        total_consumption_by_time_slots = operands[0]
+        reference_profile = operands[1]
+        day_type_count = DataStore()["day_count"].sel({DataKind.MONTH.value: reference_profile.month.values})
+        return (reference_profile / (day_type_count * reference_profile.sum(
+            DataKind.HOUR.value)).sum() * total_consumption_by_time_slots.sum()).squeeze()
 
 
 class ScaleFlat(ScaleProfile):
-    _name = "flat_scaler"
+    _name = "flat_tariff_profile_scaler"
     _method = ScalingMethod.FLAT
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
+        self.status = Status.OPTIMAL
 
     def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
         """
@@ -87,12 +92,18 @@ class ScaleFlat(ScaleProfile):
         """
         # ------------------------------------
         total_consumption_by_time_slots = operands[0]
-        time_of_use_time_slots = DataStore()["time_of_use_time_slots"]
+        reference_profile = operands[1]
+        data_store = DataStore()
+        time_of_use_time_slots = data_store["time_of_use_time_slots"]
+        time_of_use_time_slot_counts = data_store["time_of_use_time_slot_counts"]
+        day_type_count = DataStore()["day_count"].sel({DataKind.MONTH.value: reference_profile.month.values})
+
         scaled_profile = time_of_use_time_slots.copy()
-        for tariff_time_slot in configuration.config.getarray("tariff", "tariff_time_slots", int):
-            scaled_profile.where(time_of_use_time_slots != tariff_time_slot).fillna(
-                total_consumption_by_time_slots[tariff_time_slot] / np.count_nonzero(
-                    time_of_use_time_slots == tariff_time_slot))
+        for tariff_time_slot, tou_label in zip(configuration.config.getarray("tariff", "tariff_time_slots", int),
+                                               configuration.config.get("tariff", "time_of_use_labels")):
+            scaled_profile = scaled_profile.where(time_of_use_time_slots != tariff_time_slot).fillna(
+                total_consumption_by_time_slots.loc[:, :, tou_label].squeeze() / ((time_of_use_time_slot_counts.sel(
+                    {DataKind.TARIFF_TIME_SLOT.value: tariff_time_slot}) * day_type_count).sum()))
         return scaled_profile
 
 
@@ -102,6 +113,7 @@ class ScaleTimeOfUseProfile(ScaleProfile):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
+        self.status = Status.OPTIMAL
 
     def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
         """
@@ -137,7 +149,7 @@ class ScaleTimeOfUseProfile(ScaleProfile):
         # divided into tariff time-slots
         total_consumption_by_time_slots = operands[0]
         reference_profile = operands[1]
-        total_reference_consumption_by_time_slots = operands[2]
+        total_reference_consumption_by_time_slots = operands[2].sum(DataKind.DAY_TYPE.value)
 
         # calculate scaling factors (one for each tariff time-slot)
         scaling_factor = total_consumption_by_time_slots.squeeze().values / total_reference_consumption_by_time_slots
@@ -147,8 +159,8 @@ class ScaleTimeOfUseProfile(ScaleProfile):
         time_of_use_time_slots = DataStore()["time_of_use_time_slots"]
         scaled_profile = xr.concat(
             [reference_profile.where(time_of_use_time_slots == time_slot) * scaling_factor[time_slot] for time_slot in
-             configuration.config.getarray("tariff", "tariff_time_slots", int)], dim="tariff_time_slot").sum(
-            "tariff_time_slot", skipna=True)
+             configuration.config.getarray("tariff", "tariff_time_slots", int)],
+            dim=DataKind.TARIFF_TIME_SLOT.value).sum(DataKind.TARIFF_TIME_SLOT.value, skipna=True)
 
         # Substituting missing values with a flat consumption
         for s in scaling_factor[scaling_factor == 0]:
@@ -156,7 +168,6 @@ class ScaleTimeOfUseProfile(ScaleProfile):
                 total_consumption_by_time_slots[s.tariff_time_slot] / np.count_nonzero(
                     time_of_use_time_slots == s.tariff_time_slot))
 
-        self.status = Status.OPTIMAL
         return scaled_profile
 
 
@@ -201,21 +212,25 @@ class ScaleByLinearEquation(ScaleProfile):
         reference_profile = operands[1]
         # energy consumed in reference profiles assigned to each typical day,
         # divided into tariff time-slots
-        e_ref = DataStore()["typical_aggregated_consumption"]
+        aggregated_consumption_of_reference_profile = operands[2]
 
         # scaling factors to respect total consumption
         self.status = Status.OPTIMAL
         try:
-            scaling_factor = np.dot(lin.inv(e_ref.values), total_consumption_by_time_slots.values[:, np.newaxis])
+            scaling_factor = OmnesDataArray(np.dot(lin.inv(aggregated_consumption_of_reference_profile.T.values),
+                                                   total_consumption_by_time_slots.squeeze().values),
+                                            dims=DataKind.DAY_TYPE.value, coords={
+                    DataKind.DAY_TYPE.value: reference_profile[DataKind.DAY_TYPE.value].values})
             if np.any(scaling_factor < 0):
                 self.status = Status.UNPHYSICAL
         except lin.LinAlgError as e:
-            scaling_factor = -1
+            scaling_factor = OmnesDataArray(-1., dims=(DataKind.DAY_TYPE.value, ), coords={
+                DataKind.DAY_TYPE.value: reference_profile[DataKind.DAY_TYPE.value].values})
             self.status = Status.ERROR
-            logger.warning(f"Error during optimization '{e}'")
+            logger.warning(f"Error during calculating scaling factor '{e}'")
         # ------------------------------------
         # get load profiles in day-types and return
-        return reference_profile * scaling_factor.flatten()[:, np.newaxis]
+        return reference_profile * scaling_factor
 
 
 class ScaleByQuadraticOptimization(ScaleProfile):
@@ -238,7 +253,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         monthly energy consumption divided into tariff time-slots (x).
         ______
         NOTES
-        The method solves a quadratic optimisation problem where the deviation
+        The method solves a quadratic optimization problem where the deviation
         from the given reference profiles is to be minimised.
         The total consumption is a constraint. Other (optional) constraints are:
             - demand smaller than a maximum value in all time-steps;
@@ -259,7 +274,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
             If None, the related constraint is not applied. Default is None.
             NOTE : convergence may not be reached if y_max is too small.
         obj : int, optional
-            Objective of the optimisation
+            Objective of the optimization
             0 : minimise sum(y[i] - y_ref[i])**2;
             1 : minimise sum(y[i]/y_ref[i] -1)**2.
             Default is 0.
@@ -277,7 +292,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
             Array of shape (nj*ni) where 'ni' is the number of time-steps in each
             day.
         status : str
-            Status of the optimisation
+            Status of the optimization
             Can be : 'optimal', 'unknown', 'unfeasible'.
         _____
         INFO
@@ -287,7 +302,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         # TODO: implement it in xarray
         total_reference_consumption_by_time_slots = operands[0]
         reference_profile = operands[1]
-        total_consumption_by_time_slots = operands[2]
+        total_consumption_by_time_slots = operands[2].fillna(0).sum(DataKind.DAY_TYPE.value)
         y_max = kwargs.pop("y_max", None)
         obj = kwargs.pop("obj", None)
         obj_reg = kwargs.pop("obj_reg", None)

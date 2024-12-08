@@ -9,6 +9,7 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
+from transform.transform import Transform
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 
@@ -124,3 +125,16 @@ class ExtractDayCountInTimeframe(Extract):
             (unique_numbers := np.unique(da, return_counts=True))], dim=DataKind.MONTH.value).drop(
             dim=DataKind.DAY_TYPE.value, labels=np.nan).fillna(0).astype(int)
         return dataset.assign_coords({DataKind.DAY_TYPE.value: dataset[DataKind.DAY_TYPE.value].astype(int)})
+
+
+class ExtractTimeOfUseTimeSlotCount(Extract):
+    _name = "time_of_use_time_slot_count_extractor"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        return xr.concat([OmnesDataArray(unique_numbers[1], dims=DataKind.TARIFF_TIME_SLOT.value,
+                                         coords={DataKind.TARIFF_TIME_SLOT.value: unique_numbers[0]}).expand_dims(
+            {DataKind.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
+            (unique_numbers := np.unique(a, return_counts=True))], dim=DataKind.DAY_TYPE.value).fillna(0)

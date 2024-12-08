@@ -37,7 +37,10 @@ class ConfigurationManager:
 
     def _get_scaling_method(self):
         scaling_method = self.__config.get("profile", "scaling_method")
-        return ScalingMethod(scaling_method)
+        try:
+            return ScalingMethod(scaling_method)
+        except ValueError:
+            return scaling_method
 
     def _get_tou_labels(self):
         return self.getarray("tariff", "time_of_use_labels", str, fallback=[f"{DataKind.TOU_ENERGY.value}{i}" for i in

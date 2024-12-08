@@ -31,15 +31,15 @@ class CalculateTypicalMonthlyConsumption(Combine):
         time_of_use_time_slots = data_store["time_of_use_time_slots"]
         day_count = data_store["day_count"]
 
-        return OmnesDataArray(xr.concat([(dataset.isel({DataKind.DAY_TYPE.value: dt,
-                                                        DataKind.HOUR.value: time_of_use_time_slots.sel(
-                                                            {DataKind.DAY_TYPE.value: dt}) == tou}).sum(
-            DataKind.HOUR.value) * day_count.sel({DataKind.DAY_TYPE.value: dt})).expand_dims(
-            (DataKind.TARIFF_TIME_SLOT.value, DataKind.DAY_TYPE.value)).assign_coords(
-            {DataKind.TARIFF_TIME_SLOT.value: [tou, ], DataKind.DAY_TYPE.value: [dt, ]}) for tou in
-            configuration.config.getarray("tariff", "tariff_time_slots", int) for dt in
-            configuration.config.getarray("time", "day_types", int)], dim=DataKind.DAY_TYPE.value).sum(
-            DataKind.DAY_TYPE.value))
+        return OmnesDataArray(xr.concat([xr.concat([dataset.isel({DataKind.DAY_TYPE.value: dt,
+                                                                  DataKind.HOUR.value: time_of_use_time_slots.sel(
+                                                                      {DataKind.DAY_TYPE.value: dt}) == tou}).sum(
+            DataKind.HOUR.value) * day_count.sel({DataKind.DAY_TYPE.value: dt}).expand_dims(
+            DataKind.TARIFF_TIME_SLOT.value).assign_coords(tariff_time_slot=[tou]).squeeze() for tou in
+                                                    configuration.config.getarray("tariff", "tariff_time_slots", int)],
+                                                   dim="tariff_time_slot") for dt in
+                                         configuration.config.getarray("time", "day_types", int)],
+                                        dim="day_type").squeeze(drop=True))
 
 
 class AddYearlyConsumptionToBillData(Combine):
@@ -52,7 +52,7 @@ class AddYearlyConsumptionToBillData(Combine):
         data_bills = DataStore()["bills"]
         dd = xr.concat([ds.sel({DataKind.USER_DATA.value: [DataKind.MONO_TARIFF,
                                                            *configuration.config.getarray("tariff",
-                                                                                            "time_of_use_labels", str),
+                                                                                          "time_of_use_labels", str),
                                                            DataKind.ANNUAL_ENERGY]}).sum(
             dim=DataKind.USER.value).assign_coords({DataKind.USER.value: u}) for u, ds in
                         data_bills.groupby(DataKind.USER.value)], dim=DataKind.USER.value).astype(float)

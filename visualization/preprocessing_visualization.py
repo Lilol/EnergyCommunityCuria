@@ -37,12 +37,11 @@ def plot_consumption_profiles(yearly_consumption_profiles, **kwargs):
                                      f'Consumption profiles of {user_type.value.upper()} users\nMunicipality: {m}')
 
             # Monthly consumption
-            plt.figure()
             real = real.sortby(real.sel({DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).squeeze()).sel(
                 {DataKind.USER_DATA.value: DataKind.ANNUAL_ENERGY}).squeeze().sortby(DataKind.USER.value)
-            estim = data.groupby(DataKind.USER.value).sum(dim=DataKind.TIME.value).sortby(DataKind.USER.value)
+            estimated = data.groupby(DataKind.USER.value).sum(dim=DataKind.TIME.value).sortby(DataKind.USER.value)
             plt.barh(range(0, 2 * len(real), 2), real, label='Real')
-            plt.barh(range(1, 1 + 2 * len(estim), 2), estim, label='Estimated')
+            plt.barh(range(1, 1 + 2 * len(estimated), 2), estimated, label='Estimated')
             plt.legend()
             plt.yticks(range(0, 2 * len(real), 2), real[DataKind.USER.value].values)
             plt.xlabel('Energy, kWh')
@@ -54,7 +53,6 @@ def plot_consumption_profiles(yearly_consumption_profiles, **kwargs):
 
 def plot_monthly_consumption(data, title):
     # Aggregated by month
-    plt.figure()
     data.groupby(data.time.dt.month).mean().T.to_pandas().plot()
     plt.legend()
     plt.xlabel('Time, h')
@@ -65,7 +63,6 @@ def plot_monthly_consumption(data, title):
     plt.close()
 
     # Whole year
-    plt.figure()
     data.sum(dim=DataKind.USER.value).to_pandas().plot()
     plt.xlabel('Time, h')
     plt.ylabel('Power, kW')
