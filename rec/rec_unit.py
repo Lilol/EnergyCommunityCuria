@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from evaluating_postprocessing import rec_setup
+from evaluate_rec import rec_setup
 from utility import configuration
 
 

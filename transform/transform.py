@@ -13,7 +13,7 @@ from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind, UserType, BillType
 from operation.definitions import Status
-from operation.scale_profile import ProportionateScaler, ScaleTimeOfUseProfile
+from operation.scale_profile import ScaleInProportion, ScaleTimeOfUseProfile
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 from utility.definitions import grouper
@@ -241,7 +241,7 @@ class TransformBillsToLoadProfiles(Transform):
             raise ValueError(f"Invalid bill_type '{bill_type}'")
 
     _name = "bill_load_profile_transformer"
-    _profile_scaler = {BillType.MONO: ProportionateScaler(), BillType.TIME_OF_USE: ScaleTimeOfUseProfile()}
+    _profile_scaler = {BillType.MONO: ScaleInProportion(), BillType.TIME_OF_USE: ScaleTimeOfUseProfile()}
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)

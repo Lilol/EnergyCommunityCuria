@@ -14,12 +14,7 @@ class Combine(PipelineStage):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        data_plants_tou = DataStore()["time_of_use_tariff"]
-        tou_columns = configuration.config.getarray("tariff", "time_of_use_labels")
-        dataset = dataset.merge(
-            data_plants_tou.groupby(DataKind.USER)[tou_columns].sum().rename(tou_columns).reset_index(),
-            on=DataKind.USER)
-        return dataset
+        raise NotImplementedError("'execute()' is not implemented in Combine base class.")
 
 
 class CalculateTypicalMonthlyConsumption(Combine):

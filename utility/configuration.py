@@ -7,6 +7,7 @@ from sys import argv
 from typing import Iterable
 
 from input.definitions import PvDataSource, DataKind
+from operation.definitions import ScalingMethod
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,8 @@ class ConfigurationManager:
         self.__config.read_file(open(config_filename))
         self._registered_entries = {"production": {"estimator": self._process_pv_estimator},
                                     "rec": {"municipalities": self._get_municipalities},
-                                    "tariff": {"time_of_use_labels": self._get_tou_labels}}
+                                    "tariff": {"time_of_use_labels": self._get_tou_labels},
+                                    "profile": {"scaling_method": self._get_scaling_method}}
 
     def _process_pv_estimator(self):
         pv_data_source = self.__config.get("production", "estimator")
@@ -33,10 +35,14 @@ class ConfigurationManager:
             filter(lambda x: os.path.isdir(join(input_dir, x)), os.listdir(input_dir))) if municipality == "all" else (
             municipality if isinstance(municipality, Iterable) else (municipality,))
 
+    def _get_scaling_method(self):
+        scaling_method = self.__config.get("profile", "scaling_method")
+        return ScalingMethod(scaling_method)
+
     def _get_tou_labels(self):
-        return self.getarray("tariff", "time_of_use_labels", str,
-                                   fallback=[f"{DataKind.TOU_ENERGY.value}{i}" for i in
-                                             range(1, self.getint("tariff", "number_of_time_of_use_periods") + 1)])
+        return self.getarray("tariff", "time_of_use_labels", str, fallback=[f"{DataKind.TOU_ENERGY.value}{i}" for i in
+                                                                            range(1, self.getint("tariff",
+                                                                                                 "number_of_time_of_use_periods") + 1)])
 
     def get(self, section, key, fallback=None):
         if section not in self._registered_entries or key not in self._registered_entries[section]:

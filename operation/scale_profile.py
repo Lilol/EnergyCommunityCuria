@@ -8,15 +8,17 @@ import xarray as xr
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from operation.definitions import Status
+from operation.definitions import Status, ScalingMethod
 from operation.operation import Operation
 from utility import configuration
 
 logger = logging.getLogger(__name__)
 
 
-class ProfileScaler(Operation):
+class ScaleProfile(Operation):
     _name = "profile_scaler"
+    _method = ScalingMethod.INVALID
+    subclasses = {}
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -24,9 +26,17 @@ class ProfileScaler(Operation):
     def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
         raise NotImplementedError
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.subclasses[cls._method] = cls
 
-class ProportionateScaler(ProfileScaler):
+    def __new__(cls, *args, **kwargs):
+        return cls.subclasses[configuration.config.get("profile", "scaling_method")](*args, **kwargs)
+
+
+class ScaleInProportion(ScaleProfile):
     _name = "flat_tariff_profile_scaler"
+    _method = ScalingMethod.IN_PROPORTION
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -38,8 +48,9 @@ class ProportionateScaler(ProfileScaler):
         return reference_profile.values / reference_profile.sum() * total_consumption_by_time_slots.sum()
 
 
-class FlatScaler(ProfileScaler):
+class ScaleFlat(ScaleProfile):
     _name = "flat_scaler"
+    _method = ScalingMethod.FLAT
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -85,8 +96,9 @@ class FlatScaler(ProfileScaler):
         return scaled_profile
 
 
-class ScaleTimeOfUseProfile(ProfileScaler):
+class ScaleTimeOfUseProfile(ScaleProfile):
     _name = "time_of_use_tariff_profile_scaler"
+    _method = ScalingMethod.TIME_OF_USE
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -148,8 +160,9 @@ class ScaleTimeOfUseProfile(ProfileScaler):
         return scaled_profile
 
 
-class LinearScaler(ProfileScaler):
+class ScaleByLinearEquation(ScaleProfile):
     _name = "linear_scaler"
+    _method = ScalingMethod.LINEAR_EQUATION
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -205,8 +218,9 @@ class LinearScaler(ProfileScaler):
         return reference_profile * scaling_factor.flatten()[:, np.newaxis]
 
 
-class QuadraticOptimizationScaler(ProfileScaler):
+class ScaleByQuadraticOptimization(ScaleProfile):
     _name = "quadratic_optimization_scaler"
+    _method = ScalingMethod.QUADRATIC_OPTIMIZATION
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -296,9 +310,11 @@ class QuadraticOptimizationScaler(ProfileScaler):
         # NOTE : inequality constraints are written as <g,x> <= h
         g = np.zeros((0, n_time_steps))
         h = np.zeros((0,))
+        number_of_time_of_use_periods = configuration.config.getint("time", "number_of_time_of_use_periods")
+        time_of_use_time_slots = DataStore()["time_of_use_time_slots"]
         # constraint on the total consumption (one for each tariff time slot)
-        for if_, f in enumerate(fs):
-            aux = np.concatenate([(arera[ij] == f) * nd[ij] for ij in range(nj)])
+        for if_, f in enumerate(number_of_time_of_use_periods):
+            aux = np.concatenate([(time_of_use_time_slots[ij] == f) * nd[ij] for ij in range(nj)])
             a = np.concatenate((a, aux[np.newaxis, :]), axis=0)
             b = np.append(b, total_consumption_by_time_slots[if_])
         # constraint for variables to be positive
@@ -331,18 +347,10 @@ class QuadraticOptimizationScaler(ProfileScaler):
                 l[i_h, i_h] = 1
                 l[i_h, (i_h + 1) % n_time_steps] = -1
             p += obj_reg * np.dot(l.T, l)  # q += np.zeros((nh,))
-        # turn into cvxopt matrices
-        P = opt.matrix(p)
-        A = opt.matrix(a)
-        b = opt.matrix(b)
-        q = opt.matrix(q)
-        G = opt.matrix(g)
-        h = opt.matrix(h)
         # options for solver
-        cvxopt = {**dict(kktsolver='ldl', options=dict(kktreg=1e-9, show_progress=False)), **cvxopt}
+        cvxopt = {"kktsolver": 'ldl', "options": {'kktreg': 1e-9, "show_progress": False}, **cvxopt}
         # solve and retrieve solution
-        sol = opt.solvers.qp(P=P, q=q, A=A, b=b, G=G, h=h, **cvxopt)
+        sol = opt.solvers.qp(P=opt.matrix(p), q=opt.matrix(q), A=opt.matrix(a), b=opt.matrix(b), G=opt.matrix(g),
+                             h=opt.matrix(h), **cvxopt)
         self.status = Status(sol['status'])
-        y = sol['x']
-        y = np.array(y)
-        return y.flatten()
+        return OmnesDataArray(np.array(sol['x']).flatten())
