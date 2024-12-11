@@ -10,6 +10,8 @@ class Operation:
     def __init__(self, name=_name, *args, **kwargs):
         self.name = name
         self.status = Status.INVALID
+        self.args = args
+        self.kwargs = kwargs
 
     def __call__(self, *operands: Iterable[OmnesDataArray], **kwargs) -> OmnesDataArray:
         raise NotImplementedError

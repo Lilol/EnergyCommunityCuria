@@ -5,6 +5,7 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 import xarray as xr
+from numpy import number
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
@@ -95,15 +96,15 @@ class ScaleFlat(ScaleProfile):
         reference_profile = operands[1]
         data_store = DataStore()
         time_of_use_time_slots = data_store["time_of_use_time_slots"]
-        time_of_use_time_slot_counts = data_store["time_of_use_time_slot_counts"]
-        day_type_count = DataStore()["day_count"].sel({DataKind.MONTH.value: reference_profile.month.values})
+        time_of_use_time_slot_count_by_month = data_store["time_of_use_time_slot_count_by_month"].sel(
+            {DataKind.MONTH.value: reference_profile.month.values})
 
         scaled_profile = time_of_use_time_slots.copy()
         for tariff_time_slot, tou_label in zip(configuration.config.getarray("tariff", "tariff_time_slots", int),
                                                configuration.config.get("tariff", "time_of_use_labels")):
             scaled_profile = scaled_profile.where(time_of_use_time_slots != tariff_time_slot).fillna(
-                total_consumption_by_time_slots.loc[:, :, tou_label].squeeze() / ((time_of_use_time_slot_counts.sel(
-                    {DataKind.TARIFF_TIME_SLOT.value: tariff_time_slot}) * day_type_count).sum()))
+                total_consumption_by_time_slots.loc[:, :, tou_label].squeeze() / (
+                    time_of_use_time_slot_count_by_month.sel({DataKind.TARIFF_TIME_SLOT.value: tariff_time_slot})))
         return scaled_profile
 
 
@@ -224,7 +225,7 @@ class ScaleByLinearEquation(ScaleProfile):
             if np.any(scaling_factor < 0):
                 self.status = Status.UNPHYSICAL
         except lin.LinAlgError as e:
-            scaling_factor = OmnesDataArray(-1., dims=(DataKind.DAY_TYPE.value, ), coords={
+            scaling_factor = OmnesDataArray(-1., dims=(DataKind.DAY_TYPE.value,), coords={
                 DataKind.DAY_TYPE.value: reference_profile[DataKind.DAY_TYPE.value].values})
             self.status = Status.ERROR
             logger.warning(f"Error during calculating scaling factor '{e}'")
@@ -284,7 +285,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
             subsequent time-steps, i.e.: obj_reg * sum(y[i] - y[(i+1)%nh])**2.
             Default is None, same as 0.
         cvxopt : dict, optional
-            Optional parameters to pass to 'cvxopt'.
+            Parameters to pass to 'cvxopt'.
         _______
         RETURNS
         y : np.ndarray
@@ -299,14 +300,12 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         Author : G. Lorenti (gianmarco.lorenti@polito.it)
         Date : 17.11.2022 (last update: 17.11.2022)
         """
-        # TODO: implement it in xarray
-        total_reference_consumption_by_time_slots = operands[0]
         reference_profile = operands[1]
         total_consumption_by_time_slots = operands[2].fillna(0).sum(DataKind.DAY_TYPE.value)
-        y_max = kwargs.pop("y_max", None)
-        obj = kwargs.pop("obj", None)
-        obj_reg = kwargs.pop("obj_reg", None)
-        cvxopt = kwargs.pop("cvxopt", {})
+        y_max = self.kwargs.pop("y_max", None)
+        obj = self.kwargs.pop("obj", 0)
+        obj_reg = self.kwargs.pop("obj_reg", None)
+        cvxopt = self.kwargs.pop("cvxopt", {})
         # ------------------------------------
         # total consumption in the reference profile in the month
         # x_ref = np.array([
@@ -314,7 +313,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         #           for ij in range(nj)]) for f in fs])
         # y_ref = y_ref * np.sum(x) / np.sum(x_ref)
         # ------------------------------------
-        # constraint in the optimsation problem
+        # constraint in the optimization problem
         # NOTE : 'nh' variables are to be found
         # coefficients and known term of equality constraints
         # NOTE : equality constraints are written as <a,x> = b
@@ -326,10 +325,15 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         g = np.zeros((0, n_time_steps))
         h = np.zeros((0,))
         number_of_time_of_use_periods = configuration.config.getint("time", "number_of_time_of_use_periods")
-        time_of_use_time_slots = DataStore()["time_of_use_time_slots"]
+        ds = DataStore()
+        time_of_use_time_slots = ds["time_of_use_time_slots"]
+        number_of_days_in_month = ds["day_count"].sel({DataKind.MONTH.value: reference_profile.month.values})
         # constraint on the total consumption (one for each tariff time slot)
         for if_, f in enumerate(number_of_time_of_use_periods):
-            aux = np.concatenate([(time_of_use_time_slots[ij] == f) * nd[ij] for ij in range(nj)])
+            aux = np.concatenate([(time_of_use_time_slots.sel(
+                {DataKind.DAY_TYPE.value: day_type}).values == f) * number_of_days_in_month.sel(
+                {DataKind.DAY_TYPE.value: day_type}) for day_type in
+                                  configuration.config.getarray("time", "day_types", int)])
             a = np.concatenate((a, aux[np.newaxis, :]), axis=0)
             b = np.append(b, total_consumption_by_time_slots[if_])
         # constraint for variables to be positive
@@ -346,8 +350,9 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         assert obj in (objs := list(range(2))), f"If given, 'obj' must be in: {', '.join([str(it) for it in objs])}."
         # if obj == 0:
         # p = np.eye(nh)
-        p = np.diag(np.repeat(nd / nd.sum(), ni))
-        q = -reference_profile * np.repeat(nd / nd.sum(), ni)
+        nd = np.repeat((number_of_days_in_month / number_of_days_in_month.sum()).values, n_time_steps)
+        p = np.diag(nd)
+        q = -reference_profile * nd
         # q = -y_ref
         # else:
         #     delta = 1e-1

@@ -7,7 +7,8 @@ from output.write import Write, WriteSeparately
 from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
-    ExtractDayCountInTimeframe, ExtractTypicalYear, ExtractTimeOfUseTimeSlotCount
+    ExtractDayCountInTimeframe, ExtractTypicalYear, ExtractTimeOfUseTimeSlotCountByDayType, \
+    ExtractTimeOfUseTimeSlotCountByMonth
 from transform.transform import TransformTariffData, TransformTypicalLoadProfile, TransformUserData, \
     TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
     AggregateProfileDataForTimePeriod, Apply
@@ -19,19 +20,21 @@ from visualization.visualize import Visualize
 init_logger()
 
 # ----------------------------------------------------------------------------
-DataProcessingPipeline("time_of_use", workers=(
-    ReadTariff(),
-    TransformTariffData(),
-    ExtractTimeOfUseParameters(),
-    Store("time_of_use_time_slots"),
-    ExtractTimeOfUseTimeSlotCount(),
-    Store("time_of_use_time_slot_counts"))).execute()
-
 DataProcessingPipeline("day_properties", workers=(
     ExtractDayTypesInTimeframe(),
     Store("day_types"),
     ExtractDayCountInTimeframe(),
     Store("day_count"))).execute()
+
+DataProcessingPipeline("time_of_use", workers=(
+    ReadTariff(),
+    TransformTariffData(),
+    ExtractTimeOfUseParameters(),
+    Store("time_of_use_time_slots"),
+    ExtractTimeOfUseTimeSlotCountByDayType(),
+    Store("time_of_use_time_slot_count_by_day_type"),
+    ExtractTimeOfUseTimeSlotCountByMonth(),
+    Store("time_of_use_time_slot_count_by_month"))).execute()
 
 DataProcessingPipeline("typical_load_profile", workers=(
     ReadTypicalLoadProfile(),
