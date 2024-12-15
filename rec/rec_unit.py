@@ -5,7 +5,6 @@ from typing import List
 import numpy as np
 import pandas as pd
 
-from evaluate_rec import rec_setup
 from utility import configuration
 
 
@@ -64,8 +63,8 @@ class User(Unit):
             unit.evaluate()
 
         # Evaluate total production and consumption
-        self.p_produced = sum([unit.p_produced for unit in self.units])
-        self.p_consumed = sum([unit.p_consumed for unit in self.units])
+        for quantity in ("p_produced", "p_consumed", "p_injected", "p_withdrawn"):
+            setattr(self, quantity, sum([getattr(unit, quantity) for unit in self.units]))
 
         super().evaluate()
 
@@ -76,14 +75,14 @@ class REC(User):
     def build(cls, rec_structure):
         # Create units, users and REC
         rec = cls(id="Renewable Energy Community")
-        for user_id, user_setup in rec_setup.items():
+        for user_id, user_setup in rec_structure.items():
             user = User()
             for generator in user_setup['generators']:
-                power = pd.read_csv(join("generators", f"{generator}.csv"), sep=';').values
-                user.add_unit(Generator(id=generator, power=power))
+                power = pd.read_csv(join("generators", f"{generator}.csv"), sep=';')
+                user.add_unit(Generator(id=generator, power=power.values))
             for load in user_setup['loads']:
-                power = pd.read_csv(join("loads", f"{load}.csv"), sep=';').values
-                user.add_unit(Load(id=load, power=power))
+                power = pd.read_csv(join("loads", f"{load}.csv"), sep=';')
+                user.add_unit(Load(id=load, power=power.values))
             rec.add_unit(user)
         return rec
 

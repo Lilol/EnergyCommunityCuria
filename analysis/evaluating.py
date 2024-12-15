@@ -6,7 +6,7 @@ from utility import configuration
 
 # ----------------------------------------------------------------------------
 # Useful functions
-_dt = configuration.config.get("time", "time_resolution")
+_dt = configuration.config.get("time", "resolution")
 
 
 # Calculate energy by summing up power values multiplied by the time interval

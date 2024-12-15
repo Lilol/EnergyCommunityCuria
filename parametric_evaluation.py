@@ -83,7 +83,7 @@ met_targets = []
 scs = []
 
 # Do we need this? We don't know. We can have a PipelineStep for it
-n_fams_ = configuration.config.getarray("rec", "number_of_families", int)  # [0, 15, 30, 45, 60]
+n_fams_ = configuration.config.getstr("parametric_evaluation", "to_evaluate")  # [0, 15, 30, 45, 60]
 sc_targets = []
 # Evaluate number of families for each target
 sc = 0
@@ -151,7 +151,7 @@ for i, n_fam in enumerate(n_fams):
         raise ValueError("Something wrong, retry")
 
 scenarios = DataFrame(
-    data=((np.ones_like(bess_size) * n_fam), bess_size for n_fam, bess_size in zip(n_fams, bess_sizes)),
+    data=((np.ones_like(bess_size) * n_fam) for n_fam, bess_size in zip(n_fams, bess_sizes)),
     columns=[DataKind.NUMBER_OF_FAMILIES, DataKind.BATTERY_SIZE])
 
 scenarios[list(results.keys())] = scenarios[DataKind.NUMBER_OF_FAMILIES].apply(

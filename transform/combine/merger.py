@@ -1,9 +1,9 @@
 import logging
 
-from pandas import merge, concat, DataFrame
+import xarray as xr
+from pandas import merge
 
 from data_processing_pipeline.pipeline_stage import PipelineStage
-
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class DataMerger(PipelineStage):
         all_match = len(set.intersection(*map(set, label_series))) == len(label_series[0])
 
         return {'all_match': all_match,
-            'matching_dataframes': [i + 1 for i, match in enumerate(all_match) for _ in range(match)]}
+                'matching_dataframes': [i + 1 for i, match in enumerate(all_match) for _ in range(match)]}
 
     def merge(self, to_merge, merge_on, *args, **kwargs):
         raise NotImplementedError('"merge" method in DataMerger base class is not implemented.')
@@ -41,8 +41,5 @@ class DataframeMerger(DataMerger):
 
 class DatasetConcat(DataMerger):
     def merge(self, to_merge, merge_on, *args, **kwargs):
-        axis = kwargs.get('axis', 0)
-        all_data = DataFrame()
-        for df in to_merge:
-            all_data = concat((all_data, df), axis=axis)
-        return all_data
+        coords = kwargs.get('coords')
+        return xr.concat(*to_merge, dim=merge_on, coords=coords)

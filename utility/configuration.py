@@ -95,6 +95,9 @@ class ConfigurationManager:
         except:
             return self.__config.get(section, key, fallback=fallback)
 
+    def getstr(self, section, key, fallback=None):
+        return self.__config.get(section, key, fallback=fallback)
+
     def getarray(self, section, key, dtype=str, fallback=None):
         val = self._get(section, key, fallback=fallback)
         try:
