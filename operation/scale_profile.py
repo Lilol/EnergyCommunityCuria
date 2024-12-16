@@ -5,7 +5,6 @@ import cvxopt as opt
 import numpy as np
 import numpy.linalg as lin
 import xarray as xr
-from numpy import number
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray

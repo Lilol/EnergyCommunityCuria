@@ -1,5 +1,3 @@
-# ----------------------------------------------------------------------------
-# Import statement
 from collections.abc import Iterable
 
 import matplotlib

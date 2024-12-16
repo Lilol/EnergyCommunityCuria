@@ -6,6 +6,7 @@ class Stage(IntEnum):
     EXTRACT = auto()
     TRANSFORM = auto()
     CHECK = auto()
+    COMBINE = auto()
     STORE = auto()
     WRITE_OUT = auto()
     VISUALIZE = auto()

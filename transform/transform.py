@@ -33,6 +33,19 @@ class Transform(PipelineStage):
         raise NotImplementedError
 
 
+class Rename(Transform):
+    _name = "rename_array_properties"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        dims = self.get_arg("dims", **kwargs, fallback={})
+        coords = self.get_arg("coords", **kwargs, fallback={})
+        variables = self.get_arg("variables", **kwargs, fallback={})
+        return dataset.rename({**dims, **coords, **variables})
+
+
 class TransformReferenceProfile(PipelineStage):
     _name = "ref_profile_transformer"
 
@@ -140,22 +153,6 @@ class TransformBills(Transform):
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(
             labels=DataKind.USER, dim=DataKind.USER_DATA.value)
 
-        return dataset
-
-
-class ReshaperByYear(Transform):
-    _name = "year_reshaper"
-
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        user_name = kwargs.pop('user_name')
-        ref_year = configuration.config.getint("time", "year")
-        dims = (DataKind.DATE.value, DataKind.TIME.value, DataKind.USER.value)
-        coords = {DataKind.DATE.value: date_range(start=f"{ref_year}-01-01", end=f"{ref_year}-12-31", freq="d"),
-                  DataKind.TIME.value: timedelta_range(start="0 Days",
-                                                       freq=configuration.config.get("time", "resolution"),
-                                                       periods=dataset.shape[1]), DataKind.USER.value: [1, ]}
-        dataset = OmnesDataArray(dataset.values, dims=dims, coords=coords)
-        dataset[DataKind.USER.value] = user_name
         return dataset
 
 
@@ -344,6 +341,17 @@ class AggregateProfileDataForTimePeriod(Transform):
         output_data = output_data.transpose(DataKind.DESCRIPTION.value, DataKind.TOU_ENERGY.value,
                                             DataKind.MUNICIPALITY.value)
         return output_data
+
+
+class Aggregate(Transform):
+    _name = "aggregator"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        aggregate_on = self.kwargs.get("aggregate_on")
+        return OmnesDataArray(dataset.groupby(dataset.sel(aggregate_on)).sum())
 
 
 class Apply(Transform):

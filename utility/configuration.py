@@ -8,6 +8,7 @@ from typing import Iterable
 
 from input.definitions import PvDataSource, DataKind
 from operation.definitions import ScalingMethod
+from utility.parameter_pack import EvaluationParameterPack
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,15 @@ class ConfigurationManager:
         self._registered_entries = {"production": {"estimator": self._process_pv_estimator},
                                     "rec": {"municipalities": self._get_municipalities},
                                     "tariff": {"time_of_use_labels": self._get_tou_labels},
-                                    "profile": {"scaling_method": self._get_scaling_method}}
+                                    "profile": {"scaling_method": self._get_scaling_method},
+                                    "parametric_evaluation": {"to_evaluate": self._get_parameter_pack}}
+
+    def _get_parameter_pack(self):
+        parameters = self.__config.get("parametric_evaluation", "to_evaluate")
+        try:
+            return EvaluationParameterPack(parameters)
+        except ValueError:
+            return parameters
 
     def _process_pv_estimator(self):
         pv_data_source = self.__config.get("production", "estimator")

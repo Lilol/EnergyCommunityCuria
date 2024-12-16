@@ -1,17 +1,17 @@
 import numpy as np
-import xarray as xr
 from pandas import DataFrame, to_datetime
 
-from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
-from data_storage.data_store import DataStore
-from data_storage.store_data import Store
 from analysis.evaluating import eval_co2, eval_capex, energy, eval_rec, manage_bess, \
     find_the_optimal_number_of_families_for_sc_ratio, calculate_shared_energy, \
     calculate_theoretical_limit_of_self_consumption, calculate_sc_for_specific_time_aggregation
+from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
+from data_storage.data_store import DataStore
+from data_storage.store_data import Store
 from input.definitions import DataKind
 from input.read import Read
 from output.write import Write
-from transform.transform import TransformCoordinateIntoDimension
+from transform.combine.combine import ArrayConcat
+from transform.transform import TransformCoordinateIntoDimension, Aggregate, Apply, Rename
 from utility import configuration
 from visualization.processing_visualization import plot_sci, plot_shared_energy
 
@@ -25,54 +25,59 @@ ref_year = configuration.config.getint("time", "year")
 # Names of the files to load
 # https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
 input_properties = {"input_root": configuration.config.get("path", "output")}
-
+tou_columns = configuration.config.get("tariff", "time_of_use_labels")
 mm = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0", "new_dimension": "user"}
 DataProcessingPipeline("read_and_store", workers=(
     Read(name="pv_plants", filename="data_plants_tou", **input_properties),
-    TransformCoordinateIntoDimension("pv_plants", **mm), Store("pv_plants"),
-    Read(name="users", filename="data_users_tou", **input_properties), TransformCoordinateIntoDimension("users", **mm),
-    Store("users"), Read(name="families", filename="data_families_tou", **input_properties),
-    TransformCoordinateIntoDimension("families", **mm), Store("families"),
+    TransformCoordinateIntoDimension(name="pv_plants", **mm),
+    Aggregate(name="pv_plants", aggregate_on={"dim_1": DataKind.MONTH}),
+    Apply(name="pv_select_tou_cols", operation=lambda x: x.sel({"dim_1": tou_columns})),
+    Store("pv_plants"),
+    Read(name="users", filename="data_users_tou", **input_properties),
+    TransformCoordinateIntoDimension(name="users", **mm),
+    Aggregate(name="users", aggregate_on={"dim_1": DataKind.MONTH}),
+    Apply(name="users_select_tou_cols", operation=lambda x: x.sel({"dim_1": tou_columns})),
+    Store("users"),
+    Read(name="families", filename="data_families_tou", **input_properties),
+    TransformCoordinateIntoDimension(name="families", **mm),
+    Aggregate(name="families", aggregate_on={"dim_1": DataKind.MONTH}),
+    Apply(name="families_select_tou_cols", operation=lambda x: x.sel({"dim_1": tou_columns})),
+    Store("families"),
+    ArrayConcat(name="merge_consumption_production", dim=DataKind.USER.value, arrays_to_merge=["pv_plants", "families", "users"],
+                coords={DataKind.USER.value: ["plants", "families", "users"]}),
+    Rename(dims={"dim_1": DataKind.TOU.value, "group": DataKind.MONTH.value}),
+    Store("tou_months"),
     Read(name="pv_profiles", filename="data_plants_year", **input_properties),
-    TransformCoordinateIntoDimension("pv_profiles", **mm), Store("pv_profiles"),
+    TransformCoordinateIntoDimension(name="transform_pv_profiles", **mm),
+    Apply(name="pv_profiles", operation=lambda x: x.assign_coords(dim_1=to_datetime(x.dim_1)).sum(DataKind.USER.value)),
+    Store("pv_profiles"),
     Read(name="user_profiles", filename="data_users_year", **input_properties),
-    TransformCoordinateIntoDimension("user_profiles", **mm), Store("user_profiles"),
+    TransformCoordinateIntoDimension(name="transform_user_profiles", **mm),
+    Apply(name="user_profiles",operation=lambda x: x.assign_coords(dim_1=to_datetime(x.dim_1)).sum(DataKind.USER.value)),
+    Store("user_profiles"),
     Read(name="family_profiles", filename="data_families_year", **input_properties),
-    TransformCoordinateIntoDimension("family_profiles", **mm), Store("family_profiles"))).execute()
+    TransformCoordinateIntoDimension(name="transform_family_profiles", **mm),
+    Apply(name="family_profiles", operation=lambda x: x.assign_coords(dim_1=to_datetime(x.dim_1)).sum(DataKind.USER.value)),
+    Store("family_profiles"),
+    ArrayConcat(name="merge_profiles", dim=DataKind.USER.value,
+                arrays_to_merge=["pv_profiles", "family_profiles", "user_profiles"],
+                coords={DataKind.USER.value: ["plants", "families", "users"]}),
+    Store("energy_year"))).execute()
 
 # ----------------------------------------------------------------------------
 # Get total production and consumption data
 # Here we manage monthly ToU values, we sum all end users/plants
 # 2.) Get total consumption and production for all users separated months and time of use
-ds = DataStore()
-tou_columns = configuration.config.get("tariff", "time_of_use_labels")
-plants = ds["pv_plants"]
-plants = plants.groupby(plants.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
-users = ds["users"]
-users = users.groupby(users.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
-families = ds["families"]
-families = families.groupby(families.sel({"dim_1": DataKind.MONTH})).sum().sel({"dim_1": tou_columns})
-
 # We create a single dataframe for both production and consumption
 # 3.) 2D frame with rows: TOU time slots, cols are families, users and PV producers
 
-tou_months = xr.concat([users, families, plants], dim="user").assign_coords(
-    {"user": ["users", "families", "plants"]}).rename({"dim_1": "tou", "group": "month"})
+ds = DataStore()
+tou_months = ds["tou_months"]
+energy_year = ds["energy_year"]
 
 # 4.) Merge aggregated consumption/production data into user info dataframe
 # Here, we manage hourly data, we sum all end users/plants
 # We create a single dataframe for both production and consumption
-plants_year = ds["pv_profiles"]
-plants_year = plants_year.assign_coords(dim_1=to_datetime(plants_year.dim_1)).sum("user")
-
-users_year = ds["user_profiles"]
-users_year = users_year.assign_coords(dim_1=to_datetime(users_year.dim_1)).sum("user")
-
-families_year = ds["family_profiles"]
-families_year = families_year.assign_coords(dim_1=to_datetime(families_year.dim_1)).sum("user")
-
-energy_year = xr.concat([users_year, families_year, plants_year], dim="user").assign_coords(
-    {"user": ["users", "families", "plants"]})
 
 # ----------------------------------------------------------------------------
 # Here we evaluate the number of families to reach the set targets
@@ -83,11 +88,13 @@ met_targets = []
 scs = []
 
 # Do we need this? We don't know. We can have a PipelineStep for it
-n_fams_ = configuration.config.getstr("parametric_evaluation", "to_evaluate")  # [0, 15, 30, 45, 60]
+# [0, 15, 30, 45, 60]
+evaluation = configuration.config.get("parametric_evaluation", "to_evaluate")
+n_fams_ = []
 sc_targets = []
 # Evaluate number of families for each target
 sc = 0
-for i, sc_target in enumerate((0, 0.10, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1)):
+for i, sc_target in enumerate(np.arange(0, 1, 0.1)):
     # # Skip if previous target was already higher than this
     if i > 0 and sc > sc_target:
         met_targets[-1] = sc_target
@@ -106,9 +113,8 @@ for i, sc_target in enumerate((0, 0.10, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 
         print("Exiting loop because requirement cannot be reached.")
         break
     if n_fam == max(n_fams_):
-        print("Exiting loop because max families reached.")
+        print("Exiting loop because max families was reached.")
         break
-
 
 # ----------------------------------------------------------------------------
 # Setup to aggregate in time
@@ -150,9 +156,8 @@ for i, n_fam in enumerate(n_fams):
     except ValueError:
         raise ValueError("Something wrong, retry")
 
-scenarios = DataFrame(
-    data=((np.ones_like(bess_size) * n_fam) for n_fam, bess_size in zip(n_fams, bess_sizes)),
-    columns=[DataKind.NUMBER_OF_FAMILIES, DataKind.BATTERY_SIZE])
+scenarios = DataFrame(data=((np.ones_like(bess_size) * n_fam) for n_fam, bess_size in zip(n_fams, bess_sizes)),
+                      columns=[DataKind.NUMBER_OF_FAMILIES, DataKind.BATTERY_SIZE])
 
 scenarios[list(results.keys())] = scenarios[DataKind.NUMBER_OF_FAMILIES].apply(
     lambda x: (r[x] for _, r in results.items()))
