@@ -1,11 +1,9 @@
-# Import statement
 import numpy as np
 
 from input.definitions import DataKind
 from utility import configuration
 
 # ----------------------------------------------------------------------------
-# Useful functions
 _dt = configuration.config.get("time", "resolution")
 
 
@@ -44,7 +42,7 @@ def manage_bess(p_prod, p_cons, bess_size, t_min=None):
 
 # Evaluate shared energy, produced energy, consumed energy, and related
 # indicators
-def eval_rec(p_inj, p_with, dt=1, return_power=False, p_prod=None, p_cons=None):
+def eval_rec(p_inj, p_with, dt=1, p_prod=None, p_cons=None):
     """
     Evaluates shared energy, produced energy, consumed energy, and related
     indicators.
@@ -81,11 +79,11 @@ def eval_rec(p_inj, p_with, dt=1, return_power=False, p_prod=None, p_cons=None):
     # Evaluate indicators
     sc = e_sh / e_prod  # shared energy to production ratio
     ss = e_sh / e_cons  # shared energy to consumption ratio
+    e_inj = e_sh / sc
+    e_with = e_sh / ss
 
     # Return
-    if return_power:
-        return sc, ss, e_sh, p_sh
-    return sc, ss, e_sh
+    return sc, ss, e_sh, p_sh, e_inj, e_with
 
 
 # Calculate the CO2 emissions
@@ -269,7 +267,7 @@ def calculate_theoretical_limit_of_self_consumption(df_months, n_fam):
     return calculate_sc(df_months)
 
 
-def calculate_sc_for_specific_time_aggregation(df_hours, time_resolution, n_fam):
+def calculate_sc_for_time_aggregation(df_hours, time_resolution, n_fam):
     """Evaluate SC with given temporal aggregation and number of families."""
     calculate_shared_energy(df_hours.groupby(time_resolution).sum(), n_fam)
     return calculate_sc(df_hours)

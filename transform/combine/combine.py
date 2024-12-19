@@ -114,7 +114,7 @@ class ArrayConcat(Merge):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray=None, *args, **kwargs) -> OmnesDataArray:
         dim = self.get_arg('dim', **kwargs)
         to_merge = self.get_arg('arrays_to_merge', **kwargs)
         coords = self.get_arg('coords', **kwargs)

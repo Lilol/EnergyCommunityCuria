@@ -1,53 +1,52 @@
-import json
-from json import JSONDecodeError
+import itertools
+import logging
+from collections import defaultdict
 
 from utility import configuration
 
+logger = logging.getLogger(__name__)
+
 
 class EvaluationParameterPack:
+    pattern = r'(\w+):?\s*(\[[^\]]*\])?(,\s*|\s*$)'
+
     @staticmethod
     def convert_to_int_vector(values):
         return [int(val) for val in values]
 
     @staticmethod
     def collect_combinations_from_non_complete_pairing(parameters):
-        values1 = set()
-        values2 = set()
+        def return_key_set(container):
+            return set(container.keys()) if isinstance(container, dict) else set(container)
+
+        def return_value_set(container):
+            return set(**container.values()) if isinstance(container, dict) else set(container)
+
+        data = {"number_of_families": set(), "bess_sizes": set()}
         combinations = []
-        for key, items in parameters.items():
-            k = int(key)
-            values1.add(k)
-            for v in items:
-                val = int(v)
-                values2.add(val)
-                combinations.append((k, val))
-        return values1, values2, combinations
+        if "number_of_families" in parameters and "bess_sizes" in parameters:
+            data = parameters
+            combinations = list(itertools.product(data["number_of_families"], data["bess_sizes"]))
+        else:
+            assert len(parameters) == 1
+            key0 = next(iter(parameters))
+            key1 = "number_of_families" if key0 == "bess_sizes" else "bess_sizes"
+            for key, items in parameters[key0].items():
+                d = defaultdict(set)
+                values = return_value_set(items)
+                d[key0].add(key)
+                d[key1] = values
+                data[key0].add(key)
+                data[key1] = data[key1].union(values)
+                combinations.append(list(itertools.product(d["number_of_families"], d["bess_sizes"])))
+        return data["bess_sizes"], data["number_of_families"], combinations
 
     def __init__(self, parameters: str = None):
         if parameters is None:
             parameters = configuration.config.getstr("parametric_evaluation", "to_evaluate")
-        try:
-            self.parameters = json.loads(parameters).to_dict()
-        except JSONDecodeError:
-            self.parameters = {i.strip('{').split(': ')[0]: i.split(': ')[1].strip('}').strip('[]').split(',') for i in parameters.split(', ')}
-
-        if "self_consumption_targets" in self.parameters:
-            self.self_consumption_targets = self.convert_to_int_vector(self.parameters["self_consumption_targets"])
-
-        self.combinations = []
-        if "number_of_families" in self.parameters:
-            try:
-                self.number_of_families = self.convert_to_int_vector(self.parameters["number_of_families"])
-                self.bess_sizes = self.convert_to_int_vector(self.parameters["bess_sizes"])
-                self.combinations = [(f, b) for f in self.number_of_families for b in self.bess_sizes]
-                return
-            except ValueError:
-                self.number_of_families, self.bess_sizes, self.combinations = self.collect_combinations_from_non_complete_pairing(
-                    self.parameters["number_of_families"])
-                return
-        if "bess_sizes" in self.parameters:
-            self.bess_sizes, self.number_of_families, self.combinations = self.collect_combinations_from_non_complete_pairing(
-                    self.parameters["bess_sizes"])
+        self.parameters = eval(parameters)
+        self.bess_sizes, self.number_of_families, self.combinations = self.collect_combinations_from_non_complete_pairing(
+            self.parameters)
 
     def __iter__(self):
         return iter(self.combinations)

@@ -1,3 +1,4 @@
 What to do with static data from input files?
 Should we handle static (e.g., reference year)
 Should the ProcessingPipeline automatically put a writer at the end of the pipeline? (Same question for saving the data into the DataStore)
+How to handle time resolution, power vs. energy? Use an elaborate unit system or something simpler is enougho?
