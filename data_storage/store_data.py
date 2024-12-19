@@ -15,3 +15,17 @@ class Store(PipelineStage):
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         DataStore()[self.key] = dataset
         return dataset
+
+
+class Remove(PipelineStage):
+    stage = Stage.STORE
+    _name = "remove_data"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+        self.key = kwargs.pop("key", name)
+
+    def execute(self, dataset: None|OmnesDataArray, *args, **kwargs) -> None|OmnesDataArray:
+        if self.key in DataStore():
+            del DataStore()[self.key]
+        return dataset

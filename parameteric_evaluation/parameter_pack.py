@@ -43,7 +43,7 @@ class EvaluationParameterPack:
 
     def __init__(self, parameters: str = None):
         if parameters is None:
-            parameters = configuration.config.getstr("parametric_evaluation", "to_evaluate")
+            parameters = configuration.config.getstr("parametric_evaluation", "evaluation_parameters")
         self.parameters = eval(parameters)
         self.bess_sizes, self.number_of_families, self.combinations = self.collect_combinations_from_non_complete_pairing(
             self.parameters)

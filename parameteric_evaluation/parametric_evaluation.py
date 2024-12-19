@@ -1,7 +1,7 @@
 import numpy as np
 from pandas import DataFrame, to_datetime
 
-from analysis.evaluating import eval_co2, eval_capex, energy, eval_rec, manage_bess, \
+from analysis.evaluation import eval_co2, eval_capex, energy, eval_physical_parameters, manage_bess, \
     find_the_optimal_number_of_families_for_sc_ratio, calculate_shared_energy, \
     calculate_theoretical_limit_of_self_consumption, calculate_sc_for_time_aggregation
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
@@ -27,6 +27,7 @@ mm = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0", "
 def create_and_run_user_data_processing_pipeline(user_type, input_filename):
     DataProcessingPipeline("read_and_store", workers=(Read(name=user_type, filename=input_filename, **input_properties),
                                                       TransformCoordinateIntoDimension(name=user_type, **mm),
+                                                      # manage hourly data, sum all end users / plants
                                                       Aggregate(name=user_type, aggregate_on={"dim_1": DataKind.MONTH}),
                                                       Apply(name=f"{user_type}_tou_cols",
                                                             operation=lambda x: x.sel({"dim_1": tou_columns})),
@@ -43,47 +44,43 @@ def create_and_run_timeseries_processing_pipeline(profile, input_filename):
                                                           dim_1=to_datetime(x.dim_1)).sum(DataKind.USER.value)),
                                                       Store(profile))).execute()
 
+def create_dataset_for_parametric_evaluation():
+    """ Get total consumption and production for all users separated months and time of use
+    Create a single dataframe for both production and consumptions
+    https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
+    """
+    user_types = ["pv_plants", "families", "users"]
+    input_filenames = ["data_plants_tou", "data_families_tou", "data_users_tou"]
+    for user_type, filename in zip(user_types, input_filenames):
+        create_and_run_user_data_processing_pipeline(user_type, filename)
 
-# https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
-user_types = ["pv_plants", "families", "users"]
-input_filenames = ["data_plants_tou", "data_families_tou", "data_users_tou"]
-for user_type, filename in zip(user_types, input_filenames):
-    create_and_run_user_data_processing_pipeline(user_type, filename)
-
-profiles = ["pv_profiles", "family_profiles", "user_profiles"]
-input_filenames = ["data_plants_year", "data_families_year", "data_users_year"]
-for profile_type, filename in zip(profiles, input_filenames):
-    create_and_run_timeseries_processing_pipeline(profile_type, filename)
-
-DataProcessingPipeline("concatenate", workers=(
-    ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=user_types, coords={DataKind.USER.value: user_types}),
-    Rename(dims={"dim_1": DataKind.TOU.value, "group": DataKind.MONTH.value}), Store("tou_months"),
-    ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profiles,
-                coords={DataKind.USER.value: user_types}), Store("energy_year"))).execute()
-
-# ----------------------------------------------------------------------------
-# 2.) Get total consumption and production for all users separated months and time of use
-# We create a single dataframe for both production and consumptions
-
-ds = DataStore()
-tou_months = ds["tou_months"]
-energy_year = ds["energy_year"]
+    profiles = ["pv_profiles", "family_profiles", "user_profiles"]
+    input_filenames = ["data_plants_year", "data_families_year", "data_users_year"]
+    for profile_type, filename in zip(profiles, input_filenames):
+        create_and_run_timeseries_processing_pipeline(profile_type, filename)
+    # Create a single dataframe for both production and consumption
+    DataProcessingPipeline("concatenate", workers=(
+        ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=user_types, coords={DataKind.USER.value: user_types}),
+        Rename(dims={"dim_1": DataKind.TOU.value, "group": DataKind.MONTH.value}), Store("tou_months"),
+        ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profiles,
+                    coords={DataKind.USER.value: user_types}), Store("energy_year"))).execute()
+    ds = DataStore()
+    return ds["tou_months"], ds["energy_year"]
 
 # 4.) Merge aggregated consumption/production data into user info dataframe
-# Here, we manage hourly data, we sum all end users/plants
-# We create a single dataframe for both production and consumption
 
 # ----------------------------------------------------------------------------
 # Here we evaluate the number of families to reach the set targets
+tou_months, energy_year = create_dataset_for_parametric_evaluation()
 
 # Initialize results
 n_fams = []
 met_targets = []
 scs = []
 
-# Do we need this? We don't know. We can have a PipelineStep for it
+# Do we need this? We don't know. We can have a PipelineStage for it
 # [0, 15, 30, 45, 60]
-evaluation = configuration.config.get("parametric_evaluation", "to_evaluate")
+evaluation = configuration.config.get("parametric_evaluation", "evaluation_parameters")
 self_consumption_targets = configuration.config.getarray("parametric_evaluation", "self_consumption_targets")
 # Evaluate number of families for each target
 sc = 0
@@ -168,7 +165,7 @@ results = DataFrame(index=scenarios.index,
                              'capex'])
 
 p_prod = energy_year.sel(user=DataKind.PRODUCTION)
-p_cons = energy_year.sel(user=DataKind.CONSUMPTION_OF_RESIDENTIAL)
+p_cons = energy_year.sel(user=DataKind.CONSUMPTION_OF_USERS)
 p_fam = energy_year.sel(user=DataKind.CONSUMPTION_OF_FAMILIES)
 
 # Evaluate each scenario
@@ -188,7 +185,7 @@ for i, scenario in scenarios.iterrows():
     # Eval REC
     e_prod = energy(p_prod)
     e_cons = energy(p_with)
-    sc, ss, e_sh, e_inj, e_with = eval_rec(p_inj, p_with)
+    sc, ss, e_sh, e_inj, e_with = eval_physical_parameters(p_inj, p_with)
 
     # Evaluate emissions
     esr, em_tot, em_base = eval_co2(e_sh, e_cons=e_with, e_inj=e_inj, e_prod=e_prod)

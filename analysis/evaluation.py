@@ -42,7 +42,7 @@ def manage_bess(p_prod, p_cons, bess_size, t_min=None):
 
 # Evaluate shared energy, produced energy, consumed energy, and related
 # indicators
-def eval_rec(p_inj, p_with, dt=1, p_prod=None, p_cons=None):
+def eval_physical_parameters(p_inj, p_with, dt=1, p_prod=None, p_cons=None):
     """
     Evaluates shared energy, produced energy, consumed energy, and related
     indicators.
@@ -61,7 +61,6 @@ def eval_rec(p_inj, p_with, dt=1, p_prod=None, p_cons=None):
     Returns:
     - tuple: Tuple containing sc (shared energy ratio),
         ss (shared energy ratio), e_sh (shared energy).
-        If return_power=True, also returns p_sh (shared power values).
     """
 
     # Get inputs
@@ -250,7 +249,7 @@ def find_the_optimal_number_of_families_for_sc_ratio(df, sc, n_fam_max, step=25)
 
 
 def calc_sum_consumption(df, n_fam):
-    df[DataKind.CONSUMPTION] = df[DataKind.CONSUMPTION_OF_FAMILIES] * n_fam + df[DataKind.CONSUMPTION_OF_RESIDENTIAL]
+    df[DataKind.CONSUMPTION] = df[DataKind.CONSUMPTION_OF_FAMILIES] * n_fam + df[DataKind.CONSUMPTION_OF_USERS]
 
 
 def calculate_shared_energy(df, n_fam):

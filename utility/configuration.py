@@ -8,6 +8,7 @@ from typing import Iterable
 
 from input.definitions import PvDataSource, DataKind
 from operation.definitions import ScalingMethod
+from parameteric_evaluation.definitions import ParametricEvaluationType
 from utility.parameter_pack import EvaluationParameterPack
 
 logger = logging.getLogger(__name__)
@@ -21,10 +22,19 @@ class ConfigurationManager:
                                     "rec": {"municipalities": self._get_municipalities},
                                     "tariff": {"time_of_use_labels": self._get_tou_labels},
                                     "profile": {"scaling_method": self._get_scaling_method},
-                                    "parametric_evaluation": {"to_evaluate": self._get_parameter_pack}}
+                                    "parametric_evaluation": {"evaluation_parameters": self._get_parameter_pack,
+                                                              "to_evaluate": self._get_metrics_to_evaluate}}
+
+    def _get_metrics_to_evaluate(self):
+        parameters = self.getarray("parametric_evaluation", "to_evaluate", dtype=ParametricEvaluationType)
+        if ParametricEvaluationType.ALL in parameters:
+            parameters.remove(ParametricEvaluationType.ALL)
+            parameters.append([ParametricEvaluationType.PHYSICAL_METRICS, ParametricEvaluationType.ECONOMIC_METRICS,
+                               ParametricEvaluationType.ENVIRONMENTAL_METRICS])
+        return parameters
 
     def _get_parameter_pack(self):
-        parameters = self.__config.get("parametric_evaluation", "to_evaluate")
+        parameters = self.__config.get("parametric_evaluation", "evaluation_parameters")
         try:
             return EvaluationParameterPack(parameters)
         except ValueError:

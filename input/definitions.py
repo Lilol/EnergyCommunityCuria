@@ -13,7 +13,7 @@ class DataKind(OrderedEnum):
     ANNUAL_YIELD = 'yield'  # specific annual production (kWh/kWp)
     TOU_ENERGY = "energy"
     PRODUCTION = 'production'
-    CONSUMPTION_OF_RESIDENTIAL = 'consumption_of_residential'
+    CONSUMPTION_OF_USERS = 'consumption_of_users'
     CONSUMPTION_OF_FAMILIES = 'consumption_of_families'
     CONSUMPTION = "consumption"
     SHARED = 'shared'

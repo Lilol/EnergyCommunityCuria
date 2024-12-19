@@ -1,2 +1,2 @@
-from operation.scale_profile import ScaleProfile, ScaleInProportion, ScaleFlat, ScaleTimeOfUseProfile, \
+from operation.profile_scaling import ScaleProfile, ScaleInProportion, ScaleFlat, ScaleTimeOfUseProfile, \
     ScaleByLinearEquation, ScaleByQuadraticOptimization

@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 from data_storage.data_store import DataStore
 from input.definitions import DataKind
-from operation.scale_profile import ScaleTimeOfUseProfile, ScaleByQuadraticOptimization, ScaleByLinearEquation
+from operation.profile_scaling import ScaleTimeOfUseProfile, ScaleByQuadraticOptimization, ScaleByLinearEquation
 from utility import configuration
 
 

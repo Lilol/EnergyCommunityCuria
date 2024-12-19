@@ -4,6 +4,7 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+from pandas import DataFrame, concat
 
 from utility import configuration
 
@@ -13,10 +14,11 @@ class Unit:
     id: str
     p_produced: float = 0
     p_consumed: float = 0
-    p_self_consumed: float = 0
+    p_selfconsumed: float = 0
     p_injected: float = 0
     p_withdrawn: float = 0
     evaluated: bool = False
+    to_store = ["p_produced", "p_consumed", "p_selfconsumed", "p_shared", "p_injected", "p_withdrawn"]
 
     def evaluate(self):
         if self.evaluated:
@@ -24,10 +26,18 @@ class Unit:
 
         # Calculate self-consumption and net grid exchanges
         # Is this lazy eval?
-        self.p_self_consumed = np.minimum(self.p_produced, self.p_consumed)
-        self.p_injected = self.p_produced - self.p_self_consumed
-        self.p_withdrawn = self.p_consumed - self.p_self_consumed
+        self.p_selfconsumed = np.minimum(self.p_produced, self.p_consumed)
+        self.p_injected = self.p_produced - self.p_selfconsumed
+        self.p_withdrawn = self.p_consumed - self.p_selfconsumed
         self.evaluated = True
+
+    def to_df(self):
+        return DataFrame(data=[np.sum(getattr(self, data_type)) for data_type in self.to_store], index=[id, ],
+                         columns=self.to_store)
+
+    def write_out(self):
+        self.to_df().to_csv(join(configuration.config.get("path", "output"), f"{self.id}.csv"), sep=';',
+                            float_format="%.4f")
 
 
 @dataclass
@@ -51,6 +61,10 @@ class Generator(Unit):
 @dataclass
 class User(Unit):
     units: List[Unit] = None
+    p_shared_with: float = 0
+    p_shared_inj: float = 0
+    to_store = ["p_produced", "p_consumed", "p_selfconsumed", "p_shared", "p_injected", "p_withdrawn", "p_shared_with",
+                "p_shared_inj"]
 
     def __init__(self, units=None):
         self.units = units
@@ -62,19 +76,32 @@ class User(Unit):
         for unit in self.units:
             unit.evaluate()
 
-        # Evaluate total production and consumption
-        for quantity in ("p_produced", "p_consumed", "p_injected", "p_withdrawn"):
+        # Evaluate total production and consumption and selfconsumption
+        for quantity in ("p_produced", "p_consumed", "p_injected", "p_withdrawn", "p_selfconsumed"):
             setattr(self, quantity, sum([getattr(unit, quantity) for unit in self.units]))
 
         super().evaluate()
 
+    def eval_p_shared_with(self, p_with_rec):
+        if not self.evaluated:
+            self.evaluate()
+        self.p_shared_with = self.p_withdrawn / p_with_rec
+
+    def eval_p_shared_inj(self, p_inj_rec):
+        if not self.evaluated:
+            self.evaluate()
+        self.p_shared_inj = self.p_withdrawn / p_inj_rec
+
 
 @dataclass
 class REC(User):
+    units: List[User] = None
+    p_shared: float = 0
+
     @classmethod
     def build(cls, rec_structure):
         # Create units, users and REC
-        rec = cls(id="Renewable Energy Community")
+        rec = cls(id="rec")
         for user_id, user_setup in rec_structure.items():
             user = User()
             for generator in user_setup['generators']:
@@ -86,14 +113,12 @@ class REC(User):
             rec.add_unit(user)
         return rec
 
-    def write_out(self):
-        # Store results
-        results = pd.DataFrame(index=[u.id for u in self.units] + ["rec", ],
-                               columns=["e_produced", "e_consumed", "e_self_consumed", "e_injected", "e_withdrawn"])
+    def evaluate(self):
+        super().evaluate()
 
-        for user in self.units:
-            results.loc[user.id, :] = np.sum(user.p_produced), np.sum(user.p_consumed), np.sum(
-                user.p_self_consumed), np.sum(user.p_injected), np.sum(user.p_withdrawn)
+        for unit in self.units:
+            unit.eval_p_shared_inj(self.p_injected)
+            unit.eval_p_shared_with(self.p_withdrawn)
 
-        results.loc["rec", :] = results.sum(axis="rows")
-        results.to_csv(join(configuration.config.get("path", "output"), "results.csv"), sep=';')
+    def to_df(self):
+        return concat([super().to_df(), *[user.to_df() for user in self.units]])

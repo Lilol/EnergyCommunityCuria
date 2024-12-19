@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataStore(object):
-    # Data store: main object storing all data for the operations
+    # Data store: main object storing all dataarrays for processing
     _instance = None
     _data = defaultdict(OmnesDataArray)
 
