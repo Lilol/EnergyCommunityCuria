@@ -9,7 +9,7 @@ from typing import Iterable
 from input.definitions import PvDataSource, DataKind
 from operation.definitions import ScalingMethod
 from parameteric_evaluation.definitions import ParametricEvaluationType
-from utility.parameter_pack import EvaluationParameterPack
+from parameteric_evaluation.parameter_pack import EvaluationParameterPack
 
 logger = logging.getLogger(__name__)
 

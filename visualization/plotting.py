@@ -873,7 +873,7 @@ if __name__ == '__main__':
         ax.plot(x, y, **plot_kw)
         ax.scatter(x, y, **scatter_kw, )
 
-        # # Plot SC on right axis
+        # # Plot SELF_CONSUMPTION on right axis
         # # axtw = ax.twinx()
         # axtw.plot(x, y_right, **plot_right_kw)
         # if i == 0:

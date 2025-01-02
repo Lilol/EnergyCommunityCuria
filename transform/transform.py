@@ -4,7 +4,7 @@ import logging
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pandas import timedelta_range, date_range, to_datetime
+from pandas import date_range, to_datetime
 from xarray import DataArray
 
 from data_processing_pipeline.definitions import Stage
@@ -146,8 +146,8 @@ class TransformBills(Transform):
             [get_bill_type(df.squeeze(drop=True)), ] * df.shape[1] for _, df in
             dataset.groupby(dataset.squeeze().loc[..., DataKind.USER]))))
         da = da.expand_dims("dim_1").assign_coords({"dim_1": [DataKind.BILL_TYPE, ]})
-        dataset = (
-        xr.concat([dataset, da], dim="dim_1").rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
+        dataset = (xr.concat([dataset, da], dim="dim_1").rename(
+            {"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}))
 
         dataset = dataset.assign_coords(
             {DataKind.USER.value: dataset.sel({DataKind.USER_DATA.value: DataKind.USER}).squeeze().values}).drop(
@@ -350,8 +350,19 @@ class Aggregate(Transform):
         super().__init__(name, *args, **kwargs)
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
-        aggregate_on = self.kwargs.get("aggregate_on")
+        aggregate_on = self.get_arg("aggregate_on")
         return OmnesDataArray(dataset.groupby(dataset.sel(aggregate_on)).sum())
+
+
+class AggregateByTime(Aggregate):
+    _name = "time_aggregator"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+        aggregate_on = self.get_arg("time_resolution")
+        return OmnesDataArray(dataset.groupby(dataset.sel({DataKind.TIME.value: aggregate_on})).sum())
 
 
 class Apply(Transform):

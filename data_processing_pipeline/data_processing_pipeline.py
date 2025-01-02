@@ -73,8 +73,11 @@ class DataProcessingPipeline(TwoWayDictionary):
     def register(self, worker: PipelineStage):
         self.set(worker.stage, worker.name, worker)
 
+    def set_dataset(self, dataset):
+        self._dataset = dataset
+
     def execute(self, *args, **kwargs) -> OmnesDataArray:
-        dataset = self._dataset
+        dataset = kwargs.pop("dataset", self._dataset)
         for _, processor in iter(self):
             dataset = processor.execute(dataset, *args, **kwargs)
         return dataset

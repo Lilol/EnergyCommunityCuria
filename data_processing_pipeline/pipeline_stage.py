@@ -19,7 +19,8 @@ class PipelineStage:
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         raise NotImplementedError(
-            "'execute' is not implemented in base class 'PipelineStage', must be implemented in every child class.")
+            "'execute' is not implemented in base class 'PipelineStage', 'execute"
+            "' must be implemented in every child class.")
 
     def get_arg(self, name, **kwargs):
         fallback = kwargs.get('fallback', None)
