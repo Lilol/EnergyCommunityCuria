@@ -39,6 +39,9 @@ class ParametricEvaluator:
     def __init__(self, *args, **kwargs):
         pass
 
+    def invoke(self):
+        raise NotImplementedError("The 'invoke' method must be implemented in all derived classes.")
+
     @classmethod
     def create(cls, *args, **kwargs):
         evaluation_types = configuration.config.get("parametric_evaluation", "to_evaluate")

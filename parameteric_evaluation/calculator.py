@@ -18,9 +18,15 @@ class Calculator:
             cls.calculators = {}
         cls.calculators[cls._parameter_calculated] = cls()
 
-    def calculate(self, input_da: OmnesDataArray, output: OmnesDataArray, *args,
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        pass
+        raise NotImplementedError("'calculate' method must be implemented individually in each Calculator class")
+
+    def __call__(self, *args, **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        input_da = kwargs.pop("input_da", args[0])
+        output = kwargs.pop("output", args[1])
+        return self.calculate(input_da, output, **kwargs)
 
 
 class MultiStepCalculation(PipelineStage):

@@ -1,14 +1,19 @@
+from typing import Iterable
+
+from data_storage.dataset import OmnesDataArray
 from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType, Parameter
 
 
-class EconomicEvaluator(MetricEvaluator):
-    _type = ParametricEvaluationType.ECONOMIC_METRICS
+class CapexPv(Calculator):
+    _parameter_calculated = Parameter.CAPEX
 
     @classmethod
-    def eval_capex_pv(cls, pv_size):
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         """Evaluate investment cost (CAPEX) of a PV system depending on the size."""
+        pv_size = kwargs.pop('pv_size', args[0])
         # if pv_size < 10 :
         #     capex_pv = 1900
         # elif pv_size < 35 :
@@ -29,20 +34,35 @@ class EconomicEvaluator(MetricEvaluator):
             c_pv = 1050
         return c_pv * pv_size
 
+
+class Capex(Calculator):
+    _parameter_calculated = Parameter.CAPEX
+    c_bess = 300
+    c_user = 100
+
     @classmethod
-    def eval_capex(cls, pv_sizes, bess_size, n_users, c_bess=350, c_user=100):
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         """Evaluate CAPEX of a REC, given PV sizes, BESS size(s) and number of users."""
 
         # Initialize CAPEX
         capex = 0
 
         # Add cost of PVS
-        for pv_size in pv_sizes:
-            capex += cls.eval_capex_pv(pv_size)
+        for pv_size in kwargs.pop('pv_sizes', args[0]):
+            capex += CapexPv.calculate(pv_size, None)
 
         # Add cost of BESS
-        capex += bess_size * c_bess
+        capex += kwargs.pop('bess_size', args[1]) * cls.c_bess
 
         # Add cost of users
-        capex += n_users * c_user
+        capex += kwargs.pop('n_users', args[2]) * cls.c_user
         return capex
+
+
+class EconomicEvaluator(MetricEvaluator):
+    _type = ParametricEvaluationType.ECONOMIC_METRICS
+
+    @classmethod
+    def invoke(cls, *args, **kwargs) -> OmnesDataArray | float:
+        return Capex.calculate(*args, **kwargs)

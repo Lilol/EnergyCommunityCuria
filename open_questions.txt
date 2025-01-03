@@ -8,3 +8,4 @@ Return values for pipeline 'execute' functions: can they be either None OR Omnes
 TODO:
 AggregateOnTimeResolution: process weird time resolutions, like season, etc.
 Target SC evaluation should work for SS and other targets too, set the targets from config
+Clear up predefined input and output types for Calculator classes
