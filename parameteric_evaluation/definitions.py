@@ -1,11 +1,13 @@
 from enum import auto
 
+from parameteric_evaluation.dataset_creation import DatasetCreatorForParametricEvaluation
 from utility import configuration
 from utility.definitions import OrderedEnum
 from utility.singleton import Singleton
 
 
 class ParametricEvaluationType(OrderedEnum):
+    DATASET_CREATION = "dataset_creation"
     SELF_CONSUMPTION_TARGETS = "self_consumption_targets"
     TIME_AGGREGATION = "time_aggregations"
     METRICS = "metrics"
@@ -20,32 +22,39 @@ class Parameter(OrderedEnum):
     SHARED_ENERGY = "Shared energy"
     SELF_CONSUMPTION = "Self consumption"
     SELF_SUFFICIENCY = "Self sufficiency"
+    INJECTED_ENERGY = "Injected energy"
+    WITHDRAWN_ENERGY = "Withdrawn energy"
+    ESR = "Emissions savings ratio"
+    TOTAL_EMISSIONS = "Total emissions"
+    BASELINE_EMISSIONS = "Baseline emissions"
     CAPEX = "Capex"
     OPEX = "Opex"
     INVALID = auto()
 
 
-class ParametricEvaluation(Singleton):
-    _evaluators = {}
-
-    def run_evaluation(self):
-        for name, evaluator in self._evaluators.items():
-            evaluator.evaluate()
-
-
 class ParametricEvaluator:
     _type = ParametricEvaluationType.INVALID
-    _evaluators = {}
+    _evaluators = {ParametricEvaluationType.DATASET_CREATION: DatasetCreatorForParametricEvaluation}
+
+    def __init__(self, *args, **kwargs):
+        pass
 
     @classmethod
     def create(cls, *args, **kwargs):
         evaluation_types = configuration.config.get("parametric_evaluation", "to_evaluate")
-        if cls._type not in evaluation_types:
-            return None
-        return cls._evaluators[cls._type](*args, **kwargs)
+        return {kind: cls._evaluators[kind](*args, **kwargs) for kind, evaluator_initialization_function in
+                cls._evaluators.items() if kind in evaluation_types}
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         if len(cls._evaluators) == 0:
-            cls.stage_workers = {}
-        cls.stage_workers[cls._type] = cls
+            cls._evaluators = {}
+        cls._evaluators[cls._type] = cls
+
+
+class ParametricEvaluation(Singleton):
+    _evaluators = ParametricEvaluator.create()
+
+    def run_evaluation(self, *args, **kwargs):
+        for name, evaluator in self._evaluators.items():
+            evaluator.run(args, kwargs)
