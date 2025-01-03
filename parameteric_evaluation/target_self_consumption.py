@@ -1,4 +1,13 @@
-from input.definitions import DataKind
+import logging
+
+import numpy as np
+from pandas import DataFrame
+
+from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.time_aggregation_evaluation import calculate_shared_energy, calculate_sc
+from utility import configuration
+
+logger = logging.getLogger(__name__)
 
 
 def eval_sc(df, n_fam):
@@ -73,14 +82,40 @@ def find_the_optimal_number_of_families_for_sc_ratio(df, sc, n_fam_max, step=25)
     return find_best_value(df, n_fam_high, n_fam_low, step, sc)
 
 
-def calc_sum_consumption(df, n_fam):
-    df[DataKind.CONSUMPTION] = df[DataKind.CONSUMPTION_OF_FAMILIES] * n_fam + df[DataKind.CONSUMPTION_OF_USERS]
+class TargetSelfConsumptionEvaluator(ParametricEvaluator):
+    _type = ParametricEvaluationType.SELF_CONSUMPTION_TARGETS
 
+    @classmethod
+    def evaluate_self_consumption_targets(cls):
+        self_consumption_targets = configuration.config.getarray("parametric_evaluation", "self_consumption_targets")
+        max_number_of_households = configuration.config.getint("parametric_evaluation", "max_number_of_households")
+        df = DataFrame(np.nan, index=self_consumption_targets,
+                       columns=["number_of_families", "self_consumption_realized"])
+        # Evaluate number of families for each target
+        sc, nf = 0, 0
+        for sc_target in self_consumption_targets:
+            # # Skip if previous target was already higher than this
+            if sc >= sc_target:
+                df.loc[sc_target, ["number_of_families", "self_consumption_realized"]] = nf, sc
+                continue
 
-def calculate_shared_energy(df, n_fam):
-    calc_sum_consumption(df, n_fam)
-    df[DataKind.SHARED] = df[[DataKind.PRODUCTION, DataKind.CONSUMPTION]].min(axis="rows")
+            # # Find number of families to reach target
+            nf, sc = find_the_optimal_number_of_families_for_sc_ratio(energy_year, sc_target, max_number_of_households)
 
+            # Update
+            df.loc[sc_target, ["number_of_families", "self_consumption_realized"]] = nf, sc
 
-def calculate_sc(df):
-    return df[DataKind.SHARED].sum() / df[DataKind.PRODUCTION].sum()
+            # # Exit if targets cannot be reached
+            if sc < sc_target:
+                logger.warning("Exiting loop because requirement cannot be reached.")
+                break
+            if nf >= max_number_of_households:
+                logger.warning("Exiting loop because max families was reached.")
+                break
+        logger.info(
+            f"Self consumption targets reached; number of families:\n{','.join(f'{row.number_of_families}; {row.self_consumption_realized}' for _, row in df.iterrows())}")
+        logger.info(f"To provide battery sizes for evaluation in the configuration file use:\n[parametric_evaluation]"
+                    f"\nevaluation_parameters={{'bess_sizes': [...], 'number_of_families': [{f','.join(f'{nf}' for nf in df.number_of_families)}]}}\nor\n"
+                    f"evaluation_parameters = {{'number_of_families': {f','.join(f'{nf}: [...]' for nf in df.number_of_families)}}}")
+        logger.info(f"For battery evaluation please set \n[parametric_evaluation]\nuse_bess=True")
+        return df

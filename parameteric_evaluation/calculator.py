@@ -22,7 +22,7 @@ class Calculator:
         pass
 
 
-class Evaluate(PipelineStage):
+class MultiStepCalculation(PipelineStage):
     stage = Stage.ANALYZE
     _name = "evaluation"
     _calculators: Iterable[Calculator] = None
@@ -32,3 +32,4 @@ class Evaluate(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         pass
+

@@ -1,13 +1,9 @@
-class DataProcessingArbiter(object):
-    _instance = None
+from utility.singleton import Singleton
 
+
+class DataProcessingArbiter(Singleton):
     def __init__(self):
         self._pipelines = {}
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DataProcessingArbiter, cls).__new__(cls)
-        return cls._instance
 
     def register_pipeline(self, name, pipeline):
         self.__setitem__(name, pipeline)

@@ -2,13 +2,13 @@ import logging
 from collections import defaultdict
 
 from data_storage.dataset import OmnesDataArray
+from utility.singleton import Singleton
 
 logger = logging.getLogger(__name__)
 
 
-class DataStore(object):
+class DataStore(Singleton):
     # Data store: main object storing all dataarrays for processing
-    _instance = None
     _data = defaultdict(OmnesDataArray)
 
     def __getitem__(self, item):
@@ -24,8 +24,3 @@ class DataStore(object):
             else:
                 return
         self._data[key] = value
-
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DataStore, cls).__new__(cls)
-        return cls._instance
