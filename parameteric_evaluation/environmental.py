@@ -1,23 +1,26 @@
+from typing import Iterable
+
+from data_storage.dataset import OmnesDataArray
+from input.definitions import DataKind
 from parameteric_evaluation import MetricEvaluator
+from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType
 
 
-class EnvironmentalEvaluator(MetricEvaluator):
-    _type = ParametricEvaluationType.ENVIRONMENTAL_METRICS
-
+class EmissionSavingsRatio(Calculator):
     @classmethod
-    def eval_co2(cls, e_sh, e_cons, e_prod, e_with=None, e_inj=None, bess_size=0, eps_grid=0.263, eps_inj=0,
-                 eps_prod=0.05, eps_bess=175, n=20):
-        """
-        Calculates the CO2 emissions based on the shared energy, consumed energy,
-        produced energy, and emission factors.
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        # Evaluate emissions savings ratio
+        em_base = kwargs.pop("em_base")
+        return (em_base - kwargs.pop("em_tot")) / em_base
 
-        Parameters:
-        - e_sh (float): Shared energy.
-        - e_cons (float): Consumed energy.
-        - e_prod (float): Produced energy.
-        - bess_size (float): Size of Battery Energy Storage System (BESS) in kWh.
-            Default is 0.
+
+class TotalEmissions(Calculator):
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        """ Evaluate total emissions
         - eps_grid (float): Emission factor for energy from the grid.
             Default is 0.263 kgCO2eq/kWh.
         - eps_inj (float): Emission factor for injected energy.
@@ -26,23 +29,39 @@ class EnvironmentalEvaluator(MetricEvaluator):
             Default is 0.05 kgCO2eq/kWh.
         - eps_bess (float): Emission factor for BESS capacity.
             Default is 175 kgCO2eq/kWh.
-        - n (int): Number of years considered. Default is 20.
+        - years (int): Number of years considered. Default is 20."""
+        shared = input_da.sel(data=DataKind.SHARED)
+        return (input_da.sel(data=DataKind.WITHDRAWN) - shared) * kwargs.pop("eps_grid", 0.263) + (
+                input_da.sel(data=DataKind.INJECTED) - shared) * kwargs.pop("eps_inj", 0) + kwargs.pop("eps_prod",
+                                                                                                       0.05) * input_da.sel(
+            data=DataKind.PRODUCTION) * kwargs.pop("years", 20) + kwargs.pop("bess_size") * kwargs.pop("eps_bess", 175)
 
+
+class BaselineEmissions(Calculator):
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        """ Evaluate total emissions in base case
+        - eps_grid (float): Emission factor for energy from the grid.
+            Default is 0.263 kgCO2eq/kWh.
+        - years (int): Number of years considered. Default is 20."""
+        return (input_da.sel(data=DataKind.CONSUMPTION) * kwargs.pop("eps_grid", 0.263)) * kwargs.pop("years", 20)
+
+
+class EnvironmentalEvaluator(MetricEvaluator):
+    _type = ParametricEvaluationType.ENVIRONMENTAL_METRICS
+
+    def invoke(self, *args, **kwargs):
+        """
+        Calculates the CO2 emissions based on the shared energy, consumed energy,
+        produced energy, and emission factors.
         Returns:
         - Tuple[float, float, float]: Emissions savings ratio, total emissions,
-            and baseline emissions.
+            and baseline emissions as a DataArray.
         """
-        # Get values of injections and withdrawals
-        e_inj = e_prod if e_inj is None else e_inj
-        e_with = e_cons if e_with is None else e_with
+        baseline_emissions = BaselineEmissions.calculate(*args, **kwargs)
+        total_emissions = TotalEmissions.calculate(*args, **kwargs)
 
-        # Evaluate total emissions
-        em_tot = ((e_with - e_sh) * eps_grid + (e_inj - e_sh) * eps_inj + eps_prod * e_prod) * n + bess_size * eps_bess
-
-        # Evaluate total emissions in base case
-        em_base = (e_cons * eps_grid) * n
-
-        # Evaluate emissions savings ratio
-        esr = (em_base - em_tot) / em_base
-
-        return esr, em_tot, em_base
+        return baseline_emissions, total_emissions, EmissionSavingsRatio.calculate(*args, **kwargs,
+                                                                                   em_tot=total_emissions,
+                                                                                   em_base=baseline_emissions)

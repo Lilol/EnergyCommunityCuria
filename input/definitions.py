@@ -17,6 +17,8 @@ class DataKind(OrderedEnum):
     CONSUMPTION_OF_FAMILIES = 'consumption_of_families'
     CONSUMPTION = "consumption"
     SHARED = 'shared'
+    WITHDRAWN = 'withdrawn'
+    INJECTED = 'injected'
     NUMBER_OF_FAMILIES = 'number_of_families'
     BATTERY_SIZE = 'battery_size'
     YEAR = 'year'
