@@ -1,4 +1,4 @@
-from parameteric_evaluation.dataset_creation import DatasetCreatorForParametricEvaluation
+
 from parameteric_evaluation.definitions import ParametricEvaluationType
 from utility import configuration
 from utility.singleton import Singleton
@@ -6,7 +6,6 @@ from utility.singleton import Singleton
 
 class ParametricEvaluator:
     _type = ParametricEvaluationType.INVALID
-    _evaluators = {ParametricEvaluationType.DATASET_CREATION: DatasetCreatorForParametricEvaluation}
 
     def __init__(self, *args, **kwargs):
         pass

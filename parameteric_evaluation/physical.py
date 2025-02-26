@@ -4,7 +4,7 @@ from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, Parameter
+from parameteric_evaluation.definitions import ParametricEvaluationType, Parameter, Metric
 from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from parameteric_evaluation.target_self_consumption import calculate_shared_energy, calculate_sc
 from utility.dimensions import power_to_energy
@@ -25,14 +25,14 @@ class SharedEnergy(PhysicalParameterCalculator):
 
 
 class SelfConsumption(PhysicalParameterCalculator):
-    _parameter_calculated = Parameter.SELF_CONSUMPTION
+    _parameter_calculated = Metric.SC
 
     def calculate(self, input_da: OmnesDataArray, *args):
         return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_INJ).sum()
 
 
 class SelfSufficiency(PhysicalParameterCalculator):
-    _parameter_calculated = Parameter.SELF_SUFFICIENCY
+    _parameter_calculated = Metric.SS
 
     def calculate(self, input_da: OmnesDataArray, *args):
         return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_WITH).sum()

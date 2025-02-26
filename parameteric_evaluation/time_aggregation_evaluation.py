@@ -1,9 +1,12 @@
 from pandas import DataFrame
 
 from input.definitions import DataKind
+from output.write import Write
 from parameteric_evaluation.definitions import ParametricEvaluationType
 from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from parameteric_evaluation.physical import PhysicalParameterEvaluator
+from visualization.processing_visualization import plot_shared_energy, plot_sci
+
 
 def calculate_shared_energy(df, n_fam):
     calc_sum_consumption(df, n_fam)
