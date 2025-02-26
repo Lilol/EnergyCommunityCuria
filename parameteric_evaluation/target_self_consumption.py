@@ -3,7 +3,8 @@ import logging
 import numpy as np
 from pandas import DataFrame
 
-from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from parameteric_evaluation.time_aggregation_evaluation import calculate_shared_energy, calculate_sc
 from utility import configuration
 

@@ -1,7 +1,8 @@
 from pandas import DataFrame
 
 from input.definitions import DataKind
-from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from parameteric_evaluation.physical import PhysicalParameterEvaluator
 
 def calculate_shared_energy(df, n_fam):

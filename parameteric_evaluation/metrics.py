@@ -3,7 +3,8 @@ from pandas import DataFrame
 
 from input.definitions import DataKind
 from output.write import Write
-from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from utility.dimensions import power_to_energy
 
 

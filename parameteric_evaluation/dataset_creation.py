@@ -6,7 +6,8 @@ from data_processing_pipeline.data_processing_pipeline import DataProcessingPipe
 from data_storage.store_data import Store
 from input.definitions import DataKind
 from input.read import Read
-from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from transform.combine.combine import ArrayConcat
 from transform.transform import TransformCoordinateIntoDimension, Aggregate, Apply, Rename
 from utility import configuration
