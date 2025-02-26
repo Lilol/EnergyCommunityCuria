@@ -3,9 +3,10 @@ from pandas import DataFrame
 from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
-from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from parameteric_evaluation.physical import PhysicalParameterEvaluator
-from visualization.processing_visualization import plot_sci, plot_shared_energy
+from visualization.processing_visualization import plot_shared_energy, plot_sci
 
 
 def calculate_shared_energy(df, n_fam):

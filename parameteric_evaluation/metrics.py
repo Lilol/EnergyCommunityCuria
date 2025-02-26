@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 import numpy as np
 from pandas import DataFrame
 
@@ -5,12 +7,14 @@ from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
 from parameteric_evaluation import PhysicalParameterEvaluator, EnvironmentalEvaluator, EconomicEvaluator
-from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
 from utility import configuration
 from utility.dimensions import power_to_energy
 
 
 class Battery:
+    @abstractmethod
     def manage_bess(p_prod, p_cons, bess_size, t_min=None):
         """Manage BESS power flows to increase shared energy."""
         # Initialize BESS power array and stored energy
@@ -82,7 +86,7 @@ class MetricEvaluator(ParametricEvaluator):
             # Calculate withdrawn power
             p_with = p_cons + n_fam * p_fam
             # Manage BESS, if present
-            p_inj = p_prod - manage_bess(p_prod, p_with, bess_size)
+            p_inj = p_prod - Battery.manage_bess(p_prod, p_with, bess_size)
 
             # Eval REC
             e_cons = power_to_energy(p_with)
