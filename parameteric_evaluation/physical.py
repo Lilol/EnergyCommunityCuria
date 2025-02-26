@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import numpy as np
 
 from data_storage.dataset import OmnesDataArray
@@ -12,28 +14,32 @@ from utility.dimensions import power_to_energy
 class PhysicalParameterCalculator(Calculator):
     _parameter_calculated = Parameter.INVALID
 
-    def calculate(self, input_da: OmnesDataArray, output: OmnesDataArray, *args, **kwargs):
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         pass
 
 
 class SharedEnergy(PhysicalParameterCalculator):
     _parameter_calculated = Parameter.SHARED_ENERGY
 
-    def calculate(self, input_da: OmnesDataArray, *args):
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         return input_da.sel(data=[DataKind.P_INJ, DataKind.P_WITH]).min().sum()
 
 
 class SelfConsumption(PhysicalParameterCalculator):
     _parameter_calculated = Parameter.SELF_CONSUMPTION
 
-    def calculate(self, input_da: OmnesDataArray, *args):
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_INJ).sum()
 
 
 class SelfSufficiency(PhysicalParameterCalculator):
     _parameter_calculated = Parameter.SELF_SUFFICIENCY
 
-    def calculate(self, input_da: OmnesDataArray, *args):
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_WITH).sum()
 
 

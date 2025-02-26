@@ -14,6 +14,9 @@ class DataStore(Singleton):
     def __getitem__(self, item):
         return self._data[item]
 
+    def __delitem__(self, item):
+        del self._data[item]
+
     def __setitem__(self, key, value):
         if type(value) != OmnesDataArray:
             try:

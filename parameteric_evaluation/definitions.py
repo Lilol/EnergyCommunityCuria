@@ -60,4 +60,4 @@ class ParametricEvaluation(Singleton):
 
     def run_evaluation(self, *args, **kwargs):
         for name, evaluator in self._evaluators.items():
-            evaluator.run(args, kwargs)
+            evaluator.invoke(*args, **kwargs)

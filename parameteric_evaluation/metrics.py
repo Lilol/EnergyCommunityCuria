@@ -1,38 +1,45 @@
 import numpy as np
 from pandas import DataFrame
 
+from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
+from parameteric_evaluation import PhysicalParameterEvaluator, EnvironmentalEvaluator, EconomicEvaluator
 from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
+from utility import configuration
 from utility.dimensions import power_to_energy
 
 
-def manage_bess(p_prod, p_cons, bess_size, t_min=None):
-    """Manage BESS power flows to increase shared energy."""
-    # Initialize BESS power array and stored energy
-    p_bess = np.zeros_like(p_prod)
-    if bess_size == 0:
+class Battery:
+    def manage_bess(p_prod, p_cons, bess_size, t_min=None):
+        """Manage BESS power flows to increase shared energy."""
+        # Initialize BESS power array and stored energy
+        p_bess = np.zeros_like(p_prod)
+        if bess_size == 0:
+            return p_bess
+
+        # Get inputs
+        p_bess_max = np.inf if t_min is None else bess_size / t_min
+
+        e_stored = 0
+
+        # Manage flows in all time steps
+        for h, (p, c) in enumerate(zip(p_prod, p_cons)):
+            # Power to charge the BESS (discharge if negative)
+            b = p - c
+            # Correct according to technical/physical limits
+            if b < 0:
+                b = max(b, -e_stored, -p_bess_max)
+            else:
+                b = min(b, bess_size - e_stored, p_bess_max)
+            # Update BESS power array and stored energy
+            p_bess[h] = b
+            e_stored = e_stored + b
+
         return p_bess
 
-    # Get inputs
-    p_bess_max = np.inf if t_min is None else bess_size / t_min
-
-    e_stored = 0
-
-    # Manage flows in all time steps
-    for h, (p, c) in enumerate(zip(p_prod, p_cons)):
-        # Power to charge the BESS (discharge if negative)
-        b = p - c
-        # Correct according to technical/physical limits
-        if b < 0:
-            b = max(b, -e_stored, -p_bess_max)
-        else:
-            b = min(b, bess_size - e_stored, p_bess_max)
-        # Update BESS power array and stored energy
-        p_bess[h] = b
-        e_stored = e_stored + b
-
-    return p_bess
+    def get_as_optim(self):
+        pass 
 
 
 class MetricEvaluator(ParametricEvaluator):
@@ -48,16 +55,19 @@ class MetricEvaluator(ParametricEvaluator):
         return DataFrame(index=scenarios.index, columns=physical_metrics + environmental_metrics + economic_metrics)
 
     @classmethod
-    def calculate_metrics(cls):
+    def calculate_metrics(cls, parameters):
         scenarios = DataFrame(data=parameters.combinations,
                               columns=[DataKind.NUMBER_OF_FAMILIES, DataKind.BATTERY_SIZE])
         # Get plants sizes and number of users
-        n_users = len(ds["data_users"])
+        ds = DataStore()
         data_plants = ds["data_plants"]
+        n_users = len(data_plants)
+        energy_year = ds["energy_year"]
         pv_sizes = list(data_plants.loc[data_plants[DataKind.USER_TYPE] == 'pv', DataKind.POWER])
         if len(pv_sizes) < len(data_plants):
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
         # Initialize results
+        evaluation_types = configuration.config.get("parametric_evaluation", "to_evaluate")
         results = cls.define_output_df(evaluation_types, scenarios)
         p_prod = energy_year.sel(user=DataKind.PRODUCTION)
         e_prod = power_to_energy(p_prod)
@@ -77,15 +87,20 @@ class MetricEvaluator(ParametricEvaluator):
             # Eval REC
             e_cons = power_to_energy(p_with)
             if ParametricEvaluationType.PHYSICAL_METRICS in evaluation_types:
-                results.loc[i, ["sc", "ss", "e_sh", "e_inj", "e_with"]] = eval_physical_parameters(p_inj, p_with)
+                results.loc[i, ["sc", "ss", "e_sh", "e_inj", "e_with"]] = PhysicalParameterEvaluator.invoke(p_inj,
+                                                                                                            p_with)
 
             # Evaluate emissions
             if ParametricEvaluationType.ENVIRONMENTAL_METRICS in evaluation_types:
-                results.loc[i, ["esr", "em_tot", "em_base"]] = eval_co2(results.loc[i, "e_sh"],
-                                                                        e_cons=results.loc[i, "e_with"],
-                                                                        e_inj=results.loc[i, "e_inj"], e_prod=e_prod)
+                results.loc[i, ["esr", "em_tot", "em_base"]] = EnvironmentalEvaluator.invoke(results.loc[i, "e_sh"],
+                                                                                             e_cons=results.loc[
+                                                                                                 i, "e_with"],
+                                                                                             e_inj=results.loc[
+                                                                                                 i, "e_inj"],
+                                                                                             e_prod=e_prod)
 
             # Evaluate CAPEX
             if ParametricEvaluationType.ECONOMIC_METRICS in evaluation_types:
-                results.loc[i, "capex"] = eval_capex(pv_sizes, bess_size=bess_size, n_users=n_users + n_fam)
+                results.loc[i, "capex"] = EconomicEvaluator.invoke(pv_sizes, bess_size=bess_size,
+                                                                   n_users=n_users + n_fam)
         Write().write(results, "results")

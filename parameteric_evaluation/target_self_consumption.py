@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from pandas import DataFrame
 
+from data_storage.data_store import DataStore
 from parameteric_evaluation.definitions import ParametricEvaluator, ParametricEvaluationType
 from parameteric_evaluation.time_aggregation_evaluation import calculate_shared_energy, calculate_sc
 from utility import configuration
@@ -100,7 +101,8 @@ class TargetSelfConsumptionEvaluator(ParametricEvaluator):
                 continue
 
             # # Find number of families to reach target
-            nf, sc = find_the_optimal_number_of_families_for_sc_ratio(energy_year, sc_target, max_number_of_households)
+            nf, sc = find_the_optimal_number_of_families_for_sc_ratio(DataStore()["energy_year"], sc_target,
+                                                                      max_number_of_households)
 
             # Update
             df.loc[sc_target, ["number_of_families", "self_consumption_realized"]] = nf, sc
