@@ -1,21 +1,19 @@
-from abc import abstractmethod
-
 import numpy as np
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
-from parameteric_evaluation import PhysicalParameterEvaluator, EnvironmentalEvaluator, EconomicEvaluator
-from parameteric_evaluation.definitions import ParametricEvaluationType
-from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
+from parameteric_evaluation.definitions import ParametricEvaluationType, LoadMatchingMetric, PhysicalMetric, \
+    EnvironmentalMetric, EconomicMetric
+from parameteric_evaluation.run_parametric_evaluation import ParametricEvaluator
 from utility import configuration
 from utility.dimensions import power_to_energy
 
 
 class Battery:
-    @abstractmethod
-    def manage_bess(p_prod, p_cons, bess_size, t_min=None):
+    @classmethod
+    def manage_bess(cls, p_prod, p_cons, bess_size, t_min=None):
         """Manage BESS power flows to increase shared energy."""
         # Initialize BESS power array and stored energy
         p_bess = np.zeros_like(p_prod)
@@ -43,7 +41,7 @@ class Battery:
         return p_bess
 
     def get_as_optim(self):
-        pass 
+        pass
 
 
 class MetricEvaluator(ParametricEvaluator):
@@ -51,12 +49,11 @@ class MetricEvaluator(ParametricEvaluator):
 
     @classmethod
     def define_output_df(cls, evaluation_types, scenarios):
-        physical_metrics = ["sc", "ss", "e_sh", "e_inj",
-                            "e_with"] if ParametricEvaluationType.PHYSICAL_METRICS in evaluation_types else []
-        environmental_metrics = ["esr", "em_tot",
-                                 "em_base"] if ParametricEvaluationType.ENVIRONMENTAL_METRICS in evaluation_types else []
-        economic_metrics = ["capex", ] if ParametricEvaluationType.ECONOMIC_METRICS in evaluation_types else []
-        return DataFrame(index=scenarios.index, columns=physical_metrics + environmental_metrics + economic_metrics)
+        if evaluation_types == "all":
+            evaluation_types = [m.to_abbrev_str() for metric in
+                                (LoadMatchingMetric, PhysicalMetric, EnvironmentalMetric, EconomicMetric) for m in
+                                metric]
+        return DataFrame(index=scenarios.index, columns=evaluation_types)
 
     @classmethod
     def calculate_metrics(cls, parameters):
@@ -90,21 +87,11 @@ class MetricEvaluator(ParametricEvaluator):
 
             # Eval REC
             e_cons = power_to_energy(p_with)
-            if ParametricEvaluationType.PHYSICAL_METRICS in evaluation_types:
-                results.loc[i, ["sc", "ss", "e_sh", "e_inj", "e_with"]] = PhysicalParameterEvaluator.invoke(p_inj,
-                                                                                                            p_with)
 
-            # Evaluate emissions
-            if ParametricEvaluationType.ENVIRONMENTAL_METRICS in evaluation_types:
-                results.loc[i, ["esr", "em_tot", "em_base"]] = EnvironmentalEvaluator.invoke(results.loc[i, "e_sh"],
-                                                                                             e_cons=results.loc[
-                                                                                                 i, "e_with"],
-                                                                                             e_inj=results.loc[
-                                                                                                 i, "e_inj"],
-                                                                                             e_prod=e_prod)
+            for evaluation_type in evaluation_types:
+                results.loc[i, [m.to_abbrev_str() for m in PhysicalMetric]] = MetricEvaluator._evaluators[
+                    evaluation_type].invoke(p_inj=p_inj, p_with=p_with, e_sh=results.loc[i, "e_sh"], e_cons=e_cons,
+                                            e_inj=results.loc[i, "e_inj"], e_prod=e_prod, pv_sizes=pv_sizes,
+                                            bess_size=bess_size, n_users=n_users + n_fam)
 
-            # Evaluate CAPEX
-            if ParametricEvaluationType.ECONOMIC_METRICS in evaluation_types:
-                results.loc[i, "capex"] = EconomicEvaluator.invoke(pv_sizes, bess_size=bess_size,
-                                                                   n_users=n_users + n_fam)
         Write().write(results, "results")

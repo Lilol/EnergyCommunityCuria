@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Iterable
 
 import numpy as np
@@ -6,30 +7,39 @@ from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, Parameter, Metric
-from parameteric_evaluation.parametric_evaluation import ParametricEvaluator
+from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric
 from parameteric_evaluation.target_self_consumption import calculate_shared_energy, calculate_sc
 from utility.dimensions import power_to_energy
 
 
 class PhysicalParameterCalculator(Calculator):
-    _parameter_calculated = Parameter.INVALID
+    _parameter_calculated = PhysicalMetric.INVALID
 
+    @abstractmethod
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        pass
+
+
+class LoadMatchingParameterCalculator(PhysicalParameterCalculator):
+    _parameter_calculated = LoadMatchingMetric.INVALID
+
+    @abstractmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         pass
 
 
 class SharedEnergy(PhysicalParameterCalculator):
-    _parameter_calculated = Parameter.SHARED_ENERGY
+    _parameter_calculated = PhysicalMetric.SHARED_ENERGY
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         return input_da.sel(data=[DataKind.P_INJ, DataKind.P_WITH]).min().sum()
 
 
-class SelfConsumption(PhysicalParameterCalculator):
-    _parameter_calculated = Metric.SC
+class SelfConsumption(LoadMatchingParameterCalculator):
+    _parameter_calculated = LoadMatchingMetric.SELF_CONSUMPTION
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -37,7 +47,8 @@ class SelfConsumption(PhysicalParameterCalculator):
 
 
 class SelfSufficiency(PhysicalParameterCalculator):
-    _parameter_calculated = Metric.SS
+    _parameter_calculated = LoadMatchingMetric.SELF_SUFFICIENCY
+    _parameter_calculated = LoadMatchingMetric.SELF_SUFFICIENCY
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -47,8 +58,10 @@ class SelfSufficiency(PhysicalParameterCalculator):
 class PhysicalParameterEvaluator(MetricEvaluator):
     _type = ParametricEvaluationType.PHYSICAL_METRICS
     _name = "physical_parameter_evaluation"
-    _parameter_calculators = {Parameter.SELF_CONSUMPTION: SelfConsumption(),
-                              Parameter.SELF_SUFFICIENCY: SelfSufficiency(), Parameter.SHARED_ENERGY: SharedEnergy()}
+
+    _parameter_calculators = {LoadMatchingMetric.SELF_CONSUMPTION: SelfConsumption(),
+                              LoadMatchingMetric.SELF_SUFFICIENCY: SelfSufficiency(),
+                              PhysicalMetric.SHARED_ENERGY: SharedEnergy()}
 
     def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
         for parameter, calculator in self._parameter_calculators.items():

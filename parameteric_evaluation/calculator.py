@@ -9,7 +9,7 @@ from parameteric_evaluation.definitions import Parameter
 
 class Calculator:
     _name = "calculator"
-    _parameter_calculated = Parameter.INVALID
+    _parameter_calculated = Parameter
     calculators = {}
 
     def __init_subclass__(cls, **kwargs):

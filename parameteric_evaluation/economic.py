@@ -3,7 +3,7 @@ from typing import Iterable
 from data_storage.dataset import OmnesDataArray
 from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, Parameter
+from parameteric_evaluation.definitions import ParametricEvaluationType, Parameter, EconomicMetric
 
 
 class Capex(Calculator):
@@ -33,7 +33,7 @@ class Capex(Calculator):
                 c_pv = 1050
             return c_pv * pv_size
 
-    _parameter_calculated = Parameter.CAPEX
+    _parameter_calculated = EconomicMetric.CAPEX
     c_bess = 300
     c_user = 100
 
@@ -54,7 +54,7 @@ class Capex(Calculator):
 
 
 class Opex(Calculator):
-    _parameter_calculated = Parameter.OPEX
+    _parameter_calculated = EconomicMetric.OPEX
     c_bess = 100
 
     class OpexPv(Calculator):
