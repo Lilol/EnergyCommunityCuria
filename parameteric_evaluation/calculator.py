@@ -5,18 +5,21 @@ from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation.definitions import Parameter
+from utility.subclass_registration_base import SubclassRegistrationBase
 
 
-class Calculator:
+class Calculator(SubclassRegistrationBase):
     _name = "calculator"
     _parameter_calculated = Parameter
     calculators = {}
+    _key = _parameter_calculated
+    _subclasses = calculators
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        if len(cls.calculators) == 0:
-            cls.calculators = {}
-        cls.calculators[cls._parameter_calculated] = cls()
+    # def __init_subclass__(cls, **kwargs):
+    #     super().__init_subclass__(**kwargs)
+    #     if len(cls.calculators) == 0:
+    #         cls.calculators = {}
+    #     cls.calculators[cls._parameter_calculated] = cls()
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,

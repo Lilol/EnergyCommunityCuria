@@ -2,6 +2,7 @@ from enum import auto
 
 from utility.definitions import OrderedEnum
 
+
 class Parameter(OrderedEnum):
     def to_abbrev_str(self):
         pass
@@ -56,7 +57,6 @@ class ParametricEvaluationType(OrderedEnum):
     SELF_CONSUMPTION_TARGETS = "self_consumption_targets"
     SELF_CONSUMPTION_FOR_TIME_AGGREGATIONS = "self_consumption_for_time_aggregations"
     TIME_AGGREGATION = "time_aggregations"
-    METRICS = "metrics"
     PHYSICAL_METRICS = "physical"
     ECONOMIC_METRICS = "economic"
     ENVIRONMENTAL_METRICS = "environmental"
@@ -64,3 +64,8 @@ class ParametricEvaluationType(OrderedEnum):
     ALL = "all"
     INVALID = "invalid"
 
+
+evaluation_type = {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
+                   ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
+                   ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
+                   ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric,}

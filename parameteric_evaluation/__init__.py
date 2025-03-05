@@ -3,4 +3,4 @@ from parameteric_evaluation.time_aggregation_evaluation import TimeAggregationEv
 from parameteric_evaluation.metrics import MetricEvaluator
 from parameteric_evaluation.economic import EconomicEvaluator
 from parameteric_evaluation.environmental import EnvironmentalEvaluator
-from parameteric_evaluation.physical import PhysicalParameterEvaluator
+from parameteric_evaluation.physical import PhysicalMetricEvaluator

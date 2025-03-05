@@ -4,7 +4,8 @@ from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric
+from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
 class EmissionSavingsRatio(Calculator):
@@ -48,20 +49,23 @@ class BaselineEmissions(Calculator):
         return (input_da.sel(data=DataKind.CONSUMPTION) * kwargs.pop("eps_grid", 0.263)) * kwargs.pop("years", 20)
 
 
-class EnvironmentalEvaluator(MetricEvaluator):
+class EnvironmentalEvaluator(ParametricEvaluator):
     _type = ParametricEvaluationType.ENVIRONMENTAL_METRICS
+    _name = "environmental_evaluator"
+    _parameter_calculators = {EnvironmentalMetric.ESR: EmissionSavingsRatio(),
+                              EnvironmentalMetric.BASELINE_EMISSIONS: BaselineEmissions(),
+                              EnvironmentalMetric.TOTAL_EMISSIONS: TotalEmissions()}
 
-    def invoke(self, *args, **kwargs):
+    @classmethod
+    def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
         """
         Calculates the CO2 emissions based on the shared energy, consumed energy,
         produced energy, and emission factors.
-        Returns:
-        - Tuple[float, float, float]: Emissions savings ratio, total emissions,
-            and baseline emissions as a DataArray.
         """
+        results = kwargs.pop("results", args[0])
         baseline_emissions = BaselineEmissions.calculate(*args, **kwargs)
         total_emissions = TotalEmissions.calculate(*args, **kwargs)
 
-        return baseline_emissions, total_emissions, EmissionSavingsRatio.calculate(*args, **kwargs,
-                                                                                   em_tot=total_emissions,
-                                                                                   em_base=baseline_emissions)
+        results.loc[results.index[-1], [m.to_abbrev_str() for m in cls._parameter_calculators]] = (
+        baseline_emissions, total_emissions,
+        EmissionSavingsRatio.calculate(*args, **kwargs, em_tot=total_emissions, em_base=baseline_emissions))
