@@ -3,12 +3,12 @@ from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
+from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import LoadMatchingMetric, ParametricEvaluationType
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parameteric_evaluation.physical import PhysicalParameterCalculator
 
 
-class LoadMatchingParameterCalculator(PhysicalParameterCalculator):
+class LoadMatchingParameterCalculator(Calculator):
     _parameter_calculated = LoadMatchingMetric.INVALID
 
     @abstractmethod
@@ -25,7 +25,7 @@ class SelfConsumption(LoadMatchingParameterCalculator):
         return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_INJ).sum()
 
 
-class SelfSufficiency(PhysicalParameterCalculator):
+class SelfSufficiency(LoadMatchingParameterCalculator):
     _parameter_calculated = LoadMatchingMetric.SELF_SUFFICIENCY
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,

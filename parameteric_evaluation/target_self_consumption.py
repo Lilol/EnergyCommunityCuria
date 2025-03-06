@@ -4,9 +4,8 @@ import numpy as np
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
-from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType, calculate_shared_energy, calculate_sc
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parameteric_evaluation.time_aggregation_evaluation import calculate_shared_energy, calculate_sc
 from utility import configuration
 
 logger = logging.getLogger(__name__)

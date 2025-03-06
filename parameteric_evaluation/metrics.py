@@ -4,10 +4,9 @@ from pandas import DataFrame
 from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
-from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.definitions import calc_sum_consumption
+from parameteric_evaluation.dimensions import power_to_energy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parameteric_evaluation.time_aggregation_evaluation import calc_sum_consumption
-from utility.dimensions import power_to_energy
 
 
 class Battery:

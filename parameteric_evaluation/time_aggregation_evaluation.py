@@ -3,24 +3,20 @@ from pandas import DataFrame
 from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
-from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType, calculate_shared_energy, calculate_sc
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parameteric_evaluation.physical import PhysicalMetricEvaluator
 from visualization.processing_visualization import plot_shared_energy, plot_sci
 
 
-def calculate_shared_energy(data, n_fam):
-    calc_sum_consumption(data, n_fam)
-    data[DataKind.SHARED] = data.sel([DataKind.PRODUCTION, DataKind.CONSUMPTION]).min(axis="rows")
+def calculate_theoretical_limit_of_self_consumption(df_months, n_fam):
+    calculate_shared_energy(df_months, n_fam)
+    return calculate_sc(df_months)
 
 
-def calc_sum_consumption(data, n_fam):
-    data[DataKind.CONSUMPTION] = data.sel(DataKind.CONSUMPTION_OF_FAMILIES) * n_fam + data.sel(
-        DataKind.CONSUMPTION_OF_USERS)
-
-
-def calculate_sc(df):
-    return df[DataKind.SHARED].sum() / df[DataKind.PRODUCTION].sum()
+def calculate_sc_for_time_aggregation(df_hours, time_resolution, n_fam):
+    """Evaluate self consumption with given temporal aggregation and number of families."""
+    calculate_shared_energy(df_hours.groupby(time_resolution).sum(), n_fam)
+    return calculate_sc(df_hours)
 
 
 class TimeAggregationEvaluator(ParametricEvaluator):
@@ -39,11 +35,9 @@ class TimeAggregationEvaluator(ParametricEvaluator):
         tou_months = ds["tou_months"]
         energy_year = ds["energy_year"]
         for n_fam in evaluation_parameters.number_of_families:
-            results.loc[n_fam, 'sc_tou'] = PhysicalMetricEvaluator.calculate_theoretical_limit_of_self_consumption(
-                tou_months, n_fam)
+            results.loc[n_fam, 'sc_tou'] = calculate_theoretical_limit_of_self_consumption(tou_months, n_fam)
             for label, tr in time_resolution.items():
-                results.loc[n_fam, label] = PhysicalMetricEvaluator.calculate_sc_for_time_aggregation(energy_year, tr,
-                                                                                                      n_fam)
+                results.loc[n_fam, label] = calculate_sc_for_time_aggregation(energy_year, tr, n_fam)
             calculate_shared_energy(energy_year, n_fam)
             energy_by_day = energy_year.groupby(time_resolution["sc_day"])
             plot_shared_energy(energy_by_day.sum()[DataKind.SHARED],

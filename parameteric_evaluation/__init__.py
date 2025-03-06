@@ -1,6 +1,8 @@
-from parameteric_evaluation.target_self_consumption import TargetSelfConsumptionEvaluator
-from parameteric_evaluation.time_aggregation_evaluation import TimeAggregationEvaluator
-from parameteric_evaluation.metrics import MetricEvaluator
-from parameteric_evaluation.economic import EconomicEvaluator
-from parameteric_evaluation.environmental import EnvironmentalEvaluator
-from parameteric_evaluation.physical import PhysicalMetricEvaluator
+from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
+
+# Function to trigger loading only when needed
+def initialize_evaluators():
+    import parameteric_evaluation.metrics  # Triggers subclass definition & registration
+    import parameteric_evaluation.economic
+    import parameteric_evaluation.environmental
+    import parameteric_evaluation.physical

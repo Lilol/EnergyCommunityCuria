@@ -1,5 +1,8 @@
+from parameteric_evaluation import initialize_evaluators
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from utility.singleton import Singleton
+
+initialize_evaluators()
 
 
 class ParametricEvaluation(Singleton):

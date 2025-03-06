@@ -5,13 +5,11 @@ import numpy as np
 
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
-from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric
 from parameteric_evaluation.load_matching_evaluation import SelfConsumption, SelfSufficiency
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parameteric_evaluation.target_self_consumption import calculate_shared_energy, calculate_sc
-from utility.dimensions import power_to_energy
+from parametric_evaluation.dimension import power_to_energy
 
 
 class PhysicalParameterCalculator(Calculator):
@@ -83,14 +81,3 @@ class PhysicalMetricEvaluator(ParametricEvaluator):
 
         # Return
         return sc, ss, e_sh, p_sh, e_inj, e_with
-
-    @classmethod
-    def calculate_theoretical_limit_of_self_consumption(cls, df_months, n_fam):
-        calculate_shared_energy(df_months, n_fam)
-        return calculate_sc(df_months)
-
-    @classmethod
-    def calculate_sc_for_time_aggregation(cls, df_hours, time_resolution, n_fam):
-        """Evaluate self consumption with given temporal aggregation and number of families."""
-        calculate_shared_energy(df_hours.groupby(time_resolution).sum(), n_fam)
-        return calculate_sc(df_hours)
