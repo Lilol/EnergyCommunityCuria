@@ -2,11 +2,12 @@ TO DISCUSS:
 Should the ProcessingPipeline automatically put a writer at the end of the pipeline? (Same question for saving the data into the DataStore)
 How to handle unit systems, power vs. energy? Use an elaborate unit system toolbox or something simpler is enough? -> dataset.attrs["units"] = "deg C"
 How to handle time resolution: there is a given resolution and a desired one. How to differentiate? When do we convert between them?
-The 'to_store' property in the Unit class should be solved in a more generic manner.
-Return values for pipeline 'execute' functions: can they be either None OR OmnesDataArray: maybe
 
 TODO:
 AggregateOnTimeResolution: process weird time resolutions, like season
 Target SC evaluation should work for SS and other targets too, set the targets from config -> On it
 Clear up predefined input and output types for Calculator classes
 Create a common baseclass for all classes implementing self-registration
+MultiStepCalculation into a Calculator, because now it is a pipeline stage
+_parameter_calculators in 'Evaluator' classes should be automatically initialized
+__call__ and calculate in Calculator classes: what's the difference? Only one???

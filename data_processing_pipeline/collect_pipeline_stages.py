@@ -12,6 +12,6 @@ class CollectPipelineStage(PipelineStage, DataProcessingPipeline):
         super(DataProcessingPipeline).__init__(name, *args, **kwargs)
         super(PipelineStage).__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         return super(DataProcessingPipeline).execute(*args, **kwargs, dataset=dataset)
 

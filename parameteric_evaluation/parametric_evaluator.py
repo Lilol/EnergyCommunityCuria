@@ -8,6 +8,7 @@ class ParametricEvaluator(SubclassRegistrationBase):
     _type = ParametricEvaluationType.INVALID
     _name = "parametric_evaluator"
     _parameter_calculators = {}
+    _subclasses = _parameter_calculators
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:

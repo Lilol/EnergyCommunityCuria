@@ -29,7 +29,7 @@ class Transform(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         raise NotImplementedError
 
 
@@ -39,7 +39,7 @@ class Rename(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         dims = self.get_arg("dims", **kwargs, fallback={})
         coords = self.get_arg("coords", **kwargs, fallback={})
         variables = self.get_arg("variables", **kwargs, fallback={})
@@ -52,7 +52,7 @@ class TransformReferenceProfile(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         dataset = dataset.rename({"dim_1": DataKind.USER_DATA.value}).assign_coords(
             {"date": to_datetime(dataset.date.date, format="ISO8601").floor("h")})
         da = OmnesDataArray(xr.apply_ufunc(get_weekday_code, dataset.date.dt.date, vectorize=True),
@@ -93,7 +93,7 @@ class TransformCoordinateIntoDimension(Transform):
         unique, counts = np.unique(arr, return_counts=True)
         return np.all(counts == 1)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         coordinate = self.kwargs.pop("coordinate")
         to_replace_dimension = self.kwargs.pop("to_replace_dimension")
         new_dimension_name = self.kwargs.pop("new_dimension")
@@ -117,7 +117,7 @@ class TransformUserData(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         dataset = dataset.rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value}).assign_coords(
             {DataKind.USER.value: dataset.sel({"dim_1": DataKind.USER}).squeeze().values}).drop(labels=DataKind.USER,
                                                                                                 dim=DataKind.USER_DATA.value)
@@ -138,7 +138,7 @@ class TransformBills(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         def get_bill_type(df):
             return BillType.TIME_OF_USE if any(df.loc[..., DataKind.MONO_TARIFF].isnull()) else BillType.MONO
 
@@ -162,7 +162,7 @@ class TransformTypicalLoadProfile(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         # Tariff timeslot naming convention: time slot indices start from 0
         dataset.loc[..., DataKind.USER_TYPE] = xr.apply_ufunc(lambda x: UserType(x),
                                                               dataset.sel({"dim_1": DataKind.USER_TYPE}),
@@ -193,7 +193,7 @@ class TransformPvPlantData(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         dataset = dataset.rename({"dim_1": DataKind.USER_DATA.value, "dim_0": DataKind.USER.value})
 
         dataset = dataset.assign_coords(
@@ -209,7 +209,7 @@ class TransformProduction(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         return dataset
 
 
@@ -219,7 +219,7 @@ class TransformTariffData(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         # Tariff timeslot naming convention: time slot indices start from 0
         dataset = dataset.rename({"dim_0": DataKind.DAY_TYPE.value, "dim_1": DataKind.HOUR.value})
         dataset = dataset - 1
@@ -244,7 +244,7 @@ class TransformBillsToLoadProfiles(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         user_type = kwargs.pop("user_type", None)
         typical_load_profiles = DataStore()["typical_load_profiles_gse"]
         users = DataStore()["users"]
@@ -293,7 +293,7 @@ class CreateYearlyProfile(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         ref_year = configuration.config.getint("time", "year")
         output_data = OmnesDataArray(0., dims=(DataKind.USER.value, DataKind.TIME.value, DataKind.MUNICIPALITY.value),
                                      coords={DataKind.USER.value: np.unique(dataset[DataKind.USER.value]),
@@ -316,7 +316,7 @@ class AggregateProfileDataForTimePeriod(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         tou_labels = configuration.config.get("tariff", "time_of_use_labels")
         output_data = OmnesDataArray(0., dims=(
             DataKind.USER.value, DataKind.TOU_ENERGY.value, DataKind.MONTH.value, DataKind.MUNICIPALITY.value),
@@ -349,7 +349,7 @@ class Aggregate(Transform):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         aggregate_on = self.get_arg("aggregate_on")
         return OmnesDataArray(dataset.groupby(dataset.sel(aggregate_on)).sum())
 
@@ -360,7 +360,7 @@ class AggregateByTime(Aggregate):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         aggregate_on = self.get_arg("time_resolution")
         return OmnesDataArray(dataset.groupby(dataset.sel({DataKind.TIME.value: aggregate_on})).sum())
 
@@ -372,5 +372,5 @@ class Apply(Transform):
         super().__init__(name, *args, **kwargs)
         self.operation = kwargs.pop("operation", lambda x: x)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         return self.operation(dataset)

@@ -23,7 +23,7 @@ class Write(PipelineStage):
         self.filename = kwargs.get("filename", name)
         makedirs(self.output_path, exist_ok=True)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         name = kwargs.get("filename", self.filename)
         if DataKind.MUNICIPALITY.value not in dataset.dims:
             self.write_array(dataset, name)
@@ -58,7 +58,7 @@ class WriteGseProfile(Write):
         self.output_path = configuration.config.get("path", "reference_profile_source")
         self.filename = kwargs.get("filename", "gse_ref_profiles")
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         name = kwargs.get("filename", self.filename)
         self.save_2d_data_array(dataset, name)
         return dataset

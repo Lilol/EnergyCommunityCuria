@@ -12,7 +12,7 @@ class Store(PipelineStage):
         super().__init__(name, *args, **kwargs)
         self.key = kwargs.pop("key", name)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         DataStore()[self.key] = dataset
         return dataset
 

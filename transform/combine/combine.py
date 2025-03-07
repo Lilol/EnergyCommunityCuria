@@ -20,7 +20,7 @@ class Combine(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         raise NotImplementedError("'execute()' is not implemented in Combine base class.")
 
 
@@ -33,7 +33,7 @@ class CalculateTypicalMonthlyConsumption(Combine):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         data_store = DataStore()
         time_of_use_time_slots = data_store["time_of_use_time_slots"]
         day_count = data_store["day_count"]
@@ -55,7 +55,7 @@ class AddYearlyConsumptionToBillData(Combine):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         data_bills = DataStore()["bills"]
         dd = xr.concat([ds.sel({DataKind.USER_DATA.value: [DataKind.MONO_TARIFF,
                                                            *configuration.config.getarray("tariff",

@@ -22,7 +22,7 @@ class Extract(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         raise NotImplementedError
 
 
@@ -32,7 +32,7 @@ class ExtractTypicalYear(Extract):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         dds = xr.concat([xr.concat([dd.assign_coords({DataKind.TIME.value: dd.time.dt.hour}).rename(
             {DataKind.TIME.value: DataKind.HOUR.value}).expand_dims(DataKind.DAY_OF_MONTH.value).assign_coords(
             {DataKind.DAY_OF_MONTH.value: [day, ]}) for day, dd in df.groupby(df.time.dt.day)],
@@ -64,7 +64,7 @@ class ExtractTimeOfUseParameters(Extract):
     #            3 - tariff times-lot F2, night, sundays and holidays
     """
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         tariff_time_slots = np.unique(dataset)
         configuration.config.set_and_check("tariff", "tariff_time_slots", tariff_time_slots,
                                            configuration.config.setarray, check=False)
@@ -99,7 +99,7 @@ class ExtractDayTypesInTimeframe(Extract):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         ref_year = configuration.config.get("time", "year")
         start = kwargs.pop("start", f"{ref_year}-01-01")
         end = kwargs.pop("end", f"{ref_year}-12-31")
@@ -117,7 +117,7 @@ class ExtractDayCountInTimeframe(Extract):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         dataset = xr.concat([OmnesDataArray(unique_numbers[1], dims=DataKind.DAY_TYPE.value,
                                             coords={DataKind.DAY_TYPE.value: unique_numbers[0]}).expand_dims(
             {DataKind.MONTH.value: [i, ]}) for i, da in enumerate(dataset.T, 1) if
@@ -132,7 +132,7 @@ class ExtractTimeOfUseTimeSlotCountByDayType(Extract):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         return xr.concat([OmnesDataArray(unique_numbers[1], dims=DataKind.TARIFF_TIME_SLOT.value,
                                          coords={DataKind.TARIFF_TIME_SLOT.value: unique_numbers[0]}).expand_dims(
             {DataKind.DAY_TYPE.value: [i, ]}) for i, a in enumerate(dataset.values) if
@@ -145,7 +145,7 @@ class ExtractTimeOfUseTimeSlotCountByMonth(Extract):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         day_type_count = DataStore()["day_count"]
         dataset = (dataset * day_type_count).sum("day_type")
         return dataset

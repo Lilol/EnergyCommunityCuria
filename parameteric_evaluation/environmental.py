@@ -2,13 +2,14 @@ from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
-from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
 class EmissionSavingsRatio(Calculator):
+    _key = EnvironmentalMetric.ESR
+
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -18,6 +19,8 @@ class EmissionSavingsRatio(Calculator):
 
 
 class TotalEmissions(Calculator):
+    _key = EnvironmentalMetric.TOTAL_EMISSIONS
+
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -39,6 +42,8 @@ class TotalEmissions(Calculator):
 
 
 class BaselineEmissions(Calculator):
+    _key = EnvironmentalMetric.BASELINE_EMISSIONS
+
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:

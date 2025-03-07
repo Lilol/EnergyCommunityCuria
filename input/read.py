@@ -34,7 +34,7 @@ class Read(PipelineStage):
         self._path = join(self._input_root, self._directory)
         self._data = OmnesDataArray()
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
         self._data = xr.concat([self._read_municipality(m) for m in municipalities], dim=DataKind.MUNICIPALITY.value)
         return self._data
@@ -53,7 +53,7 @@ class ReadProduction(Read):
         super().__init__(name, *args, **kwargs)
         self._pv_resource_reader = ReadPvProcuction.create()
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
         user_data = DataStore()["pv_plants"]
         self._data = xr.concat(
@@ -79,7 +79,7 @@ class ReadPvgis(ReadPvProcuction):
     _production_column_name = 'Irradiance onto horizontal plane '  # hourly production of the plants (kW)
     _column_names = {"power": DataKind.POWER}
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "location"))
         user = kwargs.pop("user")
         production = read_csv(join(self._path, municipality, PvDataSource.PVGIS.value, f"{user}.csv"), sep=';',
@@ -98,7 +98,7 @@ class ReadPvSol(ReadPvProcuction):
     _production_column_name = 'Grid Export '  # hourly production of the plants (kW)
     _column_names = {_production_column_name: DataKind.POWER}
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipality = kwargs.pop("municipality", configuration.config.get("rec", "location"))
         user = kwargs.pop("user", "")
         production = read_csv(join(self._path, municipality, PvDataSource.PVSOL.value, f"{user}.csv"), sep=';',
@@ -166,7 +166,7 @@ class ReadBills(Read):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         super().execute(dataset, *args, **kwargs)
         # Check that each user has exactly 12 rows in the bills dataframe
         users = self._data.sel({"dim_1": DataKind.USER})
@@ -184,7 +184,7 @@ class ReadBills(Read):
 class ReadCommonData(Read):
     _column_names = {}
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         self._data = read_csv(join(self._path, self._filename), sep=';', index_col=0, header=0).rename(
             columns=self._column_names)
         return OmnesDataArray(data=self._data)
@@ -225,7 +225,7 @@ class ReadGseDatabase(ReadTypicalLoadProfile):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         self._data = read_excel(join(self._path, self._filename), index_col=0, header=0, parse_dates=True,
                                 date_format="%d.%m.%Y %H.%M").rename(columns=lambda x: ReadGseDatabase._column_names(x))
         return OmnesDataArray(data=self._data)

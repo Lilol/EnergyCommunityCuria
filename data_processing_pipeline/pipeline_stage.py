@@ -17,7 +17,7 @@ class PipelineStage:
         self.name = name
         return self
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         raise NotImplementedError(
             "'execute' is not implemented in base class 'PipelineStage', 'execute"
             "' must be implemented in every child class.")

@@ -46,6 +46,7 @@ class EnvironmentalMetric(Parameter):
 
 class EconomicMetric(Parameter):
     CAPEX = "Capex"
+    CAPEX_PV = "Capex PV"
     OPEX = "Opex"
     INVALID = auto()
 
@@ -54,6 +55,7 @@ class EconomicMetric(Parameter):
         return {
             cls.CAPEX: "capex",
             cls.OPEX: "opex",
+            cls.CAPEX_PV: "capex_pv",
         }
 
 

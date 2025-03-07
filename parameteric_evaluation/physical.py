@@ -6,14 +6,13 @@ import numpy as np
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric
-from parameteric_evaluation.load_matching_evaluation import SelfConsumption, SelfSufficiency
+from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric
+from parameteric_evaluation.dimensions import power_to_energy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parametric_evaluation.dimension import power_to_energy
 
 
 class PhysicalParameterCalculator(Calculator):
-    _parameter_calculated = PhysicalMetric.INVALID
+    _key = PhysicalMetric.INVALID
 
     @classmethod
     @abstractmethod
@@ -23,7 +22,7 @@ class PhysicalParameterCalculator(Calculator):
 
 
 class SharedEnergy(PhysicalParameterCalculator):
-    _parameter_calculated = PhysicalMetric.SHARED_ENERGY
+    _key = PhysicalMetric.SHARED_ENERGY
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
@@ -35,9 +34,7 @@ class PhysicalMetricEvaluator(ParametricEvaluator):
     _type = ParametricEvaluationType.PHYSICAL_METRICS
     _name = "physical_metric_evaluation"
 
-    _parameter_calculators = {LoadMatchingMetric.SELF_CONSUMPTION: SelfConsumption(),
-                              LoadMatchingMetric.SELF_SUFFICIENCY: SelfSufficiency(),
-                              PhysicalMetric.SHARED_ENERGY: SharedEnergy()}
+    _parameter_calculators = {PhysicalMetric.SHARED_ENERGY: SharedEnergy()}
 
     @classmethod
     def eval_physical_parameters(cls, p_inj, p_with, dt=1, p_prod=None, p_cons=None):

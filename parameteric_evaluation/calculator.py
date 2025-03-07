@@ -10,16 +10,7 @@ from utility.subclass_registration_base import SubclassRegistrationBase
 
 class Calculator(SubclassRegistrationBase):
     _name = "calculator"
-    _parameter_calculated = Parameter
-    calculators = {}
-    _key = _parameter_calculated
-    _subclasses = calculators
-
-    # def __init_subclass__(cls, **kwargs):
-    #     super().__init_subclass__(**kwargs)
-    #     if len(cls.calculators) == 0:
-    #         cls.calculators = {}
-    #     cls.calculators[cls._parameter_calculated] = cls()
+    _key = Parameter
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
@@ -40,7 +31,7 @@ class MultiStepCalculation(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         results = OmnesDataArray(dims=[DataKind.TIME.value, DataKind.METRIC.value],
                                  coords={DataKind.TIME.value: dataset[DataKind.TIME.value],
                                          DataKind.METRIC.value: list(self._calculators.keys())})

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from os.path import join
 from typing import List
 
@@ -18,7 +18,11 @@ class Unit:
     p_injected: float = 0
     p_withdrawn: float = 0
     evaluated: bool = False
-    to_store = ["p_produced", "p_consumed", "p_selfconsumed", "p_shared", "p_injected", "p_withdrawn"]
+    to_store: list = None  # Will be initialized in __post_init__
+
+    def __post_init__(self):
+        # Automatically collect all attributes of type float
+        self.to_store = [f.name for f in fields(self) if f.type == float]
 
     def evaluate(self):
         if self.evaluated:
@@ -63,8 +67,6 @@ class User(Unit):
     units: List[Unit] = None
     p_shared_with: float = 0
     p_shared_inj: float = 0
-    to_store = ["p_produced", "p_consumed", "p_selfconsumed", "p_shared", "p_injected", "p_withdrawn", "p_shared_with",
-                "p_shared_inj"]
 
     def __init__(self, units=None):
         self.units = units

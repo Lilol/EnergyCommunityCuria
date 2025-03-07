@@ -1,14 +1,17 @@
 from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
-from parameteric_evaluation import MetricEvaluator
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, EconomicMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
 class Capex(Calculator):
+    _key = EconomicMetric.CAPEX
+
     class CapexPv(Calculator):
+        _key = EconomicMetric.CAPEX_PV
+
         @classmethod
         def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                       **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -34,7 +37,6 @@ class Capex(Calculator):
                 c_pv = 1050
             return c_pv * pv_size
 
-    _parameter_calculated = EconomicMetric.CAPEX
     c_bess = 300
     c_user = 100
 
@@ -55,7 +57,7 @@ class Capex(Calculator):
 
 
 class Opex(Calculator):
-    _parameter_calculated = EconomicMetric.OPEX
+    _key = EconomicMetric.OPEX
     c_bess = 100
 
     class OpexPv(Calculator):

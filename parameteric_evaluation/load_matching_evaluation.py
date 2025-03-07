@@ -9,7 +9,7 @@ from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
 class LoadMatchingParameterCalculator(Calculator):
-    _parameter_calculated = LoadMatchingMetric.INVALID
+    _key = LoadMatchingMetric.INVALID
 
     @abstractmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
@@ -18,7 +18,7 @@ class LoadMatchingParameterCalculator(Calculator):
 
 
 class SelfConsumption(LoadMatchingParameterCalculator):
-    _parameter_calculated = LoadMatchingMetric.SELF_CONSUMPTION
+    _key = LoadMatchingMetric.SELF_CONSUMPTION
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -26,7 +26,7 @@ class SelfConsumption(LoadMatchingParameterCalculator):
 
 
 class SelfSufficiency(LoadMatchingParameterCalculator):
-    _parameter_calculated = LoadMatchingMetric.SELF_SUFFICIENCY
+    _key = LoadMatchingMetric.SELF_SUFFICIENCY
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:

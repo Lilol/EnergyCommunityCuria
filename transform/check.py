@@ -17,7 +17,7 @@ class Check(PipelineStage):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         raise NotImplementedError
 
 
@@ -27,7 +27,7 @@ class CheckAnnualSum(Check):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
-    def execute(self, dataset: OmnesDataArray, *args, **kwargs) -> OmnesDataArray:
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         time_of_use_labels = configuration.config.getarray("tariff", "time_of_use_labels", str)
         groups = grouper(dataset, DataKind.USER.value, user_data=DataKind.MONTH)
         for (user, month), ds in dataset.groupby(groups):
