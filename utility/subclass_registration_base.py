@@ -1,10 +1,3 @@
-# class SubclassRegistryMeta(type):
-#     def __init__(cls, name, bases, dct):
-#         super().__init__(name, bases, dct)
-#         if hasattr(cls, "_key") and cls._key is not None:
-#             cls.register_subclass(cls._key, cls)
-
-
 class SubclassRegistrationBase:
     _subclasses = {}
     _key = None

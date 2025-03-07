@@ -20,7 +20,7 @@ def calculate_sc_for_time_aggregation(df_hours, time_resolution, n_fam):
 
 
 class TimeAggregationEvaluator(ParametricEvaluator):
-    _type = ParametricEvaluationType.TIME_AGGREGATION
+    _key = ParametricEvaluationType.TIME_AGGREGATION
 
     @classmethod
     def invoke(cls, *args, **kwargs):

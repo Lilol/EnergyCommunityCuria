@@ -31,10 +31,8 @@ class SharedEnergy(PhysicalParameterCalculator):
 
 
 class PhysicalMetricEvaluator(ParametricEvaluator):
-    _type = ParametricEvaluationType.PHYSICAL_METRICS
+    _key = ParametricEvaluationType.PHYSICAL_METRICS
     _name = "physical_metric_evaluation"
-
-    _parameter_calculators = {PhysicalMetric.SHARED_ENERGY: SharedEnergy()}
 
     @classmethod
     def eval_physical_parameters(cls, p_inj, p_with, dt=1, p_prod=None, p_cons=None):

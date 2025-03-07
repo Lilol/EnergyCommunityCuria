@@ -14,7 +14,7 @@ from utility import configuration
 
 
 class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
-    _type = ParametricEvaluationType.DATASET_CREATION
+    _key = ParametricEvaluationType.DATASET_CREATION
     # Setup and data loading
     _input_properties = {"input_root": configuration.config.get("path", "output")}
     _tou_columns = configuration.config.get("tariff", "time_of_use_labels")

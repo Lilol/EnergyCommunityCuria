@@ -22,11 +22,7 @@ class PhysicalMetric(Parameter):
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {
-            cls.SHARED_ENERGY: "e_sh",
-            cls.INJECTED_ENERGY: "e_inj",
-            cls.WITHDRAWN_ENERGY: "e_with",
-        }
+        return {cls.SHARED_ENERGY: "e_sh", cls.INJECTED_ENERGY: "e_inj", cls.WITHDRAWN_ENERGY: "e_with", }
 
 
 class EnvironmentalMetric(Parameter):
@@ -37,11 +33,7 @@ class EnvironmentalMetric(Parameter):
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {
-            cls.ESR: "esr",
-            cls.TOTAL_EMISSIONS: "em_tot",
-            cls.BASELINE_EMISSIONS: "e_base",
-        }
+        return {cls.ESR: "esr", cls.TOTAL_EMISSIONS: "em_tot", cls.BASELINE_EMISSIONS: "e_base", }
 
 
 class EconomicMetric(Parameter):
@@ -52,11 +44,7 @@ class EconomicMetric(Parameter):
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {
-            cls.CAPEX: "capex",
-            cls.OPEX: "opex",
-            cls.CAPEX_PV: "capex_pv",
-        }
+        return {cls.CAPEX: "capex", cls.OPEX: "opex", cls.CAPEX_PV: "capex_pv", }
 
 
 class LoadMatchingMetric(Parameter):
@@ -66,10 +54,7 @@ class LoadMatchingMetric(Parameter):
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {
-            cls.SELF_CONSUMPTION: "sc",
-            cls.SELF_SUFFICIENCY: "ss",
-        }
+        return {cls.SELF_CONSUMPTION: "sc", cls.SELF_SUFFICIENCY: "ss", }
 
 
 class ParametricEvaluationType(OrderedEnum):
@@ -85,10 +70,11 @@ class ParametricEvaluationType(OrderedEnum):
     INVALID = "invalid"
 
 
-evaluation_type = {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
-                   ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
-                   ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
-                   ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric,}
+def get_eval_metrics(evaluation_type):
+    return {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
+            ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
+            ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
+            ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric, }.get(evaluation_type, None)
 
 
 def calculate_shared_energy(data, n_fam):

@@ -55,11 +55,8 @@ class BaselineEmissions(Calculator):
 
 
 class EnvironmentalEvaluator(ParametricEvaluator):
-    _type = ParametricEvaluationType.ENVIRONMENTAL_METRICS
+    _key = ParametricEvaluationType.ENVIRONMENTAL_METRICS
     _name = "environmental_evaluator"
-    _parameter_calculators = {EnvironmentalMetric.ESR: EmissionSavingsRatio(),
-                              EnvironmentalMetric.BASELINE_EMISSIONS: BaselineEmissions(),
-                              EnvironmentalMetric.TOTAL_EMISSIONS: TotalEmissions()}
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:

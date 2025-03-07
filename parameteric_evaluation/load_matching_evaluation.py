@@ -34,7 +34,5 @@ class SelfSufficiency(LoadMatchingParameterCalculator):
 
 
 class LoadMatchingMetricEvaluator(ParametricEvaluator):
-    _type = ParametricEvaluationType.LOAD_MATCHING_METRICS
+    _key = ParametricEvaluationType.LOAD_MATCHING_METRICS
     _name = "load_matching_metric_evaluation"
-    _parameter_calculators = {LoadMatchingMetric.SELF_CONSUMPTION: SelfConsumption(),
-                              LoadMatchingMetric.SELF_SUFFICIENCY: SelfSufficiency()}

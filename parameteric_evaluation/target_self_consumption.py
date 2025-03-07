@@ -84,7 +84,7 @@ def find_the_optimal_number_of_families_for_sc_ratio(df, sc, n_fam_max, step=25)
 
 
 class TargetSelfConsumptionEvaluator(ParametricEvaluator):
-    _type = ParametricEvaluationType.SELF_CONSUMPTION_TARGETS
+    _key = ParametricEvaluationType.SELF_CONSUMPTION_TARGETS
 
     @classmethod
     def evaluate_self_consumption_targets(cls):
