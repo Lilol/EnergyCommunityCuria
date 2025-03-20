@@ -2,7 +2,7 @@ from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, EconomicMetric, get_eval_metrics
+from parameteric_evaluation.definitions import ParametricEvaluationType, EconomicMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
@@ -83,4 +83,3 @@ class Opex(Calculator):
 class EconomicEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.ECONOMIC_METRICS
     _name = "economic_evaluation"
-

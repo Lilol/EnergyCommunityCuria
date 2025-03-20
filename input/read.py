@@ -67,11 +67,17 @@ class ReadProduction(Read):
 class ReadPvProcuction(Read):
     _name = "pvresource_reader"
     _directory = "DatiComuni"
+    _ref_year = configuration.config.getint("time", "year")
 
     @classmethod
     def create(cls, *args, **kwargs):
         source = configuration.config.get("production", "estimator")
         return ReadPvgis(*args, **kwargs) if source == PvDataSource.PVGIS else ReadPvSol(*args, **kwargs)
+
+    @classmethod
+    def replace_year(cls, df):
+        df.index = df.index.map(lambda x: x.replace(year=cls._ref_year))
+        return df
 
 
 class ReadPvgis(ReadPvProcuction):
@@ -85,6 +91,7 @@ class ReadPvgis(ReadPvProcuction):
         production = read_csv(join(self._path, municipality, PvDataSource.PVGIS.value, f"{user}.csv"), sep=';',
                               index_col=0, parse_dates=True, date_format="%d/%m/%Y %H:%M").rename(
             columns=self._column_names)
+        production = self.replace_year(production)
         production = OmnesDataArray(data=production).rename(
             {"dim_1": DataKind.POWER.value, "timestamp": DataKind.TIME.value}).expand_dims(
             [DataKind.MUNICIPALITY.value, DataKind.USER.value]).assign_coords(
@@ -105,8 +112,7 @@ class ReadPvSol(ReadPvProcuction):
                               decimal=',', skiprows=range(1, 17), index_col=0, header=0, parse_dates=True,
                               date_format="%d.%m. %H:%M", usecols=["Time", self._production_column_name]).rename(
             columns=self._column_names)
-        ref_year = configuration.config.getint("time", "year")
-        production.index = production.index.map(lambda x: x.replace(year=ref_year))
+        production = self.replace_year(production)
         production = OmnesDataArray(data=production).rename(
             {"dim_1": DataKind.POWER.value, "Time": DataKind.TIME.value}).expand_dims(
             [DataKind.MUNICIPALITY.value, DataKind.USER.value]).assign_coords(

@@ -24,7 +24,7 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
         results = kwargs.pop("results", args[0])
         dataset = kwargs.pop('dataset', args[1])
-        for parameter, calculator in cls._subclasses.items():
+        for parameter, calculator in cls._parameter_calculators.items():
             results.loc[results.index[-1], parameter.to_abbrev_str()] = calculator.calculate(dataset, dataset)
         return dataset
 

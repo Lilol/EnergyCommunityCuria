@@ -42,5 +42,5 @@ class TimeAggregationEvaluator(ParametricEvaluator):
             energy_by_day = energy_year.groupby(time_resolution["sc_day"])
             plot_shared_energy(energy_by_day.sum()[DataKind.SHARED],
                                energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"), n_fam)
-        Write().write(results, "self_consumption_for_various_time_aggregations")
+        Write().write(results, "time_aggregation")
         plot_sci(time_resolution, evaluation_parameters.number_of_families, results)

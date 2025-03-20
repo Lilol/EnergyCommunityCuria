@@ -29,8 +29,9 @@ class ConfigurationManager:
         parameters = self.getarray("parametric_evaluation", "to_evaluate", dtype=ParametricEvaluationType)
         if ParametricEvaluationType.ALL in parameters:
             parameters.remove(ParametricEvaluationType.ALL)
-            parameters.append([ParametricEvaluationType.PHYSICAL_METRICS, ParametricEvaluationType.ECONOMIC_METRICS,
-                               ParametricEvaluationType.ENVIRONMENTAL_METRICS])
+            parameters = parameters + [ParametricEvaluationType.PHYSICAL_METRICS,
+                                       ParametricEvaluationType.ECONOMIC_METRICS,
+                                       ParametricEvaluationType.ENVIRONMENTAL_METRICS]
         return parameters
 
     def _get_parameter_pack(self):

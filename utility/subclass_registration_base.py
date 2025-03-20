@@ -3,6 +3,8 @@ class SubclassRegistrationBase:
     _key = None
 
     def __init_subclass__(cls, **kwargs):
+        # if cls._key is None or (hasattr(cls._key, "value") and cls._key.value == "invalid"):
+        #     return
         super().__init_subclass__(**kwargs)
         if len(cls._subclasses) == 0:
             cls._subclasses = {}

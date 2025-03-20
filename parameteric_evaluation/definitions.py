@@ -18,7 +18,7 @@ class PhysicalMetric(Parameter):
     SHARED_ENERGY = "Shared energy"
     INJECTED_ENERGY = "Injected energy"
     WITHDRAWN_ENERGY = "Withdrawn energy"
-    INVALID = auto()
+    INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
@@ -60,8 +60,7 @@ class LoadMatchingMetric(Parameter):
 class ParametricEvaluationType(OrderedEnum):
     DATASET_CREATION = "dataset_creation"
     SELF_CONSUMPTION_TARGETS = "self_consumption_targets"
-    SELF_CONSUMPTION_FOR_TIME_AGGREGATIONS = "self_consumption_for_time_aggregations"
-    TIME_AGGREGATION = "time_aggregations"
+    TIME_AGGREGATION = "time_aggregation"
     PHYSICAL_METRICS = "physical"
     ECONOMIC_METRICS = "economic"
     ENVIRONMENTAL_METRICS = "environmental"
