@@ -135,7 +135,7 @@ class ConfigurationManager:
             value_cf = self.getfloat(section, key)
             if value != value_cf:
                 logger.warning(
-                    f"The value of [section={section}, key={key}] set dynamically (value={value}) does not equal"
+                    f"The value of [section={section}, key={key}] set dynamically (value={value}) does not equal "
                     f"the original value from the configuration file (value={value_cf})")
         if setter is None:
             if type(value) == int:

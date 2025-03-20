@@ -52,11 +52,21 @@ def plot_consumption_profiles(yearly_consumption_profiles, **kwargs):
 
 
 def plot_monthly_consumption(data, title):
-    # Aggregated by month
-    data.groupby(data.time.dt.month).mean().T.to_pandas().plot()
+    # Mean by hour
+    data.groupby(data.time.dt.hour).mean().T.to_pandas().plot()
     plt.legend()
     plt.xlabel('Time, h')
     plt.ylabel('Power, kW')
+    plt.title(title)
+    plt.tight_layout()
+    plt.show()
+    plt.close()
+
+    # Aggr. by month
+    data.groupby(data.time.dt.month).sum().T.to_pandas().plot()
+    plt.legend()
+    plt.xlabel('Month')
+    plt.ylabel('Aggregated power, kW')
     plt.title(title)
     plt.tight_layout()
     plt.show()

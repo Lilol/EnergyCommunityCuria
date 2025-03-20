@@ -5,7 +5,7 @@ from utility.singleton import Singleton
 initialize_evaluators()
 
 
-class EvaluaionRunner(Singleton):
+class EvaluationRunner(Singleton):
     _evaluators = ParametricEvaluator.create()
 
     def run_evaluation(self, *args, **kwargs):
@@ -14,4 +14,4 @@ class EvaluaionRunner(Singleton):
 
 
 if __name__ == '__main__':
-    EvaluaionRunner().run_evaluation()
+    EvaluationRunner().run_evaluation()
