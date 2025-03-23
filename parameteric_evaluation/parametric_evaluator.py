@@ -1,10 +1,20 @@
 from data_storage.dataset import OmnesDataArray
-from parameteric_evaluation.definitions import ParametricEvaluationType, get_eval_metrics
+from parameteric_evaluation.calculator import Calculator
+from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric, \
+    EconomicMetric, EnvironmentalMetric
 from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
 
 
 class EvaluatorMeta(type):
+    @staticmethod
+    def get_eval_metrics(evaluation_type):
+        return {key: Calculator.get_subclass(key) for key in {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
+                                                              ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
+                                                              ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
+                                                              ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric, }.get(
+            evaluation_type, [])}
+
     """Metaclass to initialize _parameter_calculators before registration."""
 
     def __init__(cls, name, bases, dct):
@@ -12,7 +22,7 @@ class EvaluatorMeta(type):
 
         # Ensure _key is set before using it
         if hasattr(cls, "_key") and cls._key is not None:
-            cls._parameter_calculators = get_eval_metrics(cls._key)
+            cls._parameter_calculators = cls.get_eval_metrics(cls._key)
 
 
 class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):

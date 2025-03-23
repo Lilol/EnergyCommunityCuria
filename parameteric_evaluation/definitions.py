@@ -1,5 +1,3 @@
-from enum import auto
-
 from input.definitions import DataKind
 from utility.definitions import OrderedEnum
 
@@ -12,6 +10,10 @@ class Parameter(OrderedEnum):
     @classmethod
     def _get_abbrev_mapping(cls):
         raise NotImplementedError("Subclasses must implement _get_abbrev_mapping")
+
+    @classmethod
+    def get_all(cls):
+        return cls.__members__.values()
 
 
 class PhysicalMetric(Parameter):
@@ -29,7 +31,7 @@ class EnvironmentalMetric(Parameter):
     ESR = "Emissions savings ratio"
     TOTAL_EMISSIONS = "Total emissions"
     BASELINE_EMISSIONS = "Baseline emissions"
-    INVALID = auto()
+    INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
@@ -40,7 +42,7 @@ class EconomicMetric(Parameter):
     CAPEX = "Capex"
     CAPEX_PV = "Capex PV"
     OPEX = "Opex"
-    INVALID = auto()
+    INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
@@ -48,9 +50,9 @@ class EconomicMetric(Parameter):
 
 
 class LoadMatchingMetric(Parameter):
-    SELF_CONSUMPTION = "self_consumption"
-    SELF_SUFFICIENCY = "self_sufficiency"
-    INVALID = auto()
+    SELF_CONSUMPTION = "Self consumption"
+    SELF_SUFFICIENCY = "Self sufficiency"
+    INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
@@ -67,13 +69,6 @@ class ParametricEvaluationType(OrderedEnum):
     LOAD_MATCHING_METRICS = "load_matching"
     ALL = "all"
     INVALID = "invalid"
-
-
-def get_eval_metrics(evaluation_type):
-    return {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
-            ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
-            ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
-            ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric, }.get(evaluation_type, None)
 
 
 def calculate_shared_energy(data, n_fam):
