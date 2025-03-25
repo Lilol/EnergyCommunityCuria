@@ -45,8 +45,9 @@ class MetricEvaluator:
             # Eval REC
             e_cons = power_to_energy(p_with)
 
-            cls._parametric_evaluator.invoke(results, p_inj=p_inj, p_with=p_with, e_sh=results.loc[i, "e_sh"],
-                                             e_cons=e_cons, e_inj=results.loc[i, "e_inj"], e_prod=e_prod,
-                                             pv_sizes=pv_sizes, bess_size=bess_size, n_users=n_users + n_fam)
+            for name, evaluator in cls._parametric_evaluator.items():
+                evaluator.invoke(results, p_inj=p_inj, p_with=p_with, e_sh=results.loc[i, "e_sh"], e_cons=e_cons,
+                                 e_inj=results.loc[i, "e_inj"], e_prod=e_prod, pv_sizes=pv_sizes, bess_size=bess_size,
+                                 n_users=n_users + n_fam, results=results)
 
         Write().write(results, "results")
