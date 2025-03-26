@@ -5,11 +5,11 @@ from pandas import to_datetime
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.store_data import Store
 from input.definitions import DataKind
-from input.read import Read
+from input.read import Read, ReadPvPlantData
 from parameteric_evaluation.definitions import ParametricEvaluationType
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from transform.combine.combine import ArrayConcat
-from transform.transform import TransformCoordinateIntoDimension, Aggregate, Apply, Rename
+from transform.transform import TransformCoordinateIntoDimension, Aggregate, Apply, Rename, TransformPvPlantData
 from utility import configuration
 
 
@@ -20,6 +20,7 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
     _tou_columns = configuration.config.get("tariff", "time_of_use_labels")
     _dimensions_to_rename = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0",
                              "new_dimension": "user"}
+    _coords_to_rename = {"dim_1": DataKind.TOU.value, "group": DataKind.MONTH.value}
 
     @classmethod
     def create_and_run_user_data_processing_pipeline(cls, user_type, input_filename):
@@ -29,7 +30,7 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
             # manage hourly data, sum all end users / plants
             Aggregate(name=user_type, aggregate_on={"dim_1": DataKind.MONTH}),
             Apply(name=f"{user_type}_tou_cols", operation=lambda x: x.sel({"dim_1": cls._tou_columns})),
-            Store(user_type))).execute()
+            Rename(coords=cls._coords_to_rename), Store(user_type))).execute()
 
     @classmethod
     def create_and_run_timeseries_processing_pipeline(cls, profile, input_filename):
@@ -48,6 +49,7 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         Create a single dataframe for both production and consumptions
         https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
         """
+
         @dataclass
         class ParametricEvaluationUserType:
             user_type: str
@@ -64,12 +66,14 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
             cls.create_and_run_timeseries_processing_pipeline(user.profile_type, user.profile_filename)
 
         # Create a single dataframe for both production and consumption
-        DataProcessingPipeline("concatenate", workers=(ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=user_types,
-                                                                   coords={DataKind.USER.value: [ut.user_type for ut in
-                                                                                                 user_types]}), Rename(
-            dims={"dim_1": DataKind.TOU.value, "group": DataKind.MONTH.value}), Store("tou_months"),
-                                                       ArrayConcat(name="merge_profiles", dim=DataKind.USER.value,
-                                                                   arrays_to_merge=[ut.profile_type for ut in
-                                                                                    user_types],
-                                                                   coords={DataKind.USER.value: user_types}),
-                                                       Store("energy_year"))).execute()
+        ut = [ut.user_type for ut in user_types]
+        profile_types = [ut.profile_type for ut in user_types]
+        DataProcessingPipeline("concatenate", workers=(
+            ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}),
+            Store("tou_months"),
+            Rename(coords={"dim_1": DataKind.TIME.value}),
+            ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types,
+                        coords={DataKind.USER.value: ut}), Store("energy_year"))).execute()
+
+        DataProcessingPipeline("pv_plants",
+                               workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"))).execute()

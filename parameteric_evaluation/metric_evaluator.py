@@ -14,28 +14,22 @@ class MetricEvaluator:
 
     @classmethod
     def calculate_metrics(cls, parameters):
-        scenarios = DataFrame(data=parameters.combinations,
-                              columns=[DataKind.NUMBER_OF_FAMILIES, DataKind.BATTERY_SIZE])
         # Get plants sizes and number of users
         ds = DataStore()
         data_plants = ds["data_plants"]
-        n_users = len(data_plants)
-        energy_year = ds["energy_year"]
-        pv_sizes = list(data_plants.loc[data_plants[DataKind.USER_TYPE] == 'pv', DataKind.POWER])
+        n_users = len(data_plants.user)
+        pv_sizes = list(data_plants.sel({DataKind.USER_TYPE.value: 'pv', DataKind.USER_DATA.value: DataKind.POWER}))
         if len(pv_sizes) < len(data_plants):
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 
         # Initialize results
-        results = DataFrame(index=scenarios.index)
-        p_prod = energy_year.sel(user=DataKind.PRODUCTION)
+        results = DataFrame(index=range(len(parameters.combinations)))
+        energy_year = ds["energy_year"]
+        p_prod = energy_year.sel({DataKind.USER.value: DataKind.PRODUCTION})
         e_prod = power_to_energy(p_prod)
 
         # Evaluate each scenario
-        for i, scenario in scenarios.iterrows():
-            # Get configuration
-            n_fam = scenario[DataKind.NUMBER_OF_FAMILIES]
-            bess_size = scenario[DataKind.BATTERY_SIZE]
-
+        for i, (n_fam, bess_size) in enumerate(parameters.combinations):
             # Calculate withdrawn power
             p_with = calc_sum_consumption(energy_year, n_fam)
 
@@ -48,6 +42,6 @@ class MetricEvaluator:
             for name, evaluator in cls._parametric_evaluator.items():
                 evaluator.invoke(results, p_inj=p_inj, p_with=p_with, e_sh=results.loc[i, "e_sh"], e_cons=e_cons,
                                  e_inj=results.loc[i, "e_inj"], e_prod=e_prod, pv_sizes=pv_sizes, bess_size=bess_size,
-                                 n_users=n_users + n_fam, results=results)
+                                 n_users=n_users + n_fam)
 
         Write().write(results, "results")

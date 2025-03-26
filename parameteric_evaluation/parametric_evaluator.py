@@ -1,6 +1,5 @@
 from data_storage.dataset import OmnesDataArray
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.dataset_creation import DatasetCreatorForParametricEvaluation
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric, \
     EconomicMetric, EnvironmentalMetric
 from utility import configuration
@@ -35,7 +34,6 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
         results = kwargs.pop("results", args[0])
         dataset = kwargs.pop('dataset', args[1])
-        DatasetCreatorForParametricEvaluation.create_dataset_for_parametric_evaluation()
         for parameter, calculator in cls._parameter_calculators.items():
             results.loc[results.index[-1], parameter.to_abbrev_str()] = calculator.calculate(dataset, dataset)
         return dataset

@@ -1,15 +1,15 @@
 from parameteric_evaluation import initialize_evaluators
+from parameteric_evaluation.dataset_creation import DatasetCreatorForParametricEvaluation
 from parameteric_evaluation.metric_evaluator import MetricEvaluator
-from utility.singleton import Singleton
+from utility.configuration import config
 
 initialize_evaluators()
 
 
-class EvaluationRunner(Singleton):
-    @classmethod
-    def run_evaluation(cls, **kwargs):
-        MetricEvaluator.calculate_metrics(parameters=kwargs["parameters"])
+def run_evaluation():
+    DatasetCreatorForParametricEvaluation.create_dataset_for_parametric_evaluation()
+    MetricEvaluator.calculate_metrics(parameters=config.get("parametric_evaluation", "evaluation_parameters"))
 
 
 if __name__ == '__main__':
-    EvaluationRunner().run_evaluation()
+    run_evaluation()
