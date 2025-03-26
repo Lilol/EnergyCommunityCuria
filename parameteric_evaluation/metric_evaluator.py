@@ -18,7 +18,7 @@ class MetricEvaluator:
         ds = DataStore()
         data_plants = ds["data_plants"]
         n_users = len(data_plants.user)
-        pv_sizes = list(data_plants.sel({DataKind.USER_TYPE.value: 'pv', DataKind.USER_DATA.value: DataKind.POWER}))
+        pv_sizes = data_plants.sel({DataKind.USER_DATA.value: DataKind.POWER}).values.flatten()
         if len(pv_sizes) < len(data_plants):
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 

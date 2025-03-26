@@ -71,9 +71,8 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         DataProcessingPipeline("concatenate", workers=(
             ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}),
             Store("tou_months"),
-            Rename(coords={"dim_1": DataKind.TIME.value}),
-            ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types,
-                        coords={DataKind.USER.value: ut}), Store("energy_year"))).execute()
+            ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types),
+            Store("energy_year"))).execute()
 
         DataProcessingPipeline("pv_plants",
                                workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"))).execute()

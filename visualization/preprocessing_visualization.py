@@ -48,6 +48,7 @@ def plot_consumption_profiles(yearly_consumption_profiles, **kwargs):
             plt.title(f'Yearly consumption of {user_type.value.upper()} users in {m}')
             plt.tight_layout()
             plt.show()
+            plt.savefig(join(configuration.config.get("path", "figures"), 'consumption_profiles.png'), dpi=300)
             plt.close()
 
 
@@ -60,6 +61,7 @@ def plot_monthly_consumption(data, title):
     plt.title(title)
     plt.tight_layout()
     plt.show()
+    plt.savefig(join(configuration.config.get("path", "figures"), f'mean_profiles_{title}.png'), dpi=300)
     plt.close()
 
     # Aggr. by month
@@ -70,6 +72,7 @@ def plot_monthly_consumption(data, title):
     plt.title(title)
     plt.tight_layout()
     plt.show()
+    plt.savefig(join(configuration.config.get("path", "figures"), f'monthly_energy_{title}.png'), dpi=300)
     plt.close()
 
     # Whole year
@@ -79,6 +82,7 @@ def plot_monthly_consumption(data, title):
     plt.title(title)
     plt.tight_layout()
     plt.show()
+    plt.savefig(join(configuration.config.get("path", "figures"), f'whole_year_{title}.png'), dpi=300)
     plt.close()
 
 
@@ -114,10 +118,10 @@ def visualize_profile_scaling(place_to_visualize="office"):
     y_gse, _ = ScaleTimeOfUseProfile()(x, y_ref)
     # method 'scale_seteq'
     y_seteq, stat = ScaleByLinearEquation()(x, nd, y_ref)
-    print(f"Scale, set_eq {place_to_visualize}: ", stat)
+    print(f"Scale, linear equation, {place_to_visualize}: ", stat)
     # method 'scale_qopt'
     y_qopt, stat = ScaleByQuadraticOptimization(x, nd, y_ref, y_max=y_max, obj=qopt_obj, obj_reg=qopt_obj_reg)
-    print(f"Scale, q_opt {place_to_visualize}: ", stat)
+    print(f"Scale, quadratic optimization, {place_to_visualize}: ", stat)
     # ------------------------------------
     # plot
     # figure settings
@@ -130,9 +134,9 @@ def visualize_profile_scaling(place_to_visualize="office"):
     time_step = 0.5 * dt
     time = np.arange(time_step, number_of_time_steps, time_step)
     # plot profiles
-    ax.plot(time, y_gse, label='Scale, gse', marker='s', lw=2, ls='-', )
-    ax.plot(time, y_seteq, label='Scale, seteq', marker='s', lw=2, ls='-', )
-    ax.plot(time, y_qopt, label='Scale, qopt', marker='s', lw=2, ls='-', )
+    ax.plot(time, y_gse, label='Scale, GSE TOU profile', marker='s', lw=2, ls='-', )
+    ax.plot(time, y_seteq, label='Scale, linear equation', marker='s', lw=2, ls='-', )
+    ax.plot(time, y_qopt, label='Scale, quadratic optimization', marker='s', lw=2, ls='-', )
     # plot reference profile
     if place_to_visualize:
         ax.plot(time, y_ref, color='k', ls='--', lw=1, label='Ref')
@@ -148,7 +152,7 @@ def visualize_profile_scaling(place_to_visualize="office"):
         previous = tariff_time_slots[h0]
         if h >= number_of_time_steps or tariff_time_slots[h] != previous:
             f_sw_pos.append((h0, h))
-            f_sw_styles.append(f_styles[fs.index(previous)])
+            f_sw_styles.append(f_styles[tariff_time_slots.index(previous)])
             h0 = h
     for pos, style in zip(f_sw_pos, f_sw_styles):
         ax.axvspan(*pos, **style, )
