@@ -35,8 +35,6 @@ class MetricEvaluator:
 
             # Manage BESS, if present
             p_inj = p_prod - Battery(bess_size).manage_bess(p_prod, p_with)
-
-            # Eval REC
             e_cons = power_to_energy(p_with)
 
             for name, evaluator in cls._parametric_evaluator.items():
