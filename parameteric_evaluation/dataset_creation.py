@@ -25,21 +25,21 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
     @classmethod
     def create_and_run_user_data_processing_pipeline(cls, user_type, input_filename):
         DataProcessingPipeline("read_and_store", workers=(
-            Read(name=user_type, filename=input_filename, **cls._input_properties),
-            TransformCoordinateIntoDimension(name=user_type, **cls._dimensions_to_rename),
+            Read(name=f"Read {user_type}", filename=input_filename, **cls._input_properties),
+            TransformCoordinateIntoDimension(name=f"Transform {user_type}", **cls._dimensions_to_rename),
             # manage hourly data, sum all end users / plants
-            Aggregate(name=user_type, aggregate_on={"dim_1": DataKind.MONTH}),
-            Apply(name=f"{user_type}_tou_cols", operation=lambda x: x.sel({"dim_1": cls._tou_columns})),
-            Rename(coords=cls._coords_to_rename), Store(user_type))).execute()
+            Aggregate(name=f"Aggregate {user_type}", aggregate_on={"dim_1": DataKind.MONTH}),
+            Apply(name=f"{user_type} TOU cols", operation=lambda x: x.sel({"dim_1": cls._tou_columns})),
+            Rename(name=f"Rename {user_type}", coords=cls._coords_to_rename), Store(user_type))).execute()
 
     @classmethod
     def create_and_run_timeseries_processing_pipeline(cls, profile, input_filename):
         DataProcessingPipeline("read_and_store", workers=(
-            Read(name=profile, filename=input_filename, **cls._input_properties),
-            TransformCoordinateIntoDimension(name=f"transform_{profile}", **cls._dimensions_to_rename),
+            Read(name=f"Read {profile}", filename=input_filename, **cls._input_properties),
+            TransformCoordinateIntoDimension(name=f"Transform {profile}", **cls._dimensions_to_rename),
             # Get total production and consumption data
             # Here we manage monthly ToU values, we sum all end users/plants
-            Apply(name=profile,
+            Apply(name=f"Sum users {profile}",
                   operation=lambda x: x.assign_coords(dim_1=to_datetime(x.dim_1)).sum(DataKind.USER.value)),
             Store(profile))).execute()
 

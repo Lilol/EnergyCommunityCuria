@@ -1,3 +1,5 @@
+import xarray as xr
+
 from input.definitions import DataKind
 from utility.definitions import OrderedEnum
 
@@ -71,15 +73,21 @@ class ParametricEvaluationType(OrderedEnum):
     INVALID = "invalid"
 
 
-def calculate_shared_energy(data, n_fam):
-    calc_sum_consumption(data, n_fam)
-    data[DataKind.SHARED] = data.sel([DataKind.PRODUCTION, DataKind.CONSUMPTION]).min(axis="rows")
+def calculate_shared_energy(data):
+    dx = data.sel({DataKind.USER.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION]}).min().assign_coords(
+        {DataKind.USER.value: DataKind.SHARED})
+    data = xr.concat([data, dx], dim=DataKind.USER.value)
+    return data
 
 
 def calc_sum_consumption(data, n_fam):
-    data[DataKind.CONSUMPTION] = data.sel(DataKind.CONSUMPTION_OF_FAMILIES) * n_fam + data.sel(
-        DataKind.CONSUMPTION_OF_USERS)
+    dx = (data.sel({DataKind.USER.value: DataKind.CONSUMPTION_OF_FAMILIES}) * n_fam + data.sel(
+        {DataKind.USER.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
+        {DataKind.USER.value: DataKind.CONSUMPTION})
+    data = xr.concat([data, dx], dim=DataKind.USER.value)
+    return data
 
 
-def calculate_sc(df):
-    return df[DataKind.SHARED].sum() / df[DataKind.PRODUCTION].sum()
+def calculate_sc(data):
+    return data.sel({DataKind.USER.value: DataKind.SHARED}).sum() / data.sel(
+        {DataKind.USER.value: DataKind.PRODUCTION}).sum()
