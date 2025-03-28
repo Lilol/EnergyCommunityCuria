@@ -4,13 +4,14 @@ from typing import Iterable
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import LoadMatchingMetric, ParametricEvaluationType
+from parameteric_evaluation.definitions import LoadMatchingMetric, ParametricEvaluationType, PhysicalMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
 class LoadMatchingParameterCalculator(Calculator):
     _key = LoadMatchingMetric.INVALID
 
+    @classmethod
     @abstractmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
@@ -22,7 +23,8 @@ class SelfConsumption(LoadMatchingParameterCalculator):
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_INJ).sum()
+        return input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
+            {DataKind.CALCULATED.value: PhysicalMetric.INJECTED_ENERGY}).sum()
 
 
 class SelfSufficiency(LoadMatchingParameterCalculator):
@@ -30,7 +32,8 @@ class SelfSufficiency(LoadMatchingParameterCalculator):
 
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        return input_da.sel(data=DataKind.P_SH).sum() / input_da.sel(data=DataKind.P_WITH).sum()
+        return input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
+            {DataKind.CALCULATED.value: PhysicalMetric.WITHDRAWN_ENERGY}).sum()
 
 
 class LoadMatchingMetricEvaluator(ParametricEvaluator):

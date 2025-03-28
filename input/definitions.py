@@ -16,9 +16,6 @@ class DataKind(OrderedEnum):
     CONSUMPTION_OF_USERS = 'consumption_of_users'
     CONSUMPTION_OF_FAMILIES = 'consumption_of_families'
     CONSUMPTION = "consumption"
-    SHARED = 'shared'
-    WITHDRAWN = 'withdrawn'
-    INJECTED = 'injected'
     NUMBER_OF_FAMILIES = 'number_of_families'
     BATTERY_SIZE = 'battery_size'
     YEAR = 'year'
@@ -37,6 +34,7 @@ class DataKind(OrderedEnum):
     TARIFF_TIME_SLOT = "tariff_time_slot"
     TOU = "tou"
     METRIC = "metric"
+    CALCULATED = "calculated"
 
 
 class BillType(OrderedEnum):

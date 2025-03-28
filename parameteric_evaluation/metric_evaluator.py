@@ -1,6 +1,5 @@
-from pandas import DataFrame
-
 from data_storage.data_store import DataStore
+from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from output.write import Write
 from parameteric_evaluation.battery import Battery
@@ -23,7 +22,10 @@ class MetricEvaluator:
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 
         # Initialize results
-        results = DataFrame(index=range(len(parameters.combinations)))
+        results = OmnesDataArray(
+            dims=[DataKind.NUMBER_OF_FAMILIES.value, DataKind.BATTERY_SIZE.value, DataKind.METRIC.value],
+            coords={DataKind.NUMBER_OF_FAMILIES.value: parameters.number_of_families,
+                    DataKind.BATTERY_SIZE.value: parameters.bess_sizes, DataKind.METRIC.value: []})
         energy_year = ds["energy_year"]
         p_prod = energy_year.sel({DataKind.USER.value: DataKind.PRODUCTION})
         e_prod = power_to_energy(p_prod)
@@ -42,4 +44,4 @@ class MetricEvaluator:
                                  e_inj=results.loc[i, "e_inj"], e_prod=e_prod, pv_sizes=pv_sizes, bess_size=bess_size,
                                  n_users=n_users + n_fam)
 
-        Write().write(results, "results")
+        Write().execute(results, name="results")

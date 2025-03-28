@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Iterable
 
 import numpy as np
+import xarray as xr
 
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
@@ -27,7 +28,47 @@ class SharedEnergy(PhysicalParameterCalculator):
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        return input_da.sel(data=[DataKind.P_INJ, DataKind.P_WITH]).min().sum()
+        dx = input_da.sel({DataKind.CALCULATED.value: [PhysicalMetric.INJECTED_ENERGY,
+                                                       PhysicalMetric.WITHDRAWN_ENERGY]}).min().assign_coords(
+            {DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
+        data = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        return data
+
+
+class ConsumptionOfFamilies(PhysicalParameterCalculator):
+    _key = PhysicalMetric.TOTAL_CONSUMPTION
+
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        num_families = kwargs.get('num_families')
+        dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
+            {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
+            {DataKind.CALCULATED.value: DataKind.CONSUMPTION})
+        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        return input_da
+
+
+class Equality(PhysicalParameterCalculator):
+    _key = PhysicalMetric.INVALID
+    _data_kind_to_derive_from = None
+
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+        new_coords = input_da.coords[DataKind.CALCULATED.value]
+        new_coords[new_coords == cls._data_kind_to_derive_from] = cls._key
+        return input_da.assign_coords({DataKind.CALCULATED.value: (DataKind.CALCULATED.value, new_coords)})
+
+
+class InjectedEnergy(Equality):
+    _key = PhysicalMetric.INJECTED_ENERGY
+    _data_kind_to_derive_from = DataKind.PRODUCTION
+
+
+class WithdrawnEnergy(Equality):
+    _key = PhysicalMetric.WITHDRAWN_ENERGY
+    _data_kind_to_derive_from = DataKind.CONSUMPTION
 
 
 class PhysicalMetricEvaluator(ParametricEvaluator):

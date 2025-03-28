@@ -4,7 +4,7 @@ from input.definitions import DataKind
 from utility.definitions import OrderedEnum
 
 
-class Parameter(OrderedEnum):
+class Parameter(DataKind):
     def to_abbrev_str(self):
         abbrev_dictionary = self._get_abbrev_mapping()
         return abbrev_dictionary.get(self, None)
@@ -22,6 +22,7 @@ class PhysicalMetric(Parameter):
     SHARED_ENERGY = "Shared energy"
     INJECTED_ENERGY = "Injected energy"
     WITHDRAWN_ENERGY = "Withdrawn energy"
+    TOTAL_CONSUMPTION = "Total consumption"
     INVALID = "invalid"
 
     @classmethod
@@ -73,21 +74,6 @@ class ParametricEvaluationType(OrderedEnum):
     INVALID = "invalid"
 
 
-def calculate_shared_energy(data):
-    dx = data.sel({DataKind.USER.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION]}).min().assign_coords(
-        {DataKind.USER.value: DataKind.SHARED})
-    data = xr.concat([data, dx], dim=DataKind.USER.value)
-    return data
-
-
-def calc_sum_consumption(data, n_fam):
-    dx = (data.sel({DataKind.USER.value: DataKind.CONSUMPTION_OF_FAMILIES}) * n_fam + data.sel(
-        {DataKind.USER.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
-        {DataKind.USER.value: DataKind.CONSUMPTION})
-    data = xr.concat([data, dx], dim=DataKind.USER.value)
-    return data
-
-
 def calculate_sc(data):
-    return data.sel({DataKind.USER.value: DataKind.SHARED}).sum() / data.sel(
-        {DataKind.USER.value: DataKind.PRODUCTION}).sum()
+    return data.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / data.sel(
+        {DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum()

@@ -8,15 +8,15 @@ from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from visualization.processing_visualization import plot_shared_energy, plot_sci
 
 
-def calculate_theoretical_limit_of_self_consumption(df_months, n_fam):
-    calculate_shared_energy(df_months, n_fam)
-    return calculate_sc(df_months)
+def calculate_theoretical_limit_of_self_consumption(dataset):
+    calculate_shared_energy(dataset)
+    return calculate_sc(dataset)
 
 
-def calculate_sc_for_time_aggregation(df_hours, time_resolution, n_fam):
+def calculate_sc_for_time_aggregation(dataset, time_resolution):
     """Evaluate self consumption with given temporal aggregation and number of families."""
-    calculate_shared_energy(df_hours.groupby(time_resolution).sum(), n_fam)
-    return calculate_sc(df_hours)
+    calculate_shared_energy(dataset.groupby(time_resolution).sum())
+    return calculate_sc(dataset)
 
 
 class TimeAggregationEvaluator(ParametricEvaluator):
@@ -35,10 +35,10 @@ class TimeAggregationEvaluator(ParametricEvaluator):
         tou_months = ds["tou_months"]
         energy_year = ds["energy_year"]
         for n_fam in evaluation_parameters.number_of_families:
-            results.loc[n_fam, 'sc_tou'] = calculate_theoretical_limit_of_self_consumption(tou_months, n_fam)
+            results.loc[n_fam, 'sc_tou'] = calculate_theoretical_limit_of_self_consumption(tou_months)
             for label, tr in time_resolution.items():
-                results.loc[n_fam, label] = calculate_sc_for_time_aggregation(energy_year, tr, n_fam)
-            calculate_shared_energy(energy_year, n_fam)
+                results.loc[n_fam, label] = calculate_sc_for_time_aggregation(energy_year, tr)
+            calculate_shared_energy(energy_year)
             energy_by_day = energy_year.groupby(time_resolution["sc_day"])
             plot_shared_energy(energy_by_day.sum()[DataKind.SHARED],
                                energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"), n_fam)
