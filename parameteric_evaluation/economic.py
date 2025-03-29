@@ -14,7 +14,7 @@ class Capex(Calculator):
 
         @classmethod
         def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                      **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+                      **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
             """Evaluate investment cost (CAPEX) of a PV system depending on the size."""
             pv_size = kwargs.pop('pv_size', args[0])
             # if pv_size < 10 :
@@ -42,7 +42,7 @@ class Capex(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
         """Evaluate CAPEX of a REC, given PV sizes, BESS size(s) and number of users."""
 
         # Add cost of PVS
@@ -63,13 +63,13 @@ class Opex(Calculator):
     class OpexPv(Calculator):
         @classmethod
         def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                      **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+                      **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
             # TODO: use appropriate PV Opex calculation
             return kwargs.pop('pv_size', args[0]) * 10
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
         """Evaluate OPEX of a REC, given PV sizes and BESS size(s)."""
         # Add cost of PVS
         opex = sum(cls.OpexPv.calculate(pv_size, None) for pv_size in kwargs.pop('pv_sizes', args[0]))

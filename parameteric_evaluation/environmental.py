@@ -1,10 +1,22 @@
 from typing import Iterable
 
+from pandas import read_csv
+
 from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric
+from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric, PhysicalMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
+from utility.configuration import config
+from utility.singleton import Singleton
+
+
+class EmissionFactors(Singleton):
+    _emission_factors = read_csv(config.get("parametric_evaluation", "emission_factors_configuration_file"),
+                                 index_col=0).to_dict()
+
+    def __getitem__(self, item):
+        return self._emission_factors.get(item, None)
 
 
 class EmissionSavingsRatio(Calculator):
@@ -12,7 +24,8 @@ class EmissionSavingsRatio(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         # Evaluate emissions savings ratio
         em_base = kwargs.pop("em_base")
         return (em_base - kwargs.pop("em_tot")) / em_base
@@ -23,22 +36,15 @@ class TotalEmissions(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        """ Evaluate total emissions
-        - eps_grid (float): Emission factor for energy from the grid.
-            Default is 0.263 kgCO2eq/kWh.
-        - eps_inj (float): Emission factor for injected energy.
-            Default is -0 kgCO2eq/kWh.
-        - eps_prod (float): Emission factor for produced energy (LCA).
-            Default is 0.05 kgCO2eq/kWh.
-        - eps_bess (float): Emission factor for BESS capacity.
-            Default is 175 kgCO2eq/kWh.
-        - years (int): Number of years considered. Default is 20."""
-        shared = input_da.sel(data=DataKind.SHARED)
-        return (input_da.sel(data=DataKind.WITHDRAWN) - shared) * kwargs.pop("eps_grid", 0.263) + (
-                input_da.sel(data=DataKind.INJECTED) - shared) * kwargs.pop("eps_inj", 0) + kwargs.pop("eps_prod",
-                                                                                                       0.05) * input_da.sel(
-            data=DataKind.PRODUCTION) * kwargs.pop("years", 20) + kwargs.pop("bess_size") * kwargs.pop("eps_bess", 175)
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
+        """ Evaluate total emissions in REC case"""
+        shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
+        return (input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.WITHDRAWN_ENERGY}) - shared) * \
+            EmissionFactors()["grid"] + (
+                    input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.INJECTED_ENERGY}) - shared) * \
+            EmissionFactors()["inj"] + input_da.sel(data=DataKind.PRODUCTION) * EmissionFactors()["prod"] * kwargs.get(
+                "years") + kwargs.get("bess_size") * EmissionFactors()["bess"]
 
 
 class BaselineEmissions(Calculator):
@@ -46,17 +52,16 @@ class BaselineEmissions(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        """ Evaluate total emissions in base case
-        - eps_grid (float): Emission factor for energy from the grid.
-            Default is 0.263 kgCO2eq/kWh.
-        - years (int): Number of years considered. Default is 20."""
-        return (input_da.sel(data=DataKind.CONSUMPTION) * kwargs.pop("eps_grid", 0.263)) * kwargs.pop("years", 20)
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
+        """ Evaluate total emissions in base case"""
+        return input_da.sel(data=DataKind.CONSUMPTION) * EmissionFactors()["gird"] * kwargs.get("years")
 
 
 class EnvironmentalEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.ENVIRONMENTAL_METRICS
     _name = "environmental_evaluator"
+    _years = config.getint("parametric_evaluation", "economic_evaluation_number_of_years")
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
@@ -65,9 +70,10 @@ class EnvironmentalEvaluator(ParametricEvaluator):
         produced energy, and emission factors.
         """
         results = kwargs.pop("results", args[0])
-        baseline_emissions = BaselineEmissions.calculate(*args, **kwargs)
-        total_emissions = TotalEmissions.calculate(*args, **kwargs)
+        baseline_emissions = BaselineEmissions.calculate(*args, **kwargs, years=cls._years)
+        total_emissions = TotalEmissions.calculate(*args, **kwargs, years=cls._years)
 
         results.loc[results.index[-1], [m.to_abbrev_str() for m in cls._parameter_calculators]] = (
-        baseline_emissions, total_emissions,
-        EmissionSavingsRatio.calculate(*args, **kwargs, em_tot=total_emissions, em_base=baseline_emissions))
+            baseline_emissions, total_emissions,
+            EmissionSavingsRatio.calculate(*args, **kwargs, em_tot=total_emissions, em_base=baseline_emissions,
+                                           years=cls._years))

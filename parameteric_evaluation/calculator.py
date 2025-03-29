@@ -14,7 +14,7 @@ class Calculator(SubclassRegistrationBase):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
         raise NotImplementedError("'calculate' method must be implemented individually in each Calculator class")
 
     def __call__(self, *args, **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
