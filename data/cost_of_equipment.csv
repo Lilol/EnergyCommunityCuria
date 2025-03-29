@@ -1,0 +1,9 @@
+equipment,cost_type,max_size,cost
+pv,capex,20,1500
+pv,capex,200,1200
+pv,capex,600,1100
+pv,capex,inf,1050
+bess,capex,,300
+user,capex,,100
+bess,opex,,100
+pv,opex,,0

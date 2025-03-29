@@ -1,4 +1,7 @@
+from pandas import read_csv
+
 from utility.definitions import OrderedEnum
+from utility.singleton import Singleton
 
 
 class DataKind(OrderedEnum):
@@ -53,3 +56,15 @@ class UserType(OrderedEnum):
 class PvDataSource(OrderedEnum):
     PVGIS = "PVGIS"
     PVSOL = "PVSOL"
+
+
+class ParametersFromFile(Singleton):
+    @classmethod
+    def read(cls, filename):
+        return read_csv(filename, index_col=0).to_dict()
+
+    _filename = None
+    _parameters = read(_filename)
+
+    def __getitem__(self, item):
+        return self._parameters.get(item, None)

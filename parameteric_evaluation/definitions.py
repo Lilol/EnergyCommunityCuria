@@ -1,5 +1,3 @@
-import xarray as xr
-
 from input.definitions import DataKind
 from utility.definitions import OrderedEnum
 
@@ -43,7 +41,6 @@ class EnvironmentalMetric(Parameter):
 
 class EconomicMetric(Parameter):
     CAPEX = "Capex"
-    CAPEX_PV = "Capex PV"
     OPEX = "Opex"
     INVALID = "invalid"
 

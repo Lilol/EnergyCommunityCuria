@@ -15,7 +15,7 @@ class PhysicalParameterCalculator(Calculator):
 
     @classmethod
     @abstractmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         pass
 
@@ -24,7 +24,7 @@ class SharedEnergy(PhysicalParameterCalculator):
     _key = PhysicalMetric.SHARED_ENERGY
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         dx = input_da.sel({DataKind.CALCULATED.value: [PhysicalMetric.INJECTED_ENERGY,
                                                        PhysicalMetric.WITHDRAWN_ENERGY]}).min().assign_coords(
@@ -37,7 +37,7 @@ class TotalConsumption(PhysicalParameterCalculator):
     _key = PhysicalMetric.TOTAL_CONSUMPTION
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         num_families = kwargs.get('num_families')
         dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
@@ -52,7 +52,7 @@ class Equality(PhysicalParameterCalculator):
     _data_kind_to_derive_from = None
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None, *args,
+    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
         new_coords = input_da.coords[DataKind.CALCULATED.value]
         new_coords[new_coords == cls._data_kind_to_derive_from] = cls._key
