@@ -59,12 +59,15 @@ class PvDataSource(OrderedEnum):
 
 
 class ParametersFromFile(Singleton):
-    @classmethod
-    def read(cls, filename):
+    _filename = None
+    _parameters = None
+
+    @staticmethod
+    def read(filename):
         return read_csv(filename, index_col=0).to_dict()
 
-    _filename = None
-    _parameters = read(_filename)
+    def __init__(self):
+        self._parameters = self.read(self._filename)
 
     def __getitem__(self, item):
         return self._parameters.get(item, None)

@@ -14,8 +14,8 @@ from utility.configuration import config
 class CostOfEquipment(ParametersFromFile):
     _filename = config.get("parametric_evaluation", "cost_configuration_file")
 
-    @classmethod
-    def read(cls, filename):
+    @staticmethod
+    def read(filename):
         return read_csv(filename, header=0, index_col=(0, 1, 2))
 
     @classmethod

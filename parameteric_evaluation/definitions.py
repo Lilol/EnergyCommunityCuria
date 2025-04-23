@@ -2,7 +2,7 @@ from input.definitions import DataKind
 from utility.definitions import OrderedEnum
 
 
-class Parameter(DataKind):
+class Parameter(OrderedEnum):
     def to_abbrev_str(self):
         abbrev_dictionary = self._get_abbrev_mapping()
         return abbrev_dictionary.get(self, None)

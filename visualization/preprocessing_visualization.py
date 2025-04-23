@@ -1,3 +1,4 @@
+from os import makedirs
 from os.path import join
 
 import numpy as np
@@ -52,7 +53,14 @@ def plot_consumption_profiles(yearly_consumption_profiles, **kwargs):
             plt.close()
 
 
-def plot_monthly_consumption(data, title):
+def to_postfix(string, separator='_'):
+    return "" if string is None else f"{separator}{string}"
+
+
+def plot_monthly_consumption(data, title, filename_postfix=None):
+    figures_path = configuration.config.get("path", "figures")
+    makedirs(figures_path, exist_ok=True)
+
     # Mean by hour
     data.groupby(data.time.dt.hour).mean().T.to_pandas().plot()
     plt.legend()
@@ -61,7 +69,8 @@ def plot_monthly_consumption(data, title):
     plt.title(title)
     plt.tight_layout()
     plt.show()
-    plt.savefig(join(configuration.config.get("path", "figures"), f'mean_profiles_{title}.png'), dpi=300)
+    plt.savefig(join(figures_path, f'mean_profiles{to_postfix(filename_postfix)}.png'),
+                dpi=300)
     plt.close()
 
     # Aggr. by month
@@ -72,7 +81,8 @@ def plot_monthly_consumption(data, title):
     plt.title(title)
     plt.tight_layout()
     plt.show()
-    plt.savefig(join(configuration.config.get("path", "figures"), f'monthly_energy_{title}.png'), dpi=300)
+    plt.savefig(join(figures_path, f'monthly_energy{to_postfix(filename_postfix)}.png'),
+                dpi=300)
     plt.close()
 
     # Whole year
@@ -82,7 +92,8 @@ def plot_monthly_consumption(data, title):
     plt.title(title)
     plt.tight_layout()
     plt.show()
-    plt.savefig(join(configuration.config.get("path", "figures"), f'whole_year_{title}.png'), dpi=300)
+    plt.savefig(join(figures_path, f'whole_year{to_postfix(filename_postfix)}.png'),
+                dpi=300)
     plt.close()
 
 
