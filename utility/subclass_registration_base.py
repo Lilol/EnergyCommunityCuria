@@ -17,3 +17,7 @@ class SubclassRegistrationBase:
     @classmethod
     def get_subclass(cls, key):
         return cls._subclasses.get(key, None)
+
+    @classmethod
+    def create(cls, key, *args, **kwargs):
+        return cls._subclasses.get(key, None)(*args, **kwargs)

@@ -5,8 +5,4 @@ How to handle time resolution: there is a given resolution and a desired one. Ho
 
 TODO:
 AggregateOnTimeResolution: process weird time resolutions, like season
-Target SC evaluation should work for SS and other targets too, set the targets from config -> On it
-Clear up predefined input and output types for Calculator classes
 MultiStepCalculation into a Calculator, because now it is a pipeline stage
-__call__ and calculate in Calculator classes: what's the difference? Only one?
-ScaleProfile should be inheriting from SubclassRegistrationBase

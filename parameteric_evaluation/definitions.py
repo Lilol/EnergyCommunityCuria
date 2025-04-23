@@ -70,7 +70,3 @@ class ParametricEvaluationType(OrderedEnum):
     ALL = "all"
     INVALID = "invalid"
 
-
-def calculate_sc(data):
-    return data.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / data.sel(
-        {DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum()

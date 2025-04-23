@@ -1,9 +1,12 @@
+from operation import initialize_operation
+
+initialize_operation()
 from parameteric_evaluation import initialize_evaluators
+
+initialize_evaluators()
 from parameteric_evaluation.dataset_creation import DatasetCreatorForParametricEvaluation
 from parameteric_evaluation.metric_evaluator import MetricEvaluator
 from utility.configuration import config
-
-initialize_evaluators()
 
 
 def run_evaluation():

@@ -3,20 +3,22 @@ from pandas import DataFrame
 from data_storage.data_store import DataStore
 from input.definitions import DataKind
 from output.write import Write
-from parameteric_evaluation.definitions import ParametricEvaluationType, calculate_shared_energy, calculate_sc
+from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric
+from parameteric_evaluation.load_matching_evaluation import SelfConsumption
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
+from parameteric_evaluation.physical import SharedEnergy
 from visualization.processing_visualization import plot_shared_energy, plot_sci
 
 
 def calculate_theoretical_limit_of_self_consumption(dataset):
-    calculate_shared_energy(dataset)
-    return calculate_sc(dataset)
+    SharedEnergy.calculate(dataset)
+    return SelfConsumption.calculate(dataset)
 
 
 def calculate_sc_for_time_aggregation(dataset, time_resolution):
     """Evaluate self consumption with given temporal aggregation and number of families."""
-    calculate_shared_energy(dataset.groupby(time_resolution).sum())
-    return calculate_sc(dataset)
+    SharedEnergy.calculate(dataset.groupby(time_resolution).sum())
+    return SelfConsumption.calculate(dataset)
 
 
 class TimeAggregationEvaluator(ParametricEvaluator):
@@ -38,9 +40,9 @@ class TimeAggregationEvaluator(ParametricEvaluator):
             results.loc[n_fam, 'sc_tou'] = calculate_theoretical_limit_of_self_consumption(tou_months)
             for label, tr in time_resolution.items():
                 results.loc[n_fam, label] = calculate_sc_for_time_aggregation(energy_year, tr)
-            calculate_shared_energy(energy_year)
+            SharedEnergy.calculate(energy_year)
             energy_by_day = energy_year.groupby(time_resolution["sc_day"])
-            plot_shared_energy(energy_by_day.sum()[DataKind.SHARED],
+            plot_shared_energy(energy_by_day.sum()[PhysicalMetric.SHARED_ENERGY],
                                energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"), n_fam)
         Write().write(results, "time_aggregation")
         plot_sci(time_resolution, evaluation_parameters.number_of_families, results)

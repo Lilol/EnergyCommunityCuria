@@ -3,11 +3,12 @@ from data_storage.data_store import DataStore
 from data_storage.store_data import Store
 from input.definitions import UserType
 from input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, ReadProduction
+from operation import initialize_operation
 from output.write import Write, WriteSeparately
 from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
-    ExtractDayCountInTimeframe, ExtractTypicalYear, ExtractTimeOfUseTimeSlotCountByDayType, \
+    ExtractDayCountInTimeframe, ExtractTimeOfUseTimeSlotCountByDayType, \
     ExtractTimeOfUseTimeSlotCountByMonth
 from transform.transform import TransformTariffData, TransformTypicalLoadProfile, TransformUserData, \
     TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
@@ -18,6 +19,7 @@ from visualization.preprocessing_visualization import plot_family_profiles, plot
 from visualization.visualize import Visualize
 
 init_logger()
+initialize_operation()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("day_properties", workers=(
