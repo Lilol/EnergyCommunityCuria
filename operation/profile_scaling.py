@@ -1,4 +1,3 @@
-import logging
 from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
@@ -6,8 +5,6 @@ from operation.definitions import ScalingMethod
 from operation.operation import Operation
 from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
-
-logger = logging.getLogger(__name__)
 
 
 class ScaleProfile(Operation, SubclassRegistrationBase):
@@ -23,5 +20,3 @@ class ScaleProfile(Operation, SubclassRegistrationBase):
     @classmethod
     def create(cls, name=_name, *args, **kwargs):
         super().create(configuration.config.get("profile", "scaling_method"), name, *args, **kwargs)
-
-

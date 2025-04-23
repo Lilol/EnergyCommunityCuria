@@ -1,3 +1,4 @@
+import logging
 from typing import Iterable
 
 import numpy as np
@@ -7,8 +8,8 @@ from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from operation import ScaleProfile
 from operation.definitions import ScalingMethod, Status
-from operation.profile_scaling import logger
 
+logger = logging.getLogger(__name__)
 
 class ScaleByLinearEquation(ScaleProfile):
     _name = "linear_scaler"

@@ -14,21 +14,20 @@ class Battery:
 
         # Get inputs
         p_bess_max = np.inf if t_min is None else self._size / t_min
-
         e_stored = 0
 
         # Manage flows in all time steps
-        for h, (p, c) in enumerate(zip(p_prod, p_cons)):
+        for h, (prod, cons) in enumerate(zip(p_prod, p_cons)):
             # Power to charge the BESS (discharge if negative)
-            b = p - c
+            charging_power = prod - cons
             # Correct according to technical/physical limits
-            if b < 0:
-                b = max(b, -e_stored, -p_bess_max)
+            if charging_power < 0:
+                charging_power = max(charging_power, -e_stored, -p_bess_max)
             else:
-                b = min(b, self._size - e_stored, p_bess_max)
+                charging_power = min(charging_power, self._size - e_stored, p_bess_max)
             # Update BESS power array and stored energy
-            p_bess[h] = b
-            e_stored = e_stored + b
+            p_bess[h] = charging_power
+            e_stored = e_stored + charging_power
 
         return p_bess
 
