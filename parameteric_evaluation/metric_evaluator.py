@@ -3,9 +3,11 @@ from data_storage.dataset import OmnesDataArray
 from input.definitions import DataKind
 from output.write import Write
 from parameteric_evaluation.battery import Battery
-from parameteric_evaluation.definitions import calc_sum_consumption
+from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.dimensions import power_to_energy
+from parameteric_evaluation.environmental import TotalEmissions
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
+from parameteric_evaluation.physical import TotalConsumption
 
 
 class MetricEvaluator:
@@ -33,7 +35,7 @@ class MetricEvaluator:
         # Evaluate each scenario
         for i, (n_fam, bess_size) in enumerate(parameters.combinations):
             # Calculate withdrawn power
-            p_with = calc_sum_consumption(energy_year, n_fam)
+            p_with = TotalConsumption.calculate(energy_year, num_families=n_fam)
 
             # Manage BESS, if present
             p_inj = p_prod - Battery(bess_size).manage_bess(p_prod, p_with)
