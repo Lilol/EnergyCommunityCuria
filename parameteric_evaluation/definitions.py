@@ -28,6 +28,16 @@ class PhysicalMetric(Parameter):
         return {cls.SHARED_ENERGY: "e_sh", cls.INJECTED_ENERGY: "e_inj", cls.WITHDRAWN_ENERGY: "e_with", }
 
 
+class BatteryPowerFlows(PhysicalMetric):
+    STORED_ENERGY = "Stored energy"
+    POWER_CHARGE = "Power charge"
+    INVALID = "invalid"
+
+    @classmethod
+    def _get_abbrev_mapping(cls):
+        return {cls.STORED_ENERGY: "e_stor", cls.POWER_CHARGE: "p_charge"}
+
+
 class EnvironmentalMetric(Parameter):
     ESR = "Emissions savings ratio"
     TOTAL_EMISSIONS = "Total emissions"

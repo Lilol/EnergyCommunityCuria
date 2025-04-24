@@ -37,10 +37,10 @@ class MetricEvaluator:
             e_cons = power_to_energy(p_with)
 
             # Manage BESS, if present
-            p_inj = p_prod - Battery(bess_size).manage_bess(p_prod, p_with)
+            p_inj = p_prod - Battery(bess_size).manage_bess(energy_year)
 
             for name, evaluator in cls._parametric_evaluator.items():
-                evaluator.invoke(results, p_inj=p_inj, p_with=p_with, e_cons=e_cons, e_prod=e_prod, pv_sizes=pv_sizes,
+                evaluator.invoke(results, energy_year, p_inj=p_inj, p_with=p_with, e_cons=e_cons, e_prod=e_prod, pv_sizes=pv_sizes,
                                  bess_size=bess_size, n_users=n_users + n_fam)
 
         Write().execute(results, name="results")
