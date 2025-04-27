@@ -1,4 +1,3 @@
-from input.definitions import DataKind
 from utility.definitions import OrderedEnum
 
 
@@ -18,19 +17,28 @@ class Parameter(OrderedEnum):
 
 class PhysicalMetric(Parameter):
     SHARED_ENERGY = "Shared energy"
-    INJECTED_ENERGY = "Injected energy"
-    WITHDRAWN_ENERGY = "Withdrawn energy"
     TOTAL_CONSUMPTION = "Total consumption"
     INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {cls.SHARED_ENERGY: "e_sh", cls.INJECTED_ENERGY: "e_inj", cls.WITHDRAWN_ENERGY: "e_with", }
+        return {cls.SHARED_ENERGY: "e_sh", cls.TOTAL_CONSUMPTION: "c_tot"}
 
 
-class BatteryPowerFlows(PhysicalMetric):
+class OtherParameters(Parameter):
+    INJECTED_ENERGY = "Injected energy"
+    WITHDRAWN_ENERGY = "Withdrawn energy"
+    INVALID = "invalid"
+
+    @classmethod
+    def _get_abbrev_mapping(cls):
+        return {cls.INJECTED_ENERGY: "e_inj", cls.WITHDRAWN_ENERGY: "e_with"}
+
+
+
+class BatteryPowerFlows(Parameter):
     STORED_ENERGY = "Stored energy"
-    POWER_CHARGE = "Power charge"
+    POWER_CHARGE = "Charging power"
     INVALID = "invalid"
 
     @classmethod
@@ -79,4 +87,3 @@ class ParametricEvaluationType(OrderedEnum):
     LOAD_MATCHING_METRICS = "load_matching"
     ALL = "all"
     INVALID = "invalid"
-

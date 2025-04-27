@@ -43,31 +43,8 @@ class TotalConsumption(PhysicalParameterCalculator):
         dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION})
-        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
-        return input_da, input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION}).sum().values
-
-
-class Equality(PhysicalParameterCalculator):
-    _key = PhysicalMetric.INVALID
-    _equate_to = None
-
-    @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        new_coords = input_da.coords[DataKind.CALCULATED.value]
-        new_coords[new_coords == cls._equate_to] = cls._key
-        input_da.assign_coords({DataKind.CALCULATED.value: (DataKind.CALCULATED.value, new_coords)})
-        return input_da, input_da.sel({DataKind.CALCULATED.value: cls._key}).sum()
-
-
-class InjectedEnergy(Equality):
-    _key = PhysicalMetric.INJECTED_ENERGY
-    _equate_to = DataKind.PRODUCTION
-
-
-class WithdrawnEnergy(Equality):
-    _key = PhysicalMetric.WITHDRAWN_ENERGY
-    _equate_to = DataKind.CONSUMPTION
+        output = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        return output, output.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION}).sum().item()
 
 
 class PhysicalMetricEvaluator(ParametricEvaluator):
