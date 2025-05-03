@@ -22,7 +22,7 @@ class Battery(Calculator):
 
     def manage_bess(self, dataset):
         """Manage BESS power flows to increase shared energy."""
-        # Initialize BESS power and stored energy dataarray
+        # Initialize BESS power and dataarray of power flows of all users in the system
         bess_power = OmnesDataArray(0, dims=dataset.dims, coords={**dataset.coords,
                                                                   DataKind.CALCULATED.value: [bess_metr for bess_metr in
                                                                                               BatteryPowerFlows]})
@@ -47,6 +47,6 @@ class Battery(Calculator):
             dataset.loc[
             [BatteryPowerFlows.POWER_CHARGE, BatteryPowerFlows.STORED_ENERGY, OtherParameters.INJECTED_ENERGY], :,
             array.time] = charging_power, e_stored + charging_power, array.sel(
-                {DataKind.CALCULATED.value: DataKind.PRODUCTION}) - charging_power
+                {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - charging_power
 
         return dataset

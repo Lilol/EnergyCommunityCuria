@@ -37,7 +37,6 @@ class Capex(Calculator):
     @classmethod
     def capex_of_pv(cls, pv_size):
         """Evaluate investment cost (CAPEX) of a PV system depending on the size."""
-
         return CostOfEquipment()["pv", "capex", pv_size] * pv_size
 
     @classmethod

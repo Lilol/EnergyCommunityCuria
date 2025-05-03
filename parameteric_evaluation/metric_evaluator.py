@@ -39,7 +39,7 @@ class MetricEvaluator:
             logger.info(f"Evaluating scenario no. {i} with number of families: {n_fam} and battery size: {bess_size}")
             # Calculate withdrawn power
             energy_year, total_consumption = TotalConsumption.calculate(energy_year, num_families=n_fam)
-            logger.info(f"Total annual energy consumption: {total_consumption:.2f}")
+            logger.info(f"Total annual energy consumption: {total_consumption:.0f} kWh")
             energy_year, _ = WithdrawnEnergy.calculate(energy_year)
             energy_year, _ = InjectedEnergy.calculate(energy_year)
             # Manage BESS, if present

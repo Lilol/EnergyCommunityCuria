@@ -5,7 +5,7 @@ from parameteric_evaluation.definitions import ParametricEvaluationType, Physica
 from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
 
-
+"""Metaclass to initialize _parameter_calculators before registration."""
 class EvaluatorMeta(type):
     @staticmethod
     def get_eval_metrics(evaluation_type):
@@ -14,8 +14,6 @@ class EvaluatorMeta(type):
                                                               ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
                                                               ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric, }.get(
             evaluation_type, [])}
-
-    """Metaclass to initialize _parameter_calculators before registration."""
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
@@ -34,8 +32,10 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
         results = kwargs.pop("results", args[0])
         dataset = kwargs.pop('dataset', args[1])
+        bess_size = kwargs.get('bess_size')
+        n_families = kwargs.get('n_users')
         for parameter, calculator in cls._parameter_calculators.items():
-            results.loc[results.index[-1], parameter.to_abbrev_str()] = calculator.calculate(dataset, dataset)
+            results.loc[bess_size, n_families, parameter, :] = calculator.calculate(dataset, dataset)
         return dataset
 
     @classmethod
