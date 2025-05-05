@@ -5,7 +5,7 @@ import numpy as np
 from numpy import linalg as lin
 
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind
+from io_operation.input.definitions import DataKind
 from operation import ScaleProfile
 from operation.definitions import ScalingMethod, Status
 

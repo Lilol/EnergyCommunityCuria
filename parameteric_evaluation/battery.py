@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind
+from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import BatteryPowerFlows, OtherParameters
 

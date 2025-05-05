@@ -4,15 +4,15 @@ from os.path import join
 from pandas import DataFrame
 
 from data_processing_pipeline.definitions import Stage
-from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
+from io_operation.io_operation_separately_by_attribute import IoOperationSeparately
 from utility import configuration
 from utility.definitions import append_extension
 from utility.enum_definitions import convert_enum_to_value
 
 
-class Write(PipelineStage):
+class Write(IoOperationSeparately):
     _name = "output_writer"
     stage = Stage.WRITE_OUT
     csv_properties = {"sep": ';', "index": True, "float_format": '%.4f'}
@@ -24,32 +24,45 @@ class Write(PipelineStage):
         makedirs(self.output_path, exist_ok=True)
 
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
-        name = kwargs.get("filename", self.filename)
-        if DataKind.MUNICIPALITY.value not in dataset.dims:
-            self.write_array(dataset, name)
-            return dataset
+        return super().execute(dataset, *args, **kwargs, separate_to_directories_by=DataKind.MUNICIPALITY.value)
 
-        for municipality in dataset[DataKind.MUNICIPALITY.value].values:
-            makedirs(join(self.output_path, municipality), exist_ok=True)
-            self.write_array(dataset.sel({DataKind.MUNICIPALITY.value: municipality}), name, municipality=municipality)
+    def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
+                      **kwargs) -> OmnesDataArray | None:
+        makedirs(join(self.output_path, f"{attribute_value}"), exist_ok=True)
+        self.save_data(dataset.sel({attribute: attribute_value}), **kwargs)
         return dataset
 
-    def write_array(self, dataset: OmnesDataArray, name, **kwargs):
-        self.save_2d_data_array(dataset, name, **kwargs)
+    def save_data(self, dataset, **kwargs):
+        raise NotImplementedError("'save_data' must be implemented in subclass")
 
-    def save_2d_data_array(self, dataset, name, **kwargs):
-        output = dataset.to_pandas().map(convert_enum_to_value).rename(columns=convert_enum_to_value,
-                                                                       index=convert_enum_to_value)
-        output_path = join(self.output_path, kwargs.pop("municipality", ""), kwargs.pop("subdirectory", ""))
+
+class WriteDataArray(Write):
+    _name = "data_array_writer"
+
+    def save_data(self, dataset: OmnesDataArray, **kwargs):
+        filename = kwargs.get("filename", self.filename)
+        output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
         makedirs(output_path, exist_ok=True)
-        output.to_csv(join(output_path, append_extension(name, '.csv')), **self.csv_properties,
+        dataset.to_netcdf(join(output_path, append_extension(filename, '.nc')))
+
+
+class Write2DData(Write):
+    _name = "output_writer_2d"
+
+    def save_data(self, dataset: OmnesDataArray, **kwargs):
+        self.write(dataset.to_pandas(), **kwargs)
+
+    def write(self, output: DataFrame, **kwargs):
+        output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
+        makedirs(output_path, exist_ok=True)
+        filename = kwargs.get("filename", self.filename)
+        output = output.map(convert_enum_to_value).rename(columns=convert_enum_to_value,
+                                                                       index=convert_enum_to_value)
+        output.to_csv(join(output_path, append_extension(filename, '.csv')), **self.csv_properties,
                       index_label=output.index.name, **kwargs)
 
-    def write(self, output: DataFrame, name=None):
-        self.execute(output.to_xarray(), filename=name)
 
-
-class WriteGseProfile(Write):
+class WriteGseProfile(Write2DData):
     _name = "output_writer"
     csv_properties = {"sep": ';', "index": True, "float_format": '%.8f'}
 
@@ -59,12 +72,11 @@ class WriteGseProfile(Write):
         self.filename = kwargs.get("filename", "gse_ref_profiles")
 
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
-        name = kwargs.get("filename", self.filename)
-        self.save_2d_data_array(dataset, name)
+        self.save_data(dataset, **kwargs)
         return dataset
 
 
-class WriteSeparately(Write):
+class WriteSeparatelyToSubdir(Write2DData):
     _name = "separated_writer"
     csv_properties = {"sep": ';', "index": True, "float_format": '%.8f'}
 
@@ -75,4 +87,4 @@ class WriteSeparately(Write):
 
     def write_array(self, dataset: OmnesDataArray, name, **kwargs):
         for idx, da in dataset.groupby(self.separate_by):
-            self.save_2d_data_array(da, idx, subdirectory=self.subdirectory, **kwargs)
+            self.save_data(da, filename=idx, subdirectory=self.subdirectory, **kwargs)

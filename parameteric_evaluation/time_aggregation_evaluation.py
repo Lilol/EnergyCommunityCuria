@@ -2,7 +2,7 @@ from pandas import DataFrame
 
 from data_storage.data_store import DataStore
 from io_operation.input.definitions import DataKind
-from io_operation.output.write import Write
+from io_operation.output.write import Write, Write2DData
 
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric
 from parameteric_evaluation.load_matching_evaluation import SelfConsumption
@@ -45,5 +45,5 @@ class TimeAggregationEvaluator(ParametricEvaluator):
             energy_by_day = energy_year.groupby(time_resolution["sc_day"])
             plot_shared_energy(energy_by_day.sum()[PhysicalMetric.SHARED_ENERGY],
                                energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"), n_fam)
-        Write().write(results, "time_aggregation")
+        Write2DData().write(results, attribute="time_aggregation")
         plot_sci(time_resolution, evaluation_parameters.number_of_families, results)

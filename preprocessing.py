@@ -4,7 +4,7 @@ from data_storage.store_data import Store
 from io_operation.input.definitions import UserType
 from io_operation.input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, \
     ReadProduction
-from io_operation.output.write import Write, WriteSeparately
+from io_operation.output.write import Write, WriteSeparatelyToSubdir
 from operation import initialize_operation
 from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
@@ -62,7 +62,7 @@ DataProcessingPipeline("load_profiles_from_bills", workers=(
     CreateYearlyProfile(),
     Store("yearly_load_profiles_from_bills"),
     Write("data_users_year"),
-    WriteSeparately(subdirectory="Loads"),
+    WriteSeparatelyToSubdir(subdirectory="Loads"),
     AggregateProfileDataForTimePeriod(),
     Write("data_users_tou"))).execute()
 
@@ -110,6 +110,6 @@ DataProcessingPipeline("pv_production", workers=(
     # CreateYearlyProfile(),
     # Write("data_plants_year"),
     Visualize("profiles_by_month", plot_pv_profiles),
-    WriteSeparately(subdirectory="Generators"),
+    WriteSeparatelyToSubdir(subdirectory="Generators"),
     AggregateProfileDataForTimePeriod(),
     Write("data_plants_tou"))).execute()

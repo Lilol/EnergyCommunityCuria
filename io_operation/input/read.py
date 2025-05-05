@@ -1,16 +1,16 @@
 import logging
 import os
-from os.path import join
+from os.path import join, exists
 
 import numpy as np
 import xarray as xr
 from pandas import read_csv, read_excel
 
 from data_processing_pipeline.definitions import Stage
-from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind, PvDataSource
+from io_operation.io_operation_separately_by_attribute import IoOperationSeparately
 from utility import configuration
 from utility.definitions import append_extension
 from utility.enum_definitions import convert_value_to_enum
@@ -18,7 +18,7 @@ from utility.enum_definitions import convert_value_to_enum
 logger = logging.getLogger(__name__)
 
 
-class Read(PipelineStage):
+class Read(IoOperationSeparately):
     stage = Stage.READ
     _column_names = convert_value_to_enum
     _name = "reader"
@@ -34,16 +34,32 @@ class Read(PipelineStage):
         self._path = join(self._input_root, self._directory)
         self._data = OmnesDataArray()
 
+    def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
+                      **kwargs) -> OmnesDataArray | None:
+        filename = os.path.join(self._path, attribute_value, append_extension(self._filename, '.csv'))
+        if not exists(filename):
+            logger.warning(f"File {filename} does not exist, skipping.")
+            return dataset
+        data = self.read_data(filename, attribute, attribute_value)
+        return xr.concat([dataset, data], dim=attribute)
+
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
-        self._data = xr.concat([self._read_municipality(m) for m in municipalities], dim=DataKind.MUNICIPALITY.value)
-        return self._data
+        return super().execute(dataset, separate_to_directories_by=DataKind.MUNICIPALITY.value,
+                               directories=municipalities, *args, **kwargs)
 
-    def _read_municipality(self, municipality):
-        data = read_csv(os.path.join(self._path, municipality, append_extension(self._filename, '.csv')), sep=';',
-                        parse_dates=True).rename(columns=self.__class__._column_names)
-        return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(DataKind.MUNICIPALITY.value).assign_coords(
-            {DataKind.MUNICIPALITY.value: [municipality]})
+    def read_data(self, filename, attribute, attribute_value):
+        data= read_csv(filename, sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
+
+        return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(attribute).assign_coords(
+        {attribute: [attribute_value]})
+
+
+class ReadDataArray(Read):
+    _name = "data_array_reader"
+
+    def read_data(self, filename, attribute, attribute_value):
+        return xr.open_dataset(filename, engine="netcdf4")
 
 
 class ReadProduction(Read):

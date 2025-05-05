@@ -1,9 +1,10 @@
 from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
-from io_operation.input import DataKind, ParametersFromFile
+from io_operation.input.definitions import DataKind, ParametersFromFile
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric, PhysicalMetric
+from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric, PhysicalMetric, \
+    OtherParameters
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from utility.configuration import config
 
@@ -33,9 +34,9 @@ class TotalEmissions(Calculator):
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in REC case"""
         shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
-        return (input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.WITHDRAWN_ENERGY}) - shared) * \
+        return (input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}) - shared) * \
             EmissionFactors()["grid"] + (
-                    input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.INJECTED_ENERGY}) - shared) * \
+                    input_da.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - shared) * \
             EmissionFactors()["inj"] + input_da.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}) * \
             EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get("bess_size") * EmissionFactors()["bess"]
 
