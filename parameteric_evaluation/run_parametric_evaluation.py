@@ -1,10 +1,15 @@
+from operation import initialize_operation
+from utility.init_logger import init_logger
+
+initialize_operation()
 from parameteric_evaluation import initialize_evaluators
+
+initialize_evaluators()
 from parameteric_evaluation.dataset_creation import DatasetCreatorForParametricEvaluation
 from parameteric_evaluation.metric_evaluator import MetricEvaluator
 from utility.configuration import config
 
-initialize_evaluators()
-
+init_logger()
 
 def run_evaluation():
     DatasetCreatorForParametricEvaluation.create_dataset_for_parametric_evaluation()

@@ -19,7 +19,7 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
     _input_properties = {"input_root": configuration.config.get("path", "output")}
     _tou_columns = configuration.config.get("tariff", "time_of_use_labels")
     _dimensions_to_rename = {"coordinate": {"dim_1": DataKind.USER}, "to_replace_dimension": "dim_0",
-                             "new_dimension": "user"}
+                             "new_dimension": DataKind.CALCULATED.value}
     _coords_to_rename = {"dim_1": DataKind.TOU.value, "group": DataKind.MONTH.value}
 
     @classmethod
@@ -40,7 +40,7 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
             # Get total production and consumption data
             # Here we manage monthly ToU values, we sum all end users/plants
             Apply(name=f"Sum users {profile}",
-                  operation=lambda x: x.assign_coords(dim_1=to_datetime(x.dim_1)).sum(DataKind.USER.value)),
+                  operation=lambda x: x.assign_coords(dim_1=to_datetime(x.dim_1)).sum(DataKind.CALCULATED.value)),
             Store(profile))).execute()
 
     @classmethod
@@ -71,14 +71,12 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         # Create a single dataframe for both production and consumption
         ut = [ut.user_type for ut in user_types]
         profile_types = [ut.profile_type for ut in user_types]
-        DataProcessingPipeline("concatenate", workers=(ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut,
-                                                                   coords={DataKind.USER.value: ut}), Store("tou_months"),
-                                                       ArrayConcat(name="merge_profiles", dim=DataKind.USER.value,
-                                                                   arrays_to_merge=profile_types,
-                                                                   coords={DataKind.USER.value: [u.power_type for u in
-                                                                           user_types]}),
-                                                       Rename(name="rename", coords={"dim_1": DataKind.TIME.value}),
-                                                       Store("energy_year"))).execute()
+        DataProcessingPipeline("concatenate", workers=(
+        ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}), Store("tou_months"),
+        ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types,
+                    coords={DataKind.USER.value: [u.power_type for u in user_types]}),
+        Rename(name="rename", coords={"dim_1": DataKind.TIME.value, DataKind.USER.value: DataKind.CALCULATED.value}),
+        Store("energy_year"))).execute()
 
         DataProcessingPipeline("pv_plants",
                                workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"))).execute()

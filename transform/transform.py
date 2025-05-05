@@ -14,7 +14,7 @@ from data_storage.dataset import OmnesDataArray
 from io_operation.input import DataKind, UserType, BillType
 from operation import ScaleProfile
 from operation.definitions import Status
-from operation.profile_scaling import ScaleInProportion
+from operation.proportional_scaler import ScaleInProportion
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 from utility.definitions import grouper

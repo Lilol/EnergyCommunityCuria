@@ -1,8 +1,7 @@
-from io_operation.input import DataKind
 from utility.definitions import OrderedEnum
 
 
-class Parameter(DataKind):
+class Parameter(OrderedEnum):
     def to_abbrev_str(self):
         abbrev_dictionary = self._get_abbrev_mapping()
         return abbrev_dictionary.get(self, None)
@@ -18,14 +17,32 @@ class Parameter(DataKind):
 
 class PhysicalMetric(Parameter):
     SHARED_ENERGY = "Shared energy"
-    INJECTED_ENERGY = "Injected energy"
-    WITHDRAWN_ENERGY = "Withdrawn energy"
     TOTAL_CONSUMPTION = "Total consumption"
     INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {cls.SHARED_ENERGY: "e_sh", cls.INJECTED_ENERGY: "e_inj", cls.WITHDRAWN_ENERGY: "e_with", }
+        return {cls.SHARED_ENERGY: "e_sh", cls.TOTAL_CONSUMPTION: "c_tot"}
+
+
+class OtherParameters(Parameter):
+    INJECTED_ENERGY = "Injected energy"
+    WITHDRAWN_ENERGY = "Withdrawn energy"
+    INVALID = "invalid"
+
+    @classmethod
+    def _get_abbrev_mapping(cls):
+        return {cls.INJECTED_ENERGY: "e_inj", cls.WITHDRAWN_ENERGY: "e_with"}
+
+
+class BatteryPowerFlows(Parameter):
+    STORED_ENERGY = "Stored energy"
+    POWER_CHARGE = "Charging power"
+    INVALID = "invalid"
+
+    @classmethod
+    def _get_abbrev_mapping(cls):
+        return {cls.STORED_ENERGY: "e_stor", cls.POWER_CHARGE: "p_charge"}
 
 
 class EnvironmentalMetric(Parameter):
@@ -46,7 +63,7 @@ class EconomicMetric(Parameter):
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {cls.CAPEX: "capex", cls.OPEX: "opex", cls.CAPEX_PV: "capex_pv", }
+        return {cls.CAPEX: "capex", cls.OPEX: "opex"}
 
 
 class LoadMatchingMetric(Parameter):
@@ -69,8 +86,3 @@ class ParametricEvaluationType(OrderedEnum):
     LOAD_MATCHING_METRICS = "load_matching"
     ALL = "all"
     INVALID = "invalid"
-
-
-def calculate_sc(data):
-    return data.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / data.sel(
-        {DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum()

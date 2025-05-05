@@ -9,7 +9,7 @@ class DataProcessingArbiter(Singleton):
         self.__setitem__(name, pipeline)
 
     def __getitem__(self, item):
-        return self._pipelines[item]
+        return self._pipelines.get(item)
 
     def __setitem__(self, key, value):
         self._pipelines[key] = value

@@ -1,9 +1,11 @@
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
 from data_storage.store_data import Store
-from io_operation.input import UserType
-from io_operation.input import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, ReadProduction
-from io_operation.output import Write, WriteSeparately
+from io_operation.input.definitions import UserType
+from io_operation.input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, \
+    ReadProduction
+from io_operation.output.write import Write, WriteSeparately
+from operation import initialize_operation
 from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
@@ -18,6 +20,7 @@ from visualization.preprocessing_visualization import plot_family_profiles, plot
 from visualization.visualize import Visualize
 
 init_logger()
+initialize_operation()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("day_properties", workers=(

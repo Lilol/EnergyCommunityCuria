@@ -4,16 +4,18 @@ import numpy as np
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
-from parameteric_evaluation.definitions import ParametricEvaluationType, calculate_shared_energy, calculate_sc
+from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.load_matching_evaluation import SelfConsumption
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
+from parameteric_evaluation.physical import SharedEnergy
 from utility import configuration
 
 logger = logging.getLogger(__name__)
 
 
 def eval_sc(df, n_fam):
-    calculate_shared_energy(df, n_fam)
-    return calculate_sc(df)
+    SharedEnergy.calculate(df, num_families=n_fam)
+    return SelfConsumption.calculate(df)
 
 
 def find_closer(n_fam, step):

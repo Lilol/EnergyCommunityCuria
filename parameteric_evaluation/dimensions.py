@@ -1,11 +1,19 @@
-from pandas import Period
-
 from utility import configuration
 
 
-def convert_to_hours(period_str):
-    period = Period(freq=period_str)
-    return period.hour
+def convert_to_hours(time_str):
+    time_str = time_str.strip().lower()
+    if time_str.endswith('h'):
+        return float(time_str[:-1])
+    elif time_str.endswith('min'):
+        return float(time_str[:-3]) / 60
+    elif time_str.endswith('sec') or time_str.endswith('s'):
+        if time_str.endswith('sec'):
+            return float(time_str[:-3]) / 3600
+        else:
+            return float(time_str[:-1]) / 3600
+    else:
+        raise ValueError(f"Unsupported time format: {time_str}")
 
 
 _dt = convert_to_hours(configuration.config.get("time", "resolution"))
