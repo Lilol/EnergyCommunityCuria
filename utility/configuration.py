@@ -6,7 +6,7 @@ from os.path import join, dirname
 from sys import argv
 from typing import Iterable
 
-from input.definitions import PvDataSource, DataKind
+from io_operation.input import PvDataSource, DataKind
 from operation.definitions import ScalingMethod
 from parameteric_evaluation.definitions import ParametricEvaluationType
 from parameteric_evaluation.parameter_pack import EvaluationParameterPack

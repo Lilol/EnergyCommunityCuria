@@ -1,6 +1,6 @@
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
-from input.read import ReadGseDatabase
-from output.write import WriteGseProfile
+from io_operation.input import ReadGseDatabase
+from io_operation.output import WriteGseProfile
 from transform.transform import TransformReferenceProfile
 
 # ----------------------------------------------------------------------------

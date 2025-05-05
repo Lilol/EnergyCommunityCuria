@@ -45,3 +45,7 @@ def grouper(data_array, *grouper_dims, **grouper_vars):
                                                grouper_vars.items() for value in values]),
                                             names=list(grouper_dims) + list(*grouper_vars.values())),
                      dims=list(grouper_coords.keys()), coords=grouper_coords, )
+
+
+def get_value(attribute):
+    return attribute if not hasattr(attribute, "value") else attribute.value

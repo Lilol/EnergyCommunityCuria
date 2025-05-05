@@ -12,4 +12,5 @@ class Stage(IntEnum):
     WRITE_OUT = auto()
     VISUALIZE = auto()
     OTHER = auto()
+    IO = auto()
     INVALID = auto()

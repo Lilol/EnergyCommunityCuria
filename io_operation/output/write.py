@@ -6,7 +6,7 @@ from pandas import DataFrame
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind
+from io_operation.input.definitions import DataKind
 from utility import configuration
 from utility.definitions import append_extension
 from utility.enum_definitions import convert_enum_to_value

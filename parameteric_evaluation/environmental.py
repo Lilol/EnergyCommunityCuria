@@ -1,7 +1,7 @@
 from typing import Iterable
 
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind, ParametersFromFile
+from io_operation.input import DataKind, ParametersFromFile
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric, PhysicalMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator

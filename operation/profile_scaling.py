@@ -8,7 +8,7 @@ import xarray as xr
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind
+from io_operation.input import DataKind
 from operation.definitions import Status, ScalingMethod
 from operation.operation import Operation
 from utility import configuration

@@ -10,7 +10,7 @@ from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind, PvDataSource
+from io_operation.input.definitions import DataKind, PvDataSource
 from utility import configuration
 from utility.definitions import append_extension
 from utility.enum_definitions import convert_value_to_enum
@@ -51,7 +51,7 @@ class ReadProduction(Read):
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
-        self._pv_resource_reader = ReadPvProcuction.create()
+        self._pv_resource_reader = ReadPvProduction.create()
 
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
@@ -64,7 +64,7 @@ class ReadProduction(Read):
         return self._data
 
 
-class ReadPvProcuction(Read):
+class ReadPvProduction(Read):
     _name = "pvresource_reader"
     _directory = "DatiComuni"
     _ref_year = configuration.config.getint("time", "year")
@@ -80,7 +80,7 @@ class ReadPvProcuction(Read):
         return df
 
 
-class ReadPvgis(ReadPvProcuction):
+class ReadPvgis(ReadPvProduction):
     _name = "pvgis_reader"
     _production_column_name = 'Irradiance onto horizontal plane '  # hourly production of the plants (kW)
     _column_names = {"power": DataKind.POWER}
@@ -100,7 +100,7 @@ class ReadPvgis(ReadPvProcuction):
         return production
 
 
-class ReadPvSol(ReadPvProcuction):
+class ReadPvSol(ReadPvProduction):
     _name = "pvsol_reader"
     _production_column_name = 'Grid Export '  # hourly production of the plants (kW)
     _column_names = {_production_column_name: DataKind.POWER}

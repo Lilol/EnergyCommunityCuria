@@ -4,8 +4,8 @@ from pandas import to_datetime
 
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.store_data import Store
-from input.definitions import DataKind
-from input.read import Read, ReadPvPlantData
+from io_operation.input import DataKind
+from io_operation.input import Read, ReadPvPlantData
 from parameteric_evaluation.definitions import ParametricEvaluationType
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from transform.combine.combine import ArrayConcat

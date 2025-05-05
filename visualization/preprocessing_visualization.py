@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from data_storage.data_store import DataStore
-from input.definitions import DataKind
+from io_operation.input import DataKind
 from operation.profile_scaling import ScaleTimeOfUseProfile, ScaleByQuadraticOptimization, ScaleByLinearEquation
 from utility import configuration
 

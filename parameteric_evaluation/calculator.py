@@ -3,7 +3,7 @@ from typing import Iterable
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind
+from io_operation.input import DataKind
 from parameteric_evaluation.definitions import Parameter
 from utility.subclass_registration_base import SubclassRegistrationBase
 

@@ -1,4 +1,4 @@
-from input.definitions import DataKind
+from io_operation.input import DataKind
 from utility.definitions import OrderedEnum
 
 

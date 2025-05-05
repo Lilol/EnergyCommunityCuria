@@ -8,7 +8,7 @@ from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from input.definitions import DataKind
+from io_operation.input import DataKind
 from utility import configuration
 from utility.day_of_the_week import get_weekday_code
 

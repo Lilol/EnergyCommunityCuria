@@ -1,6 +1,6 @@
 from enum import Enum
 
-from input.definitions import DataKind, UserType, BillType, PvDataSource
+from io_operation.input import DataKind, UserType, BillType, PvDataSource
 
 
 def convert_enum_to_value(x):
