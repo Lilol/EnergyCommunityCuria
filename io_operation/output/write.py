@@ -43,6 +43,7 @@ class WriteDataArray(Write):
         filename = kwargs.get("filename", self.filename)
         output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
         makedirs(output_path, exist_ok=True)
+        dataset.coords =
         dataset.to_netcdf(join(output_path, append_extension(filename, '.nc')))
 
 

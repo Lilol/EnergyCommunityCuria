@@ -1,6 +1,8 @@
 from enum import Enum
 
 from io_operation.input.definitions import DataKind, UserType, BillType, PvDataSource
+from operation.definitions import Status, ScalingMethod
+from parameteric_evaluation.definitions import Parameter
 
 
 def convert_enum_to_value(x):
@@ -9,7 +11,7 @@ def convert_enum_to_value(x):
 
 def convert_value_to_enum(x):
     # Bit hackish, but no better idea
-    enums_to_try = (DataKind, UserType, BillType, PvDataSource)
+    enums_to_try = (DataKind, UserType, BillType, PvDataSource, Status, ScalingMethod, Parameter)
     y = x
     try:
         return float(x)

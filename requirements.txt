@@ -6,3 +6,4 @@ xarray
 cvxopt
 holidays
 openpyxl
+netCDF4

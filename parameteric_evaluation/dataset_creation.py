@@ -5,7 +5,8 @@ from pandas import to_datetime
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.store_data import Store
 from io_operation.input.definitions import DataKind
-from io_operation.input.read import Read, ReadPvPlantData
+from io_operation.input.read import Read, ReadPvPlantData, ReadDataArray
+from io_operation.output.write import WriteDataArray
 from parameteric_evaluation.definitions import ParametricEvaluationType
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from transform.combine.combine import ArrayConcat
@@ -50,6 +51,8 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
         """
 
+        # DataProcessingPipeline("read_cached", workers=(ReadDataArray("energy_year"),Store("energy_year"))).execute()
+
         @dataclass
         class ParametricEvaluationUserType:
             user_type: str
@@ -72,11 +75,13 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         ut = [ut.user_type for ut in user_types]
         profile_types = [ut.profile_type for ut in user_types]
         DataProcessingPipeline("concatenate", workers=(
-        ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}), Store("tou_months"),
+        ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}),
+        Store("tou_months"),
         ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types,
                     coords={DataKind.USER.value: [u.power_type for u in user_types]}),
         Rename(name="rename", coords={"dim_1": DataKind.TIME.value, DataKind.USER.value: DataKind.CALCULATED.value}),
-        Store("energy_year"))).execute()
+        Store("energy_year"),
+        WriteDataArray("energy_year"))).execute()
 
         DataProcessingPipeline("pv_plants",
                                workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"))).execute()
