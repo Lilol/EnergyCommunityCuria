@@ -14,10 +14,12 @@ class IoOperationSeparately(PipelineStage):
 
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         attribute = get_value(kwargs.get("separate_to_directories_by"))
-        if attribute not in dataset.dims:
+        if "directories" not in kwargs and (dataset is None or attribute not in dataset.dims):
             return self._io_operation(dataset)
 
-        attribute_values = kwargs.get("directories", dataset[attribute].values)
+        attribute_values = kwargs.get("directories", None)
+        if attribute_values is None:
+            attribute_values = dataset[attribute].values
         for attribute_value in attribute_values:
             dataset = self._io_operation(dataset, attribute=attribute, attribute_value=attribute_value)
         return dataset

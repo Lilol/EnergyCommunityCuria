@@ -13,8 +13,8 @@ from matplotlib import gridspec as gs
 from matplotlib import patheffects as pe
 
 # common variables
-from io_operation.input import DataKind
-from io_operation.input import ReadBills
+from io_operation.input.definitions import DataKind
+from io_operation.input.read import ReadBills
 from visualization.plotting_utils import get_colors_from_map, pie_chart, init_plot_properties, alpha, fig_width, \
     fig_height
 

@@ -2,8 +2,8 @@ import logging
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
-from io_operation.input import DataKind
-from io_operation.output import Write
+from io_operation.input.definitions import DataKind
+from io_operation.output.write import Write
 from parameteric_evaluation.battery import Battery
 from parameteric_evaluation.other_calculators import WithdrawnEnergy, InjectedEnergy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator

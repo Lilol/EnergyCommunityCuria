@@ -4,7 +4,7 @@ from typing import Iterable
 import xarray as xr
 
 from data_storage.dataset import OmnesDataArray
-from io_operation.input import DataKind
+from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator

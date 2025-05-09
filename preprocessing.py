@@ -1,16 +1,17 @@
+from operation import initialize_operation
+initialize_operation()
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
 from data_storage.store_data import Store
 from io_operation.input.definitions import UserType
 from io_operation.input.read import ReadUserData, ReadBills, ReadPvPlantData, ReadTariff, ReadTypicalLoadProfile, \
     ReadProduction
-from io_operation.output.write import Write, WriteSeparatelyToSubdir
-from operation import initialize_operation
+from io_operation.output.write import WriteSeparatelyToSubdir, Write2DData
 from transform.check import CheckAnnualSum
 from transform.combine.combine import CalculateTypicalMonthlyConsumption, AddYearlyConsumptionToBillData
 from transform.extract.data_extractor import ExtractTimeOfUseParameters, ExtractDayTypesInTimeframe, \
-    ExtractDayCountInTimeframe, ExtractTimeOfUseTimeSlotCountByDayType, \
-    ExtractTimeOfUseTimeSlotCountByMonth
+    ExtractDayCountInTimeframe, ExtractTimeOfUseTimeSlotCountByDayType, ExtractTimeOfUseTimeSlotCountByMonth
+
 from transform.transform import TransformTariffData, TransformTypicalLoadProfile, TransformUserData, \
     TransformPvPlantData, TransformBills, TransformProduction, TransformBillsToLoadProfiles, CreateYearlyProfile, \
     AggregateProfileDataForTimePeriod, Apply
@@ -20,96 +21,53 @@ from visualization.preprocessing_visualization import plot_family_profiles, plot
 from visualization.visualize import Visualize
 
 init_logger()
-initialize_operation()
 
 # ----------------------------------------------------------------------------
 DataProcessingPipeline("day_properties", workers=(
-    ExtractDayTypesInTimeframe(),
-    Store("day_types"),
-    ExtractDayCountInTimeframe(),
-    Store("day_count"))).execute()
+    ExtractDayTypesInTimeframe(), Store("day_types"), ExtractDayCountInTimeframe(), Store("day_count"))).execute()
 
 DataProcessingPipeline("time_of_use", workers=(
-    ReadTariff(),
-    TransformTariffData(),
-    ExtractTimeOfUseParameters(),
-    Store("time_of_use_time_slots"),
-    ExtractTimeOfUseTimeSlotCountByDayType(),
-    Store("time_of_use_time_slot_count_by_day_type"),
-    ExtractTimeOfUseTimeSlotCountByMonth(),
-    Store("time_of_use_time_slot_count_by_month"))).execute()
+    ReadTariff(), TransformTariffData(), ExtractTimeOfUseParameters(), Store("time_of_use_time_slots"),
+    ExtractTimeOfUseTimeSlotCountByDayType(), Store("time_of_use_time_slot_count_by_day_type"),
+    ExtractTimeOfUseTimeSlotCountByMonth(), Store("time_of_use_time_slot_count_by_month"))).execute()
 
 DataProcessingPipeline("typical_load_profile", workers=(
-    ReadTypicalLoadProfile(),
-    TransformTypicalLoadProfile(),
-    Store("typical_load_profiles_gse"),
-    CalculateTypicalMonthlyConsumption(),
-    Store("typical_aggregated_consumption"))).execute()
+    ReadTypicalLoadProfile(), TransformTypicalLoadProfile(), Store("typical_load_profiles_gse"),
+    CalculateTypicalMonthlyConsumption(), Store("typical_aggregated_consumption"))).execute()
 
-DataProcessingPipeline("users", workers=(
-    ReadUserData(),
-    TransformUserData(),
-    Store("users"))).execute()
+DataProcessingPipeline("users", workers=(ReadUserData(), TransformUserData(), Store("users"))).execute()
 
 DataProcessingPipeline("load_profiles_from_bills", workers=(
-    ReadBills(),
-    TransformBills(),
-    CheckAnnualSum(),
-    Store("bills"),
-    Write("data_users_bills"),
-    TransformBillsToLoadProfiles(),
-    Store("load_profiles_from_bills"),
-    CreateYearlyProfile(),
-    Store("yearly_load_profiles_from_bills"),
-    Write("data_users_year"),
-    WriteSeparatelyToSubdir(subdirectory="Loads"),
-    AggregateProfileDataForTimePeriod(),
-    Write("data_users_tou"))).execute()
+    ReadBills(), TransformBills(), CheckAnnualSum(), Store("bills"), Write2DData("data_users_bills"),
+    TransformBillsToLoadProfiles(), Store("load_profiles_from_bills"), CreateYearlyProfile(),
+    Store("yearly_load_profiles_from_bills"), Write2DData("data_users_year"),
+    WriteSeparatelyToSubdir(subdirectory="Loads"), AggregateProfileDataForTimePeriod(),
+    Write2DData("data_users_tou"))).execute()
 
-DataProcessingPipeline("annual_consumption_to_bill_data",
-                       dataset=DataStore()["users"],
-                       workers=(
-                           AddYearlyConsumptionToBillData(),
-                           Store("users"),
-                           Write("data_users"))).execute()
+DataProcessingPipeline("annual_consumption_to_bill_data", dataset=DataStore()["users"],
+                       workers=(AddYearlyConsumptionToBillData(), Store("users"), Write2DData("data_users"))).execute()
 
-DataProcessingPipeline("visualize", workers=(
-    Visualize("consumption_profiles", plot_consumption_profiles),)).execute()
+DataProcessingPipeline("visualize", workers=(Visualize("consumption_profiles", plot_consumption_profiles),)).execute()
 
 DataProcessingPipeline("families", workers=(
-    ReadBills(filename="bollette_domestici.csv"),
-    TransformBills(),
-    CheckAnnualSum(),
-    Store("families_bills"),
-    TransformBillsToLoadProfiles(),
-    CreateYearlyProfile(),
-    Store("yearly_load_profiles_families"),
-    Write("data_families_year"),
-    Visualize("profiles", plot_family_profiles),
-    AggregateProfileDataForTimePeriod(),
-    Write("data_families_tou"))).execute(user_type=UserType.PDMF)
+    ReadBills(filename="bollette_domestici.csv"), TransformBills(), CheckAnnualSum(), Store("families_bills"),
+    TransformBillsToLoadProfiles(), CreateYearlyProfile(), Store("yearly_load_profiles_families"),
+    Write2DData("data_families_year"), Visualize("profiles", plot_family_profiles), AggregateProfileDataForTimePeriod(),
+    Write2DData("data_families_tou"))).execute(user_type=UserType.PDMF)
 
 n_families = configuration.config.getint('rec', 'number_of_families')
 DataProcessingPipeline(f"yearly_load_profiles_families_{n_families}",
-                       dataset=DataStore()["yearly_load_profiles_families"],
-                       workers=(
-                           Apply(operation=lambda x: x * n_families),
-                           Write(f"families_{n_families}"))).execute()
+                       dataset=DataStore()["yearly_load_profiles_families"], workers=(
+        Apply(operation=lambda x: x * n_families), Write2DData(f"families_{n_families}"))).execute()
 
 DataProcessingPipeline("pv_plants", workers=(
-    ReadPvPlantData(),
-    TransformPvPlantData(),
-    Store("pv_plants"),
-    Write("data_plants"))).execute()
+    ReadPvPlantData(), TransformPvPlantData(), Store("pv_plants"), Write2DData("data_plants"))).execute()
 
-DataProcessingPipeline("pv_production", workers=(
-    ReadProduction(),
-    TransformProduction(),
-    # ExtractTypicalYear(),
-    # Store("pv_profiles"),
-    # CreateYearlyProfile(),
-    # Write("data_plants_year"),
-    Visualize("profiles_by_month", plot_pv_profiles),
-    WriteSeparatelyToSubdir(subdirectory="Generators"),
-    AggregateProfileDataForTimePeriod(),
-    Write("data_plants_tou"))).execute()
+DataProcessingPipeline("pv_production", workers=(ReadProduction(), TransformProduction(), # ExtractTypicalYear(),
+                                                 # Store("pv_profiles"),
+                                                 # CreateYearlyProfile(),
+                                                 # Write("data_plants_year"),
+                                                 Visualize("profiles_by_month", plot_pv_profiles),
+                                                 WriteSeparatelyToSubdir(subdirectory="Generators"),
+                                                 AggregateProfileDataForTimePeriod(),
+                                                 Write2DData("data_plants_tou"))).execute()

@@ -32,16 +32,20 @@ class Read(IoOperationSeparately):
         self._directory = kwargs.pop("directory", self.__class__._directory)
         self._input_root = kwargs.pop("input_root", self.__class__._input_root)
         self._path = join(self._input_root, self._directory)
-        self._data = OmnesDataArray()
+        self._data = None
 
-    def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
+    def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value="", *args,
                       **kwargs) -> OmnesDataArray | None:
         filename = os.path.join(self._path, attribute_value, append_extension(self._filename, '.csv'))
         if not exists(filename):
             logger.warning(f"File {filename} does not exist, skipping.")
             return dataset
         data = self.read_data(filename, attribute, attribute_value)
-        return xr.concat([dataset, data], dim=attribute)
+        if self._data is None:
+            self._data = data
+        else:
+            self._data = xr.concat([self._data, data], dim=attribute)
+        return self._data
 
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
         municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))

@@ -19,4 +19,4 @@ class ScaleProfile(Operation, SubclassRegistrationBase):
 
     @classmethod
     def create(cls, name=_name, *args, **kwargs):
-        super().create(configuration.config.get("profile", "scaling_method"), name, *args, **kwargs)
+        return cls._subclasses.get(configuration.config.get("profile", "scaling_method"), None)(name, *args, **kwargs)
