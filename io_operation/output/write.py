@@ -43,7 +43,8 @@ class WriteDataArray(Write):
         filename = kwargs.get("filename", self.filename)
         output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
         makedirs(output_path, exist_ok=True)
-        dataset.coords =
+        dataset.assign_coords(
+            {dim: [convert_enum_to_value(coord) for coord in dataset[dim].coords] for dim in dataset.dims})
         dataset.to_netcdf(join(output_path, append_extension(filename, '.nc')))
 
 
@@ -57,8 +58,7 @@ class Write2DData(Write):
         output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
         makedirs(output_path, exist_ok=True)
         filename = kwargs.get("filename", self.filename)
-        output = output.map(convert_enum_to_value).rename(columns=convert_enum_to_value,
-                                                                       index=convert_enum_to_value)
+        output = output.map(convert_enum_to_value).rename(columns=convert_enum_to_value, index=convert_enum_to_value)
         output.to_csv(join(output_path, append_extension(filename, '.csv')), **self.csv_properties,
                       index_label=output.index.name, **kwargs)
 
