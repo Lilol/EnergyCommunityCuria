@@ -25,6 +25,7 @@ class Read(IoOperationSeparately):
     _input_root = configuration.config.get("path", "input")
     _directory = ""
     _filename = ""
+    _ext = ".csv"
 
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
@@ -36,7 +37,7 @@ class Read(IoOperationSeparately):
 
     def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value="", *args,
                       **kwargs) -> OmnesDataArray | None:
-        filename = os.path.join(self._path, attribute_value, append_extension(self._filename, '.csv'))
+        filename = os.path.join(self._path, attribute_value, append_extension(self._filename, self._ext))
         if not exists(filename):
             logger.warning(f"File {filename} does not exist, skipping.")
             return dataset
@@ -61,9 +62,15 @@ class Read(IoOperationSeparately):
 
 class ReadDataArray(Read):
     _name = "data_array_reader"
+    _ext = ".nc"
 
     def read_data(self, filename, attribute, attribute_value):
-        return xr.open_dataset(filename, engine="netcdf4")
+        if not exists(filename):
+            return OmnesDataArray()
+        dataset = xr.open_dataarray(filename, engine="netcdf4")
+        dataset = dataset.assign_coords(
+            {dim: [convert_value_to_enum(coord) for coord in dataset[dim].values] for dim in dataset.dims})
+        return dataset
 
 
 class ReadProduction(Read):
