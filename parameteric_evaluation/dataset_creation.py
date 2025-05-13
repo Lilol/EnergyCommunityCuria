@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from pandas import to_datetime
@@ -13,6 +14,8 @@ from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from transform.combine.combine import ArrayConcat
 from transform.transform import TransformCoordinateIntoDimension, Aggregate, Apply, Rename, TransformPvPlantData
 from utility import configuration
+
+logger = logging.getLogger(__name__)
 
 
 class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
@@ -51,12 +54,20 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         Create a single dataframe for both production and consumptions
         https://www.arera.it/dati-e-statistiche/dettaglio/analisi-dei-consumi-dei-clienti-domestici
         """
+        if configuration.config.getboolean("parametric_evaluation", "read_from_cache"):
+            logger.info(f"Reading data from cache...")
+            DataProcessingPipeline("read_cached",
+                                   workers=(
+                                       ReadDataArray(filename="energy_year"),
+                                       Store("energy_year"),
+                                       ReadDataArray("data_plants"),
+                                       Store("data_plants"))).execute()
 
-        DataProcessingPipeline("read_cached",
-                               workers=(ReadDataArray(filename="energy_year"), Store("energy_year"))).execute()
-        if DataStore()["energy_year"]:
-            return
+            if DataStore()["energy_year"].shape and DataStore()["data_plants"].shape:
+                logger.info(f"Yearly energy flows and PV plant data read from file, continuing...")
+                return
 
+        logger.info("Creating dataset from files...")
         @dataclass
         class ParametricEvaluationUserType:
             user_type: str
@@ -80,7 +91,7 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         profile_types = [ut.profile_type for ut in user_types]
         DataProcessingPipeline("concatenate", workers=(
             ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}),
-            Store("tou_months"),
+            Store("tou_months"), WriteDataArray("tou_months"),
             ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types,
                         coords={DataKind.USER.value: [u.power_type for u in user_types]}), Rename(name="rename",
                                                                                                   coords={
@@ -89,4 +100,5 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
             Store("energy_year"), WriteDataArray("energy_year"))).execute()
 
         DataProcessingPipeline("pv_plants",
-                               workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"))).execute()
+                               workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"),
+                                        WriteDataArray("data_plants"))).execute()

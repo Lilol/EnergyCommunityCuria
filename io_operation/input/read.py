@@ -61,6 +61,7 @@ class Read(IoOperationSeparately):
 
 
 class ReadDataArray(Read):
+    _input_root = configuration.config.get("path", "output")
     _name = "data_array_reader"
     _ext = ".nc"
 

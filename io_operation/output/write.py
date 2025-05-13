@@ -29,7 +29,10 @@ class Write(IoOperationSeparately):
     def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
                       **kwargs) -> OmnesDataArray | None:
         makedirs(join(self.output_path, f"{attribute_value}"), exist_ok=True)
-        self.save_data(dataset.sel({attribute: attribute_value}), **kwargs)
+        self.save_data(dataset.sel({attribute: attribute_value}) if attribute is not None else dataset,
+                       attribute=attribute,
+                       attribute_value=attribute_value if attribute is not None else "",
+                       **kwargs)
         return dataset
 
     def save_data(self, dataset, **kwargs):
@@ -41,7 +44,7 @@ class WriteDataArray(Write):
 
     def save_data(self, dataset: OmnesDataArray, **kwargs):
         filename = kwargs.get("filename", self.filename)
-        output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
+        output_path = join(self.output_path, kwargs.pop("attribute_value", ""))
         makedirs(output_path, exist_ok=True)
         dataset = dataset.assign_coords(
             {dim: [convert_enum_to_value(coord) for coord in dataset[dim].values] for dim in dataset.dims})

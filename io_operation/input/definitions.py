@@ -60,7 +60,6 @@ class PvDataSource(OrderedEnum):
 
 class ParametersFromFile(Singleton):
     _filename = None
-    _parameters = None
 
     @classmethod
     def read(cls, filename):

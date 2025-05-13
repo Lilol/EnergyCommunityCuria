@@ -18,15 +18,15 @@ class CostOfEquipment(ParametersFromFile):
     def read(cls, filename):
         return read_csv(filename, header=0, index_col=(0, 1, 2))
 
-    @classmethod
-    def __getitem__(cls, item):
+    def __getitem__(self, item):
         try:
             equipment, cost_type, size = item
         except ValueError:
             equipment, cost_type = item
-            return cls._parameters.loc[cls._parameters.index == (equipment, cost_type, nan), "cost"]
+            return self._parameters.loc[self._parameters.index == (equipment, cost_type, nan), "cost"]
         else:
-            for (_, _, max_size), params in cls._parameters.loc[IndexSlice[equipment, cost_type, :], "cost"].iterrows():
+            for (_, _, max_size), params in self._parameters.loc[
+                IndexSlice[equipment, cost_type, :], "cost"].iterrows():
                 if size <= max_size:
                     return params["cost"].iloc[0]
 
@@ -65,7 +65,7 @@ class Opex(Calculator):
         OmnesDataArray, float | None]:
         """Evaluate OPEX of a REC, given PV sizes and BESS size(s)."""
         # Add cost of PVS
-        opex = sum(CostOfEquipment()["opex_pv"]*pv_size for pv_size in kwargs.get('pv_sizes', []))
+        opex = sum(CostOfEquipment()["opex_pv"] * pv_size for pv_size in kwargs.get('pv_sizes', []))
 
         # Add cost of BESS
         opex += kwargs.get('bess_size') * CostOfEquipment()["bess", "opex"]
