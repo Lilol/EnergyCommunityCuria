@@ -14,8 +14,8 @@ from utility.configuration import config
 class CostOfEquipment(ParametersFromFile):
     _filename = config.get("parametric_evaluation", "cost_configuration_file")
 
-    @staticmethod
-    def read(filename):
+    @classmethod
+    def read(cls, filename):
         return read_csv(filename, header=0, index_col=(0, 1, 2))
 
     @classmethod
@@ -28,7 +28,7 @@ class CostOfEquipment(ParametersFromFile):
         else:
             for (_, _, max_size), params in cls._parameters.loc[IndexSlice[equipment, cost_type, :], "cost"].iterrows():
                 if size <= max_size:
-                    return params["cost"]
+                    return params["cost"].iloc[0]
 
 
 class Capex(Calculator):

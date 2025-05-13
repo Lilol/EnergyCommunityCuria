@@ -62,8 +62,8 @@ class ParametersFromFile(Singleton):
     _filename = None
     _parameters = None
 
-    @staticmethod
-    def read(filename):
+    @classmethod
+    def read(cls, filename):
         return read_csv(filename, index_col=0).to_dict()
 
     def __init__(self):

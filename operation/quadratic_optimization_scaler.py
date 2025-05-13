@@ -129,7 +129,7 @@ class ScaleByQuadraticOptimization(ScaleProfile):
         # p = np.eye(nh)
         nd = np.repeat((number_of_days_in_month / number_of_days_in_month.sum()).values, n_time_steps)
         p = np.diag(nd)
-        q = -reference_profile * nd
+        q = -1 * reference_profile * nd
         # q = -y_ref
         # else:
         #     delta = 1e-1
