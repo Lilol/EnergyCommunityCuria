@@ -64,7 +64,7 @@ class Opex(Calculator):
         OmnesDataArray, float | None]:
         """Evaluate OPEX of a REC, given PV sizes and BESS size(s)."""
         # Add cost of PVS
-        opex = sum(CostOfEquipment()["opex_pv"] * pv_size for pv_size in kwargs.get('pv_sizes', []))
+        opex = sum(CostOfEquipment()["pv", "opex"] * pv_size for pv_size in kwargs.get('pv_sizes', []))
 
         # Add cost of BESS
         opex += kwargs.get('battery_size') * CostOfEquipment()["bess", "opex"]
