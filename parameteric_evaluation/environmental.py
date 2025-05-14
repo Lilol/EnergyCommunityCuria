@@ -17,7 +17,7 @@ class EmissionSavingsRatio(Calculator):
     _key = EnvironmentalMetric.ESR
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         # Evaluate emissions savings ratio
@@ -29,7 +29,7 @@ class TotalEmissions(Calculator):
     _key = EnvironmentalMetric.TOTAL_EMISSIONS
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in REC case"""
@@ -45,7 +45,7 @@ class BaselineEmissions(Calculator):
     _key = EnvironmentalMetric.BASELINE_EMISSIONS
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""

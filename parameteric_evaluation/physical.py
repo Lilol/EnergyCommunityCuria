@@ -15,8 +15,9 @@ class PhysicalParameterCalculator(Calculator):
 
     @classmethod
     @abstractmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         pass
 
 
@@ -24,8 +25,9 @@ class SharedEnergy(PhysicalParameterCalculator):
     _key = PhysicalMetric.SHARED_ENERGY
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         dx = input_da.sel({DataKind.CALCULATED.value: [PhysicalMetric.INJECTED_ENERGY,
                                                        PhysicalMetric.WITHDRAWN_ENERGY]}).min().assign_coords(
             {DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
@@ -37,8 +39,9 @@ class TotalConsumption(PhysicalParameterCalculator):
     _key = PhysicalMetric.TOTAL_CONSUMPTION
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         num_families = kwargs.get('num_families')
         dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(

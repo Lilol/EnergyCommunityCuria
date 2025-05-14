@@ -1,3 +1,4 @@
+import logging
 from os import makedirs
 from os.path import join
 
@@ -11,6 +12,8 @@ from utility import configuration
 from utility.definitions import append_extension
 from utility.enum_definitions import convert_enum_to_value
 
+logger = logging.getLogger(__name__)
+
 
 class Write(IoOperationSeparately):
     _name = "output_writer"
@@ -23,8 +26,9 @@ class Write(IoOperationSeparately):
         self.filename = kwargs.get("filename", name)
         makedirs(self.output_path, exist_ok=True)
 
-    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
-        return super().execute(dataset, *args, **kwargs, separate_to_directories_by=DataKind.MUNICIPALITY.value)
+    def execute(self, dataset: OmnesDataArray | None, separate_to_directories_by=DataKind.MUNICIPALITY.value, *args,
+                **kwargs) -> OmnesDataArray | None:
+        return super().execute(dataset, *args, **kwargs, separate_to_directories_by=separate_to_directories_by)
 
     def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
                       **kwargs) -> OmnesDataArray | None:
@@ -43,12 +47,20 @@ class WriteDataArray(Write):
     _name = "data_array_writer"
 
     def save_data(self, dataset: OmnesDataArray, **kwargs):
-        filename = kwargs.get("filename", self.filename)
-        output_path = join(self.output_path, kwargs.pop("attribute_value", ""))
+        filename = self.get_arg("filename", **kwargs, fallback=self.filename)
+        attribute_value = self.get_arg("attribute_value", **kwargs, fallback="")
+        output_path = join(self.output_path, attribute_value)
         makedirs(output_path, exist_ok=True)
         dataset = dataset.assign_coords(
             {dim: [convert_enum_to_value(coord) for coord in dataset[dim].values] for dim in dataset.dims})
-        dataset.to_netcdf(join(output_path, append_extension(filename, '.nc')))
+        filename = join(output_path, append_extension(filename, '.nc'))
+        try:
+            dataset.to_netcdf(filename)
+        except ValueError:
+            logger.warning(
+                f"Writing file '{filename}' failed due to dataarray containing mixed types, retrying with values converted to string")
+            dataset.astype(str).to_netcdf(filename)
+            logger.info(f"Writing file '{filename}' was written successfully")
 
 
 class Write2DData(Write):
@@ -60,7 +72,7 @@ class Write2DData(Write):
     def write(self, output: DataFrame, **kwargs):
         output_path = join(self.output_path, kwargs.pop("attribute", ""), kwargs.pop("attribute_value", ""))
         makedirs(output_path, exist_ok=True)
-        filename = kwargs.get("filename", self.filename)
+        filename = self.get_arg("filename", **kwargs, fallback=self.filename)
         output = output.map(convert_enum_to_value).rename(columns=convert_enum_to_value, index=convert_enum_to_value)
         output.to_csv(join(output_path, append_extension(filename, '.csv')), **self.csv_properties,
                       index_label=output.index.name, **kwargs)

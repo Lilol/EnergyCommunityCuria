@@ -1,4 +1,5 @@
 from operation import initialize_operation
+
 initialize_operation()
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
@@ -63,7 +64,7 @@ DataProcessingPipeline(f"yearly_load_profiles_families_{n_families}",
 DataProcessingPipeline("pv_plants", workers=(
     ReadPvPlantData(), TransformPvPlantData(), Store("pv_plants"), Write2DData("data_plants"))).execute()
 
-DataProcessingPipeline("pv_production", workers=(ReadProduction(), TransformProduction(), # ExtractTypicalYear(),
+DataProcessingPipeline("pv_production", workers=(ReadProduction(), TransformProduction(),  # ExtractTypicalYear(),
                                                  # Store("pv_profiles"),
                                                  # CreateYearlyProfile(),
                                                  # Write("data_plants_year"),

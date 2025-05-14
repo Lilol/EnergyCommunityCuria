@@ -39,7 +39,7 @@ class Read(IoOperationSeparately):
                       **kwargs) -> OmnesDataArray | None:
         filename = os.path.join(self._path, attribute_value, append_extension(self._filename, self._ext))
         if not exists(filename):
-            logger.warning(f"File {filename} does not exist, skipping.")
+            logger.warning(f"File {filename} does not exist, skipping file reading.")
             return dataset
         data = self.read_data(filename, attribute, attribute_value)
         if self._data is None:

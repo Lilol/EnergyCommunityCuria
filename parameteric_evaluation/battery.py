@@ -15,7 +15,7 @@ class Battery(Calculator):
         self.p_max = np.inf if t_min is None else self._size / t_min
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         return Battery(kwargs.pop('size'), t_min=kwargs.pop('t_min')).manage_bess(input_da)

@@ -21,7 +21,7 @@ class MetricEvaluator:
         ds = DataStore()
         data_plants = ds["data_plants"]
         n_users = len(data_plants.user)
-        pv_sizes = data_plants.sel({DataKind.USER_DATA.value: DataKind.POWER}).values.flatten()
+        pv_sizes = data_plants.sel({DataKind.USER_DATA.value: DataKind.POWER}).astype(float).values.flatten()
         if len(pv_sizes) < len(data_plants):
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 
@@ -32,11 +32,12 @@ class MetricEvaluator:
                   DataKind.MUNICIPALITY.value],
             coords={DataKind.NUMBER_OF_FAMILIES.value: parameters.number_of_families,
                     DataKind.BATTERY_SIZE.value: parameters.bess_sizes, DataKind.METRIC.value: [],
-                    DataKind.MUNICIPALITY.value: energy_year[DataKind.MUNICIPALITY.value]}, )
+                    DataKind.MUNICIPALITY.value: energy_year[DataKind.MUNICIPALITY.value].coords}, )
 
         # Evaluate each scenario
         for i, (n_fam, bess_size) in enumerate(parameters.combinations, 1):
-            logger.info(f"Evaluating scenario no. {i} with number of families: {n_fam} and battery size: {bess_size}")
+            logger.info(
+                f"Evaluating scenario no. {i} with number of families: {n_fam} and battery size: {bess_size} kWh")
             # Calculate withdrawn power
             energy_year, total_consumption = TotalConsumption.calculate(energy_year, num_families=n_fam)
             logger.info(f"Total annual energy consumption: {total_consumption:.0f} kWh")
@@ -46,7 +47,7 @@ class MetricEvaluator:
             Battery(bess_size).manage_bess(energy_year)
 
             for name, evaluator in cls._parametric_evaluator.items():
-                energy_year = evaluator.invoke(results, energy_year, pv_sizes=pv_sizes, bess_size=bess_size,
-                                               n_users=n_users + n_fam)
+                energy_year = evaluator.invoke(results, energy_year, pv_sizes=pv_sizes, battery_size=bess_size,
+                                               number_of_families=n_fam, number_of_users=n_users)
 
         Write().execute(results, name="results")

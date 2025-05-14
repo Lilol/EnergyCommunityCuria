@@ -13,8 +13,9 @@ class LoadMatchingParameterCalculator(Calculator):
 
     @classmethod
     @abstractmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         pass
 
 
@@ -22,8 +23,9 @@ class SelfConsumption(LoadMatchingParameterCalculator):
     _key = LoadMatchingMetric.SELF_CONSUMPTION
         
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         return input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
             {DataKind.CALCULATED.value: PhysicalMetric.INJECTED_ENERGY}).sum()
 
@@ -32,8 +34,9 @@ class SelfSufficiency(LoadMatchingParameterCalculator):
     _key = LoadMatchingMetric.SELF_SUFFICIENCY
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
+                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
         return input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
             {DataKind.CALCULATED.value: PhysicalMetric.WITHDRAWN_ENERGY}).sum()
 

@@ -16,19 +16,18 @@ class CostOfEquipment(ParametersFromFile):
 
     @classmethod
     def read(cls, filename):
-        return read_csv(filename, header=0, index_col=(0, 1, 2))
+        return read_csv(filename, header=0, index_col=(0, 1, 2)).convert_dtypes()
 
     def __getitem__(self, item):
         try:
             equipment, cost_type, size = item
         except ValueError:
-            equipment, cost_type = item
-            return self._parameters.loc[self._parameters.index == (equipment, cost_type, nan), "cost"]
+            return self._parameters.loc[IndexSlice[*item,nan], 'cost']
         else:
-            for (_, _, max_size), params in self._parameters.loc[
-                IndexSlice[equipment, cost_type, :], "cost"].iterrows():
+            for (_, _, max_size), cost in self._parameters.loc[
+                IndexSlice[equipment, cost_type, :], "cost"].items():
                 if size <= max_size:
-                    return params["cost"].iloc[0]
+                    return cost
 
 
 class Capex(Calculator):
@@ -40,7 +39,7 @@ class Capex(Calculator):
         return CostOfEquipment()["pv", "capex", pv_size] * pv_size
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """Evaluate CAPEX of a REC, given PV sizes, BESS size(s) and number of users."""
@@ -49,10 +48,10 @@ class Capex(Calculator):
         capex = sum(cls.capex_of_pv(pv_size) for pv_size in kwargs.get('pv_sizes', []))
 
         # Add cost of BESS
-        capex += kwargs.get('bess_size') * CostOfEquipment()["bess", "capex"]
+        capex += kwargs.get('battery_size') * CostOfEquipment()["bess", "capex"]
 
         # Add cost of users
-        capex += kwargs.get('n_users') * CostOfEquipment()["user", "capex"]
+        capex += kwargs.get('number_of_families') * CostOfEquipment()["user", "capex"]
         return capex
 
 
@@ -60,7 +59,7 @@ class Opex(Calculator):
     _key = EconomicMetric.OPEX
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray, output: OmnesDataArray | None = None, *args,
+    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """Evaluate OPEX of a REC, given PV sizes and BESS size(s)."""
@@ -68,7 +67,7 @@ class Opex(Calculator):
         opex = sum(CostOfEquipment()["opex_pv"] * pv_size for pv_size in kwargs.get('pv_sizes', []))
 
         # Add cost of BESS
-        opex += kwargs.get('bess_size') * CostOfEquipment()["bess", "opex"]
+        opex += kwargs.get('battery_size') * CostOfEquipment()["bess", "opex"]
 
         return opex
 

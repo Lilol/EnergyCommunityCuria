@@ -1,4 +1,5 @@
 from data_storage.dataset import OmnesDataArray
+from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric, \
     EconomicMetric, EnvironmentalMetric
@@ -6,6 +7,8 @@ from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
 
 """Metaclass to initialize _parameter_calculators before registration."""
+
+
 class EvaluatorMeta(type):
     @staticmethod
     def get_eval_metrics(evaluation_type):
@@ -32,10 +35,14 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
         results = kwargs.pop("results", args[0])
         dataset = kwargs.pop('dataset', args[1])
-        bess_size = kwargs.get('bess_size')
-        n_families = kwargs.get('n_users')
-        for parameter, calculator in cls._parameter_calculators.items():
-            results.loc[bess_size, n_families, parameter, :] = calculator.calculate(dataset, dataset)
+        battery_size = kwargs.get('battery_size')
+        number_of_families = kwargs.get('number_of_families')
+        pv_sizes = kwargs.get('pv_sizes')
+        for metric, calculator in cls._parameter_calculators.items():
+            results=results.update(calculator.calculate(battery_size=battery_size, number_of_families=number_of_families,
+                                                pv_sizes=pv_sizes), **{DataKind.BATTERY_SIZE.value: battery_size,
+                                                                     DataKind.NUMBER_OF_FAMILIES.value: number_of_families,
+                                                                     DataKind.METRIC.value: metric})
         return dataset
 
     @classmethod

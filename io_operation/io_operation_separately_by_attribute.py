@@ -10,17 +10,17 @@ class IoOperationSeparately(PipelineStage):
 
     def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
                      **kwargs) -> OmnesDataArray | None:
-        raise NotImplementedError("io_operation() must be implemented in all child classes.")
+        raise NotImplementedError("Function '_io_operation()' must be implemented in all child classes.")
 
     def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
-        attribute = get_value(kwargs.get("separate_to_directories_by"))
-        if "directories" not in kwargs and (dataset is None or attribute not in dataset.dims):
+        attribute = get_value(self.get_arg("separate_to_directories_by", **kwargs))
+        do_not_separate = self.get_arg("do_not_separate", fallback=False, **kwargs)
+        if do_not_separate or "directories" not in kwargs and (dataset is None or attribute not in dataset.dims):
             return self._io_operation(dataset)
 
-        attribute_values = kwargs.get("directories", None)
+        attribute_values = self.get_arg("directories", **kwargs, fallback=None)
         if attribute_values is None:
             attribute_values = dataset[attribute].values
         for attribute_value in attribute_values:
             dataset = self._io_operation(dataset, attribute=attribute, attribute_value=attribute_value)
         return dataset
-
