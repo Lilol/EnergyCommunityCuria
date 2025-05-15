@@ -39,6 +39,8 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
         number_of_families = kwargs.get('number_of_families')
         pv_sizes = kwargs.get('pv_sizes')
         for metric, calculator in cls._parameter_calculators.items():
+            if metric == EconomicMetric.INVALID:
+                continue
             results=results.update(calculator.calculate(battery_size=battery_size, number_of_families=number_of_families,
                                                 pv_sizes=pv_sizes), **{DataKind.BATTERY_SIZE.value: battery_size,
                                                                      DataKind.NUMBER_OF_FAMILIES.value: number_of_families,

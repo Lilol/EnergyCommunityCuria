@@ -1,3 +1,6 @@
+from typing import Iterable
+
+import numpy as np
 from xarray import DataArray
 
 
@@ -17,18 +20,44 @@ class OmnesDataArray(DataArray):
         Returns:
         - Updated OmnesDataArray
         """
+
+        # Normalize coordinates to lists
+        normalized_coords = {
+            dim: self.normalize(coord)
+            for dim, coord in coordinates.items()
+        }
+
         da = self
-        for dim, coord in coordinates.items():
+        # Expand or reindex to include all coords
+        for dim, coords in normalized_coords.items():
             if dim not in da.dims:
-                da = da.expand_dims({dim: [coord]})
-            elif coord not in da.coords[dim].values:
-                new_coords = da.coords[dim].values.tolist() + [coord]
-                da = da.reindex({dim: new_coords}, fill_value=0)
+                da = da.expand_dims({dim: coords})
+            else:
+                current_vals = set(da.coords[dim].values.tolist())
+                new_vals = list(current_vals.union(coords))
+                if len(new_vals) > len(current_vals):
+                    da = da.reindex({dim: new_vals}, fill_value=0)
 
         # Ensure the DataArray is writable
         da = da.copy()
 
         # Assign the new data value
         indexer = {dim: coord for dim, coord in coordinates.items()}
-        da.loc[indexer] = data
+        if isinstance(data, Iterable):
+            da.loc[indexer] = [*data]
+        else:
+            da.loc[indexer] = data
         return da
+
+    @staticmethod
+    def normalize(coord):
+        if isinstance(coord, Iterable):
+            return coord
+        elif isinstance(coord, DataArray):
+            if coord.ndim == 0:
+                return [coord.item()]
+            else:
+                return coord.values
+        else:
+            return [coord]
+

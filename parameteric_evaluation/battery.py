@@ -44,9 +44,9 @@ class Battery(Calculator):
                 charging_power = min(charging_power, self._size - e_stored, self.p_max)
 
             # Update BESS power array and stored energy
-            dataset.loc[
-            [BatteryPowerFlows.POWER_CHARGE, BatteryPowerFlows.STORED_ENERGY, OtherParameters.INJECTED_ENERGY], :,
-            array.time] = charging_power, e_stored + charging_power, array.sel(
-                {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - charging_power
+            dataset = dataset.update((charging_power, e_stored + charging_power, array.sel(
+                {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - charging_power), **{
+                DataKind.CALCULATED.value: [BatteryPowerFlows.POWER_CHARGE, BatteryPowerFlows.STORED_ENERGY,
+                                            OtherParameters.INJECTED_ENERGY], DataKind.TIME.value: array.time})
 
         return dataset
