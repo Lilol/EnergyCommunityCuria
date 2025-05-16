@@ -63,10 +63,10 @@ class ParametersFromFile(Singleton):
 
     @classmethod
     def read(cls, filename):
-        return read_csv(filename, index_col=0).to_dict()
+        return read_csv(filename, index_col=0, header=0).to_dict()
 
     def __init__(self):
         self._parameters = self.read(self._filename)
 
     def __getitem__(self, item):
-        return self._parameters.get(item, None)
+        return self._parameters.get(item, 0)

@@ -50,4 +50,4 @@ class MetricEvaluator:
                 energy_year = evaluator.invoke(results, energy_year, pv_sizes=pv_sizes, battery_size=bess_size,
                                                number_of_families=n_fam, number_of_users=n_users)
 
-        Write().execute(results, name="results")
+        Write().execute(results, filename="results")

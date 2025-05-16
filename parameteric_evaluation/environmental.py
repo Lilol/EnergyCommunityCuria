@@ -1,5 +1,7 @@
 from typing import Iterable
 
+from pandas import read_csv
+
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind, ParametersFromFile
 from parameteric_evaluation.calculator import Calculator
@@ -11,6 +13,11 @@ from utility.configuration import config
 
 class EmissionFactors(ParametersFromFile):
     _filename = config.get("parametric_evaluation", "emission_factors_configuration_file")
+
+    @classmethod
+    def read(cls, filename):
+        values = read_csv(filename, index_col=0, header=0).to_dict()
+        return values[list(values.keys())[0]]
 
 
 class EmissionSavingsRatio(Calculator):
@@ -49,7 +56,7 @@ class BaselineEmissions(Calculator):
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""
-        return input_da.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}) * EmissionFactors()["gird"] * kwargs.get(
+        return input_da.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}) * EmissionFactors()["grid"] * kwargs.get(
             "years")
 
 
