@@ -49,7 +49,7 @@ class BaselineEmissions(Calculator):
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""
-        return input_da.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}) * EmissionFactors()["gird"] * kwargs.get(
+        return input_da.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}) * EmissionFactors()["grid"] * kwargs.get(
             "years")
 
 

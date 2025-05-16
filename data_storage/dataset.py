@@ -51,13 +51,13 @@ class OmnesDataArray(DataArray):
 
     @staticmethod
     def normalize(coord):
-        if isinstance(coord, Iterable):
-            return coord
-        elif isinstance(coord, DataArray):
+        if isinstance(coord, DataArray):
             if coord.ndim == 0:
                 return [coord.item()]
             else:
                 return coord.values
+        elif isinstance(coord, Iterable):
+            return coord
         else:
             return [coord]
 
