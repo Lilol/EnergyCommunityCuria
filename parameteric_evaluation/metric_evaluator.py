@@ -47,7 +47,7 @@ class MetricEvaluator:
             Battery(bess_size).manage_bess(energy_year)
 
             for name, evaluator in cls._parametric_evaluator.items():
-                energy_year = evaluator.invoke(results, energy_year, pv_sizes=pv_sizes, battery_size=bess_size,
+                results = evaluator.invoke(energy_year, results, pv_sizes=pv_sizes, battery_size=bess_size,
                                                number_of_families=n_fam, number_of_users=n_users)
 
         Write().execute(results, filename="results")

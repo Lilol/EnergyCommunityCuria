@@ -40,11 +40,11 @@ class TotalEmissions(Calculator):
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in REC case"""
-        shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
-        return (input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}) - shared) * \
+        shared = input_da.sel({DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY})
+        return (input_da.sel({DataKind.METRIC.value: OtherParameters.WITHDRAWN_ENERGY}) - shared) * \
             EmissionFactors()["grid"] + (
-                    input_da.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - shared) * \
-            EmissionFactors()["inj"] + input_da.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}) * \
+                    input_da.sel({DataKind.METRIC.value: OtherParameters.INJECTED_ENERGY}) - shared) * \
+            EmissionFactors()["inj"] + input_da.sel({DataKind.METRIC.value: DataKind.PRODUCTION}) * \
             EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get("bess_size") * EmissionFactors()["bess"]
 
 

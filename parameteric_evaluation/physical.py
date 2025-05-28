@@ -6,7 +6,7 @@ import xarray as xr
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric
+from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, OtherParameters
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 
@@ -28,11 +28,11 @@ class SharedEnergy(PhysicalParameterCalculator):
     def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
-        dx = input_da.sel({DataKind.CALCULATED.value: [PhysicalMetric.INJECTED_ENERGY,
-                                                       PhysicalMetric.WITHDRAWN_ENERGY]}).min().assign_coords(
-            {DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
-        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
-        return input_da, input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum()
+        dx = input_da.sel({DataKind.METRIC.value: [OtherParameters.INJECTED_ENERGY,
+                                                       OtherParameters.WITHDRAWN_ENERGY]}).min().assign_coords(
+            {DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY})
+        output = xr.concat([output, dx], dim=DataKind.METRIC.value)
+        return output, output.sel({DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY}).sum()
 
 
 class TotalConsumption(PhysicalParameterCalculator):
@@ -45,9 +45,9 @@ class TotalConsumption(PhysicalParameterCalculator):
         num_families = kwargs.get('num_families')
         dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
-            {DataKind.CALCULATED.value: DataKind.CONSUMPTION})
-        output = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
-        return output, output.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION}).sum().item()
+            {DataKind.METRIC.value: DataKind.CONSUMPTION})
+        output = xr.concat([output, dx], dim=DataKind.METRIC.value)
+        return output, output.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}).sum().item()
 
 
 class PhysicalMetricEvaluator(ParametricEvaluator):

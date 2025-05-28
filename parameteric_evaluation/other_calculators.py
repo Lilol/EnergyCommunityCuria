@@ -14,10 +14,10 @@ class Equality(Calculator):
     def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
-        new_coords = input_da.coords[DataKind.CALCULATED.value].data
+        new_coords = input_da.coords[DataKind.METRIC.value].data
         new_coords[new_coords == cls._equate_to] = cls._key
-        input_da = input_da.assign_coords({DataKind.CALCULATED.value: (DataKind.CALCULATED.value, new_coords)})
-        return input_da, input_da.sel({DataKind.CALCULATED.value: cls._key}).sum().item()
+        input_da = input_da.assign_coords({DataKind.METRIC.value: (DataKind.METRIC.value, new_coords)})
+        return input_da, input_da.sel({DataKind.METRIC.value: cls._key}).sum().item()
 
 
 class InjectedEnergy(Equality):
