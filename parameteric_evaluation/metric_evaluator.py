@@ -5,6 +5,7 @@ from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from io_operation.output.write import Write
 from parameteric_evaluation.battery import Battery
+from parameteric_evaluation.definitions import PhysicalMetric
 from parameteric_evaluation.other_calculators import WithdrawnEnergy, InjectedEnergy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import TotalConsumption
@@ -39,15 +40,16 @@ class MetricEvaluator:
             logger.info(
                 f"Evaluating scenario no. {i} with number of families: {n_fam} and battery size: {bess_size} kWh")
             # Calculate withdrawn power
-            energy_year, total_consumption = TotalConsumption.calculate(energy_year, num_families=n_fam)
-            logger.info(f"Total annual energy consumption: {total_consumption:.0f} kWh")
+            energy_year, results = TotalConsumption.calculate(energy_year, num_families=n_fam)
+            logger.info(
+                f"Total annual energy consumption: {energy_year.sel({DataKind.CALCULATED.value: PhysicalMetric.TOTAL_CONSUMPTION}).sum():.0f} kWh")
             energy_year, _ = WithdrawnEnergy.calculate(energy_year)
             energy_year, _ = InjectedEnergy.calculate(energy_year)
             # Manage BESS, if present
             Battery(bess_size).manage_bess(energy_year)
 
             for name, evaluator in cls._parametric_evaluator.items():
-                results = evaluator.invoke(energy_year, results, pv_sizes=pv_sizes, battery_size=bess_size,
-                                               number_of_families=n_fam, number_of_users=n_users)
+                energy_year, results = evaluator.invoke(energy_year, results, pv_sizes=pv_sizes, battery_size=bess_size,
+                                           number_of_families=n_fam, number_of_users=n_users)
 
         Write().execute(results, filename="results")

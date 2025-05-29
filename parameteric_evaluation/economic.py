@@ -4,7 +4,7 @@ from numpy import nan
 from pandas import read_csv, IndexSlice
 
 from data_storage.dataset import OmnesDataArray
-from io_operation.input.definitions import ParametersFromFile
+from io_operation.input.definitions import ParametersFromFile, DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, EconomicMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
@@ -52,7 +52,8 @@ class Capex(Calculator):
 
         # Add cost of users
         capex += kwargs.get('number_of_families') * CostOfEquipment()["user", "capex"]
-        return capex
+        output = output.update(capex, {DataKind.METRIC.value: cls._key})
+        return input_da, output
 
 
 class Opex(Calculator):
@@ -69,7 +70,9 @@ class Opex(Calculator):
         # Add cost of BESS
         opex += kwargs.get('battery_size') * CostOfEquipment()["bess", "opex"]
 
-        return opex
+        output = output.update(opex, {DataKind.METRIC.value: cls._key})
+
+        return input_da, output
 
 
 class EconomicEvaluator(ParametricEvaluator):

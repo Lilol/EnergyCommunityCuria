@@ -2,6 +2,7 @@ from typing import Iterable
 
 import numpy as np
 import xarray as xr
+from openpyxl.styles.builtins import output
 
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
@@ -29,7 +30,7 @@ class Battery(Calculator):
         dataset = xr.concat([dataset, bess_power], dim=DataKind.CALCULATED.value)
 
         if self._size == 0:
-            return dataset
+            return dataset, output
 
         # Manage flows in all time steps
         for array in dataset.transpose(DataKind.TIME.value, ...):
@@ -49,4 +50,4 @@ class Battery(Calculator):
                 DataKind.CALCULATED.value: [BatteryPowerFlows.POWER_CHARGE, BatteryPowerFlows.STORED_ENERGY,
                                             OtherParameters.INJECTED_ENERGY], DataKind.TIME.value: array.time})
 
-        return dataset
+        return dataset, output

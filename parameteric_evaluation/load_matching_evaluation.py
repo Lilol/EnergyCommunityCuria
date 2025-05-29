@@ -11,38 +11,28 @@ from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 
 class LoadMatchingParameterCalculator(Calculator):
     _key = LoadMatchingMetric.INVALID
+    _relative_to = OtherParameters.INVALID
 
     @classmethod
-    @abstractmethod
     def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
-        pass
+        value = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
+            {DataKind.CALCULATED.value: cls._relative_to}).sum()
+        output = output.update(value, {DataKind.METRIC.value: cls._key})
+        return input_da, output
 
 
 class SelfConsumption(LoadMatchingParameterCalculator):
     _key = LoadMatchingMetric.SELF_CONSUMPTION
-        
-    @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
-        return input_da.sel({DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
-            {DataKind.METRIC.value: OtherParameters.INJECTED_ENERGY}).sum()
+    _relative_to = OtherParameters.INJECTED_ENERGY
 
 
 class SelfSufficiency(LoadMatchingParameterCalculator):
     _key = LoadMatchingMetric.SELF_SUFFICIENCY
-
-    @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
-        return input_da.sel({DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
-            {DataKind.METRIC.value: OtherParameters.WITHDRAWN_ENERGY}).sum()
+    _relative_to = OtherParameters.WITHDRAWN_ENERGY
 
 
 class LoadMatchingMetricEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.LOAD_MATCHING_METRICS
     _name = "load_matching_metric_evaluation"
-

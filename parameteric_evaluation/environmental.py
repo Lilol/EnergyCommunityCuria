@@ -28,8 +28,14 @@ class EmissionSavingsRatio(Calculator):
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         # Evaluate emissions savings ratio
-        em_base = kwargs.pop("em_base")
-        return (em_base - kwargs.pop("em_tot")) / em_base
+        em_base = output.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS})
+        if em_base == 0:
+            val = 0
+        else:
+            em_tot = output.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS})
+            val = (em_base - em_tot) / em_base
+        output = output.update(val, {DataKind.METRIC.value: cls._key})
+        return input_da, output
 
 
 class TotalEmissions(Calculator):
@@ -40,12 +46,15 @@ class TotalEmissions(Calculator):
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in REC case"""
-        shared = input_da.sel({DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY})
-        return (input_da.sel({DataKind.METRIC.value: OtherParameters.WITHDRAWN_ENERGY}) - shared) * \
-            EmissionFactors()["grid"] + (
-                    input_da.sel({DataKind.METRIC.value: OtherParameters.INJECTED_ENERGY}) - shared) * \
-            EmissionFactors()["inj"] + input_da.sel({DataKind.METRIC.value: DataKind.PRODUCTION}) * \
-            EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get("bess_size") * EmissionFactors()["bess"]
+        shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum()
+        total_emissions = (input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}).sum() - shared) * \
+                          EmissionFactors()["grid"] + (input_da.sel(
+            {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}).sum() - shared) * EmissionFactors()[
+                              "inj"] + input_da.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum() * \
+                          EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get("bess_size") * EmissionFactors()[
+                              "bess"]
+        output = output.update(total_emissions, {DataKind.METRIC.value: cls._key})
+        return input_da, output
 
 
 class BaselineEmissions(Calculator):
@@ -56,8 +65,10 @@ class BaselineEmissions(Calculator):
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""
-        return input_da.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}) * EmissionFactors()["grid"] * kwargs.get(
-            "years")
+        baseline_emissions = input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION}).sum() * EmissionFactors()[
+            "grid"] * kwargs.get("years")
+        output = output.update(baseline_emissions, {DataKind.METRIC.value: cls._key})
+        return input_da, output
 
 
 class EnvironmentalEvaluator(ParametricEvaluator):
@@ -71,11 +82,4 @@ class EnvironmentalEvaluator(ParametricEvaluator):
         Calculates the CO2 emissions based on the shared energy, consumed energy,
         produced energy, and emission factors.
         """
-        results = kwargs.pop("results", args[0])
-        baseline_emissions = BaselineEmissions.calculate(*args, **kwargs, years=cls._years)
-        total_emissions = TotalEmissions.calculate(*args, **kwargs, years=cls._years)
-
-        results.loc[results.index[-1], [m.to_abbrev_str() for m in cls._parameter_calculators]] = (
-            baseline_emissions, total_emissions,
-            EmissionSavingsRatio.calculate(*args, **kwargs, em_tot=total_emissions, em_base=baseline_emissions,
-                                           years=cls._years))
+        ParametricEvaluator.invoke(*args, **kwargs, years=cls._years)

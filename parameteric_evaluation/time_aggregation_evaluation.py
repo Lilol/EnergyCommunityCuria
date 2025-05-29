@@ -1,6 +1,7 @@
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
+from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from io_operation.output.write import Write, Write2DData
 
@@ -26,7 +27,7 @@ class TimeAggregationEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.TIME_AGGREGATION
 
     @classmethod
-    def invoke(cls, *args, **kwargs):
+    def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
         evaluation_parameters = args[0]
         time_resolution = dict(sc_year=DataKind.YEAR, sc_season=DataKind.SEASON, sc_month=DataKind.MONTH,
                                sc_week=DataKind.WEEK, sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH],

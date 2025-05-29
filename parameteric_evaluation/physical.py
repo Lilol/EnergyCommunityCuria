@@ -28,11 +28,11 @@ class SharedEnergy(PhysicalParameterCalculator):
     def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
-        dx = input_da.sel({DataKind.METRIC.value: [OtherParameters.INJECTED_ENERGY,
+        dx = input_da.sel({DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY,
                                                        OtherParameters.WITHDRAWN_ENERGY]}).min().assign_coords(
-            {DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY})
-        output = xr.concat([output, dx], dim=DataKind.METRIC.value)
-        return output, output.sel({DataKind.METRIC.value: PhysicalMetric.SHARED_ENERGY}).sum()
+            {DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
+        input_da = xr.concat([input_da, dx], dim=DataKind.METRIC.value)
+        return input_da, output
 
 
 class TotalConsumption(PhysicalParameterCalculator):
@@ -45,19 +45,11 @@ class TotalConsumption(PhysicalParameterCalculator):
         num_families = kwargs.get('num_families')
         dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
-            {DataKind.METRIC.value: DataKind.CONSUMPTION})
-        output = xr.concat([output, dx], dim=DataKind.METRIC.value)
-        return output, output.sel({DataKind.METRIC.value: DataKind.CONSUMPTION}).sum().item()
+            {DataKind.CALCULATED.value: cls._key})
+        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        return input_da, output
 
 
 class PhysicalMetricEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.PHYSICAL_METRICS
     _name = "physical_metric_evaluation"
-
-    @classmethod
-    def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
-        results = kwargs.get("results", args[0])
-        dataset = kwargs.get('dataset', args[1])
-        for parameter, calculator in cls._parameter_calculators.items():
-            dataset, results.loc[results.index[-1], parameter.to_abbrev_str()] = calculator.calculate(dataset, dataset)
-        return dataset
