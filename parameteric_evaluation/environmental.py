@@ -82,4 +82,4 @@ class EnvironmentalEvaluator(ParametricEvaluator):
         Calculates the CO2 emissions based on the shared energy, consumed energy,
         produced energy, and emission factors.
         """
-        ParametricEvaluator.invoke(*args, **kwargs, years=cls._years)
+        return ParametricEvaluator.invoke(*args, **kwargs, years=cls._years)
