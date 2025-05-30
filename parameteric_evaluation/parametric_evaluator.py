@@ -1,3 +1,5 @@
+from logging import getLogger
+
 from data_storage.dataset import OmnesDataArray
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric, \
@@ -5,6 +7,7 @@ from parameteric_evaluation.definitions import ParametricEvaluationType, Physica
 from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
 
+logger = getLogger(__name__)
 
 class EvaluatorMeta(type):
     """Metaclass to initialize _parameter_calculators before registration."""
@@ -27,18 +30,21 @@ class EvaluatorMeta(type):
 
 class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
     _key = ParametricEvaluationType.INVALID
-    _name = "parametric_evaluator"
+    _name = "Parametric evaluator base"
     _parameter_calculators = {}
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
+        logger.info(f"Invoking parametric evaluator {cls._name}...")
         dataset = kwargs.pop('dataset', args[0])
         results = kwargs.pop("results", args[1])
+        parameters = kwargs.pop("parameters", args[2])
         for metric, calculator in cls._parameter_calculators.items():
             if metric.value == "invalid":
                 continue
-            dataset, results = calculator.calculate(dataset, results, **kwargs)
-        return dataset
+            dataset, results = calculator.call(dataset, results, parameters, **kwargs)
+        logger.info(f"Parametric evaluation finished.")
+        return dataset, results
 
     @classmethod
     def create(cls, *args, **kwargs):

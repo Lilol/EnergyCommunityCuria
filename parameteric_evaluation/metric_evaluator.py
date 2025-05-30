@@ -36,7 +36,9 @@ class MetricEvaluator:
                     DataKind.MUNICIPALITY.value: energy_year[DataKind.MUNICIPALITY.value].coords}, )
 
         # Evaluate each scenario
-        for i, (n_fam, bess_size) in enumerate(parameters.combinations, 1):
+        for i, parameters in enumerate(parameters, 1):
+            n_fam = parameters[DataKind.NUMBER_OF_FAMILIES.value]
+            bess_size = parameters[DataKind.BATTERY_SIZE.value]
             logger.info(
                 f"Evaluating scenario no. {i} with number of families: {n_fam} and battery size: {bess_size} kWh")
             # Calculate withdrawn power
@@ -46,10 +48,13 @@ class MetricEvaluator:
             energy_year, _ = WithdrawnEnergy.calculate(energy_year)
             energy_year, _ = InjectedEnergy.calculate(energy_year)
             # Manage BESS, if present
-            energy_year, _ = Battery(bess_size).manage_bess(energy_year)
+            energy_year = Battery(bess_size).manage_bess(energy_year)
 
             for name, evaluator in cls._parametric_evaluator.items():
-                energy_year, results = evaluator.invoke(energy_year, results, pv_sizes=pv_sizes, battery_size=bess_size,
-                                           number_of_families=n_fam, number_of_users=n_users)
+                if name.value == "invalid":
+                    continue
+                energy_year, results = evaluator.invoke(energy_year, results, parameters, pv_sizes=pv_sizes,
+                                                        battery_size=bess_size,
+                                                        number_of_families=n_fam, number_of_users=n_users)
 
         Write().execute(results, filename="results")

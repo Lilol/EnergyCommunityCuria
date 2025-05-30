@@ -2,6 +2,7 @@ import itertools
 import logging
 from collections import defaultdict
 
+from io_operation.input.definitions import DataKind
 from utility import configuration
 
 logger = logging.getLogger(__name__)
@@ -22,15 +23,16 @@ class EvaluationParameterPack:
         def return_value_set(container):
             return set(**container.values()) if isinstance(container, dict) else set(container)
 
-        data = {"number_of_families": set(), "bess_sizes": set()}
+        data = {DataKind.NUMBER_OF_FAMILIES.value: set(), DataKind.BATTERY_SIZE.value: set()}
         combinations = []
-        if "number_of_families" in parameters and "bess_sizes" in parameters:
+        if DataKind.NUMBER_OF_FAMILIES.value in parameters and DataKind.BATTERY_SIZE.value in parameters:
             data = parameters
-            combinations = list(itertools.product(data["number_of_families"], data["bess_sizes"]))
+            combinations = list(
+                itertools.product(data[DataKind.NUMBER_OF_FAMILIES.value], data[DataKind.BATTERY_SIZE.value]))
         else:
             assert len(parameters) == 1
             key0 = next(iter(parameters))
-            key1 = "number_of_families" if key0 == "bess_sizes" else "bess_sizes"
+            key1 = DataKind.NUMBER_OF_FAMILIES.value if key0 == DataKind.BATTERY_SIZE.value else DataKind.BATTERY_SIZE.value
             for key, items in parameters[key0].items():
                 d = defaultdict(set)
                 values = return_value_set(items)
@@ -38,8 +40,9 @@ class EvaluationParameterPack:
                 d[key1] = values
                 data[key0].add(key)
                 data[key1] = data[key1].union(values)
-                combinations.append(list(itertools.product(d["number_of_families"], d["bess_sizes"])))
-        return data["bess_sizes"], data["number_of_families"], combinations
+                combinations.append(
+                    list(itertools.product(d[DataKind.NUMBER_OF_FAMILIES.value], d[DataKind.BATTERY_SIZE.value])))
+        return data[DataKind.BATTERY_SIZE.value], data[DataKind.NUMBER_OF_FAMILIES.value], combinations
 
     def __init__(self, parameters: str = None):
         if parameters is None:
@@ -49,4 +52,8 @@ class EvaluationParameterPack:
             self.parameters)
 
     def __iter__(self):
-        return iter(self.combinations)
+        for n_fam, bess_size in self.combinations:
+            yield {
+                "number_of_families": n_fam,
+                "battery_size": bess_size
+            }

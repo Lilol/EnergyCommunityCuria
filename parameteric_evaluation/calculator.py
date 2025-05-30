@@ -9,19 +9,39 @@ from utility.subclass_registration_base import SubclassRegistrationBase
 
 
 class Calculator(SubclassRegistrationBase):
-    _name = "calculator"
     _key = Parameter
+    _name = "calculator"
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
         raise NotImplementedError("'calculate' method must be implemented individually in each Calculator class")
 
-    def __call__(self, *args, **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray]:
-        input_da = kwargs.pop("input_da", args[0])
-        output = kwargs.pop("output", args[1])
-        return self.calculate(input_da, output, **kwargs)
+    @classmethod
+    def postprocess(cls, result, results_of_previous_calculations: OmnesDataArray | None, parameters: dict):
+        """
+        Unified output updater called after every calculation.
+        Subclasses don't need to override this unless necessary.
+        """
+        if results_of_previous_calculations is None or result is None:
+            return result
+
+        if isinstance(result, tuple):
+            _, data = result
+        else:
+            data = result
+        results_of_previous_calculations.update(data, {DataKind.METRIC.value: cls._key, **parameters})
+        return results_of_previous_calculations
+
+    @classmethod
+    def call(cls, input_da: OmnesDataArray | None = None,
+             results_of_previous_calculations: OmnesDataArray | None = None,
+             parameters: dict | None = None,
+             **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
+        OmnesDataArray, float | None]:
+        input_da, result = cls.calculate(input_da, results_of_previous_calculations, **kwargs)
+        return input_da, cls.postprocess(result, results_of_previous_calculations, parameters)
 
 
 class MultiStepCalculation(PipelineStage):

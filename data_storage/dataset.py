@@ -7,7 +7,7 @@ from xarray import DataArray
 class OmnesDataArray(DataArray):
     __slots__ = []
 
-    def update(self, data, **coordinates):
+    def update(self, data, coordinates):
         """
         Does not change the DataArray, please call dataarray = dataarray.update(), if you want to modify it.
         Update a cell in the OmnesDataArray using coordinate values.

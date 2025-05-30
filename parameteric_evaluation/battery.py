@@ -1,8 +1,5 @@
-from typing import Iterable
-
 import numpy as np
 import xarray as xr
-from openpyxl.styles.builtins import output
 
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
@@ -16,10 +13,10 @@ class Battery(Calculator):
         self.p_max = np.inf if t_min is None else self._size / t_min
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
-        return Battery(kwargs.pop('size'), t_min=kwargs.pop('t_min')).manage_bess(input_da)
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+        return Battery(kwargs.pop('size'), t_min=kwargs.pop('t_min')).manage_bess(input_da), results_of_previous_calculations
 
     def manage_bess(self, dataset):
         """Manage BESS power flows to increase shared energy."""
@@ -30,7 +27,7 @@ class Battery(Calculator):
         dataset = xr.concat([dataset, bess_power], dim=DataKind.CALCULATED.value)
 
         if self._size == 0:
-            return dataset, output
+            return dataset
 
         # Manage flows in all time steps
         for array in dataset.transpose(DataKind.TIME.value, ...):
@@ -50,4 +47,4 @@ class Battery(Calculator):
                 DataKind.CALCULATED.value: [BatteryPowerFlows.POWER_CHARGE, BatteryPowerFlows.STORED_ENERGY,
                                             OtherParameters.INJECTED_ENERGY], DataKind.TIME.value: array.time})
 
-        return dataset, output
+        return dataset

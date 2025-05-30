@@ -1,50 +1,59 @@
+import logging
+
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
-from io_operation.output.write import Write, Write2DData
-
-from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric
+from io_operation.output.write import Write2DData
+from parameteric_evaluation.calculator import Calculator
+from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, TimeAggregation
 from parameteric_evaluation.load_matching_evaluation import SelfConsumption
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import SharedEnergy
 from visualization.processing_visualization import plot_shared_energy, plot_sci
 
-
-def calculate_theoretical_limit_of_self_consumption(dataset):
-    SharedEnergy.calculate(dataset)
-    return SelfConsumption.calculate(dataset)
+logger = logging.getLogger(__name__)
 
 
-def calculate_sc_for_time_aggregation(dataset, time_resolution):
-    """Evaluate self consumption with given temporal aggregation and number of families."""
-    SharedEnergy.calculate(dataset.groupby(time_resolution).sum())
-    return SelfConsumption.calculate(dataset)
+class TimeAggregationParameterCalculator(Calculator):
+    _key = TimeAggregation.ARBITRARY
+
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+        """Evaluate self consumption with given temporal aggregation and number of families."""
+        SharedEnergy.calculate(input_da.groupby(cls._key).sum())
+        return input_da, SelfConsumption.calculate(input_da)[1]
+
+
+class TheoreticalLimit(TimeAggregationParameterCalculator):
+    _key = TimeAggregation.THEORETICAL_LIMIT
+
+    @classmethod
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+        tou_months = DataStore()["tou_months"]
+        SharedEnergy.calculate(tou_months)
+        return input_da, SelfConsumption.calculate(tou_months)[1]
 
 
 class TimeAggregationEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.TIME_AGGREGATION
+    _name = "Time aggregation evaluator"
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
-        evaluation_parameters = args[0]
+        logger.info(f"Invoking parametric evaluator {cls._name}...")
         time_resolution = dict(sc_year=DataKind.YEAR, sc_season=DataKind.SEASON, sc_month=DataKind.MONTH,
                                sc_week=DataKind.WEEK, sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH],
                                sc_hour=[DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.HOUR])
-        results = DataFrame(index=evaluation_parameters.number_of_families,
-                            columns=list(time_resolution.keys()) + ["sc_tou"])
-        results.index.name = "number_of_families"
-        ds = DataStore()
-        tou_months = ds["tou_months"]
-        energy_year = ds["energy_year"]
-        for n_fam in evaluation_parameters.number_of_families:
-            results.loc[n_fam, 'sc_tou'] = calculate_theoretical_limit_of_self_consumption(tou_months)
-            for label, tr in time_resolution.items():
-                results.loc[n_fam, label] = calculate_sc_for_time_aggregation(energy_year, tr)
-            SharedEnergy.calculate(energy_year)
-            energy_by_day = energy_year.groupby(time_resolution["sc_day"])
-            plot_shared_energy(energy_by_day.sum()[PhysicalMetric.SHARED_ENERGY],
-                               energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"), n_fam)
+        input_da, results = ParametricEvaluator.invoke(*args, **kwargs)
+        plot_shared_energy(energy_by_day.sum()[PhysicalMetric.SHARED_ENERGY],
+                           energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"),
+                           args[2].number_of_families)
         Write2DData().write(results, attribute="time_aggregation")
-        plot_sci(time_resolution, evaluation_parameters.number_of_families, results)
+        plot_sci(time_resolution, args[2].number_of_families, results)
+        return input_da, results

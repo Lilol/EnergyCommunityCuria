@@ -1,5 +1,3 @@
-from typing import Iterable
-
 from pandas import read_csv
 
 from data_storage.dataset import OmnesDataArray
@@ -24,27 +22,26 @@ class EmissionSavingsRatio(Calculator):
     _key = EnvironmentalMetric.ESR
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
         # Evaluate emissions savings ratio
-        em_base = output.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS})
+        em_base = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS})
         if em_base == 0:
             val = 0
         else:
-            em_tot = output.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS})
+            em_tot = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS})
             val = (em_base - em_tot) / em_base
-        output = output.update(val, {DataKind.METRIC.value: cls._key})
-        return input_da, output
+        return input_da, val
 
 
 class TotalEmissions(Calculator):
     _key = EnvironmentalMetric.TOTAL_EMISSIONS
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
         """ Evaluate total emissions in REC case"""
         shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum()
         total_emissions = (input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}).sum() - shared) * \
@@ -53,27 +50,25 @@ class TotalEmissions(Calculator):
                               "inj"] + input_da.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum() * \
                           EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get("bess_size") * EmissionFactors()[
                               "bess"]
-        output = output.update(total_emissions, {DataKind.METRIC.value: cls._key})
-        return input_da, output
+        return input_da, total_emissions
 
 
 class BaselineEmissions(Calculator):
     _key = EnvironmentalMetric.BASELINE_EMISSIONS
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
-                  **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
+                  **kwargs) -> tuple[OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""
         baseline_emissions = input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION}).sum() * EmissionFactors()[
             "grid"] * kwargs.get("years")
-        output = output.update(baseline_emissions, {DataKind.METRIC.value: cls._key})
-        return input_da, output
+        return input_da, baseline_emissions
 
 
 class EnvironmentalEvaluator(ParametricEvaluator):
     _key = ParametricEvaluationType.ENVIRONMENTAL_METRICS
-    _name = "environmental_evaluator"
+    _name = "Environmental evaluator"
     _years = config.getint("parametric_evaluation", "economic_evaluation_number_of_years")
 
     @classmethod
