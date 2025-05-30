@@ -40,13 +40,13 @@ class MetricEvaluator:
             logger.info(
                 f"Evaluating scenario no. {i} with number of families: {n_fam} and battery size: {bess_size} kWh")
             # Calculate withdrawn power
-            energy_year, results = TotalConsumption.calculate(energy_year, num_families=n_fam)
+            energy_year, _ = TotalConsumption.calculate(energy_year, number_of_families=n_fam)
             logger.info(
                 f"Total annual energy consumption: {energy_year.sel({DataKind.CALCULATED.value: PhysicalMetric.TOTAL_CONSUMPTION}).sum():.0f} kWh")
             energy_year, _ = WithdrawnEnergy.calculate(energy_year)
             energy_year, _ = InjectedEnergy.calculate(energy_year)
             # Manage BESS, if present
-            Battery(bess_size).manage_bess(energy_year)
+            energy_year, _ = Battery(bess_size).manage_bess(energy_year)
 
             for name, evaluator in cls._parametric_evaluator.items():
                 energy_year, results = evaluator.invoke(energy_year, results, pv_sizes=pv_sizes, battery_size=bess_size,

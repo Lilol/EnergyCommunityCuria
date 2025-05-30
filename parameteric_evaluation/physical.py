@@ -42,8 +42,8 @@ class TotalConsumption(PhysicalParameterCalculator):
     def calculate(cls, input_da: OmnesDataArray | None = None, output: OmnesDataArray | None = None, *args,
                   **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
-        num_families = kwargs.get('num_families')
-        dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * num_families + input_da.sel(
+        number_of_families = kwargs.get('number_of_families')
+        dx = (input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * number_of_families + input_da.sel(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
             {DataKind.CALCULATED.value: cls._key})
         input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)

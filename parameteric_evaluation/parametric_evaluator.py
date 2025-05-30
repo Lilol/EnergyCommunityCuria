@@ -32,8 +32,8 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
-        results = kwargs.pop("results", args[0])
-        dataset = kwargs.pop('dataset', args[1])
+        dataset = kwargs.pop('dataset', args[0])
+        results = kwargs.pop("results", args[1])
         for metric, calculator in cls._parameter_calculators.items():
             if metric.value == "invalid":
                 continue
