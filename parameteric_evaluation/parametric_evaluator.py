@@ -35,7 +35,7 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
-        logger.info(f"Invoking parametric evaluator {cls._name}...")
+        logger.info(f"Invoking parametric evaluator '{cls._name}'...")
         dataset = kwargs.pop('dataset', args[0])
         results = kwargs.pop("results", args[1])
         parameters = kwargs.pop("parameters", args[2])

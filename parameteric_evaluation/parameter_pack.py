@@ -9,7 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class EvaluationParameterPack:
-    pattern = r'(\w+):?\s*(\[[^\]]*\])?(,\s*|\s*$)'
+    __pattern = r'(\w+):?\s*(\[[^\]]*\])?(,\s*|\s*$)'
+    __error_string = ("{'battery_size': [1,2], 'number_of_families': [20,50,70]}"
+                      "\nevaluation_parameters = {'battery_size': {0: [2,3,4], 1: [20,24]}}"
+                      "\nevaluation_parameters = {'number_of_families': {20: [10,20,40], 50: [60,9]}}")
 
     @staticmethod
     def convert_to_int_vector(values):
@@ -30,7 +33,10 @@ class EvaluationParameterPack:
             combinations = list(
                 itertools.product(data[DataKind.NUMBER_OF_FAMILIES.value], data[DataKind.BATTERY_SIZE.value]))
         else:
-            assert len(parameters) == 1
+            if len(parameters) == 1:
+                raise RuntimeError(
+                    f"Parameter set is formulated incorrectly, please use one of the following notations: "
+                    f"{EvaluationParameterPack.__error_string}")
             key0 = next(iter(parameters))
             key1 = DataKind.NUMBER_OF_FAMILIES.value if key0 == DataKind.BATTERY_SIZE.value else DataKind.BATTERY_SIZE.value
             for key, items in parameters[key0].items():
@@ -53,7 +59,4 @@ class EvaluationParameterPack:
 
     def __iter__(self):
         for n_fam, bess_size in self.combinations:
-            yield {
-                "number_of_families": n_fam,
-                "battery_size": bess_size
-            }
+            yield {"number_of_families": n_fam, "battery_size": bess_size}

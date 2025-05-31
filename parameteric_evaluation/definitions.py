@@ -46,9 +46,9 @@ class BatteryPowerFlows(Parameter):
 
 
 class EnvironmentalMetric(Parameter):
-    ESR = "Emissions savings ratio"
-    TOTAL_EMISSIONS = "Total emissions"
     BASELINE_EMISSIONS = "Baseline emissions"
+    TOTAL_EMISSIONS = "Total emissions"
+    ESR = "Emissions savings ratio"
     INVALID = "invalid"
 
     @classmethod

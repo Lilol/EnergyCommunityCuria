@@ -1,6 +1,3 @@
-from abc import abstractmethod
-from typing import Iterable
-
 from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
@@ -14,8 +11,9 @@ class LoadMatchingParameterCalculator(Calculator):
     _relative_to = OtherParameters.INVALID
 
     @classmethod
-    def calculate(cls, input_da: OmnesDataArray | None = None, results_of_previous_calculations: OmnesDataArray | None = None, *args,
-                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+    def calculate(cls, input_da: OmnesDataArray | None = None,
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
+        OmnesDataArray, float | None]:
         value = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum() / input_da.sel(
             {DataKind.CALCULATED.value: cls._relative_to}).sum()
         return input_da, value

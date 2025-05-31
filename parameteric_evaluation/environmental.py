@@ -61,7 +61,7 @@ class BaselineEmissions(Calculator):
                   results_of_previous_calculations: OmnesDataArray | None = None, *args,
                   **kwargs) -> tuple[OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""
-        baseline_emissions = input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION}).sum() * EmissionFactors()[
+        baseline_emissions = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.TOTAL_CONSUMPTION}).sum() * EmissionFactors()[
             "grid"] * kwargs.get("years")
         return input_da, baseline_emissions
 
@@ -77,4 +77,4 @@ class EnvironmentalEvaluator(ParametricEvaluator):
         Calculates the CO2 emissions based on the shared energy, consumed energy,
         produced energy, and emission factors.
         """
-        return ParametricEvaluator.invoke(*args, **kwargs, years=cls._years)
+        return super().invoke(*args, **kwargs, years=cls._years)

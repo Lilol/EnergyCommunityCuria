@@ -46,11 +46,10 @@ class TimeAggregationEvaluator(ParametricEvaluator):
 
     @classmethod
     def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
-        logger.info(f"Invoking parametric evaluator {cls._name}...")
         time_resolution = dict(sc_year=DataKind.YEAR, sc_season=DataKind.SEASON, sc_month=DataKind.MONTH,
                                sc_week=DataKind.WEEK, sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH],
                                sc_hour=[DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.HOUR])
-        input_da, results = ParametricEvaluator.invoke(*args, **kwargs)
+        input_da, results = super().invoke(*args, **kwargs)
         plot_shared_energy(energy_by_day.sum()[PhysicalMetric.SHARED_ENERGY],
                            energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"),
                            args[2].number_of_families)

@@ -1,6 +1,4 @@
 from typing import Iterable
-
-import numpy as np
 from xarray import DataArray
 
 
@@ -41,12 +39,9 @@ class OmnesDataArray(DataArray):
         # Ensure the DataArray is writable
         da = da.copy()
 
-        # Assign the new data value
+        # Assign the new data value, normalize the data to a list
         indexer = {dim: coord for dim, coord in coordinates.items()}
-        if isinstance(data, Iterable):
-            da.loc[indexer] = [*data]
-        else:
-            da.loc[indexer] = data
+        da.loc[indexer] = OmnesDataArray.normalize_data(data)
         return da
 
     @staticmethod
@@ -61,3 +56,13 @@ class OmnesDataArray(DataArray):
         else:
             return [coord]
 
+    @staticmethod
+    def normalize_data(data):
+        if isinstance(data, DataArray):
+            if data.ndim == 0:
+                return data.item()
+            else:
+                return data.values
+        elif isinstance(data, Iterable):
+            return [*data]
+        return data
