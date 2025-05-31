@@ -35,7 +35,7 @@ class SharedEnergy(PhysicalParameterCalculator):
         dx = input_da.sel(
             {DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}).min(
             dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
-        input_da = xr.concat([input_da, dx], dim=DataKind.METRIC.value)
+        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
         return input_da, results_of_previous_calculations
 
 
