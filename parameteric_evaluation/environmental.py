@@ -45,7 +45,7 @@ class TotalEmissions(Calculator):
         """ Evaluate total emissions in REC case"""
         shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum()
         total_emissions = ((input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}).sum() - shared) * EmissionFactors()["grid"]
-                           + (input_da.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum() - shared) * EmissionFactors()["inj"]
+                           + (input_da.omnes.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum() - shared) * EmissionFactors()["inj"]
                            + input_da.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}).sum() * EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get(DataKind.BATTERY_SIZE.value) * EmissionFactors()["bess"])
         return input_da, total_emissions
 
