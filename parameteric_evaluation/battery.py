@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import xarray as xr
 
@@ -5,6 +7,8 @@ from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import BatteryPowerFlows, OtherParameters
+
+logger = logging.getLogger(__name__)
 
 
 class Battery(Calculator):
@@ -32,6 +36,7 @@ class Battery(Calculator):
             return dataset
 
         # Manage flows in all time steps
+        logger.info("Battery management starting...")
         for array in dataset.transpose(DataKind.TIME.value, ...):
             # Power to charge the BESS (discharge if negative)
             charging_power = array.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - array.sel(
@@ -46,7 +51,9 @@ class Battery(Calculator):
             # Update BESS power array and stored energy
             dataset = dataset.update((charging_power, e_stored + charging_power, array.sel(
                 {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - charging_power), {
-                DataKind.CALCULATED.value: [BatteryPowerFlows.POWER_CHARGE, BatteryPowerFlows.STORED_ENERGY,
-                                            OtherParameters.INJECTED_ENERGY], DataKind.TIME.value: array.time})
-
+                                         DataKind.CALCULATED.value: [BatteryPowerFlows.POWER_CHARGE,
+                                                                     BatteryPowerFlows.STORED_ENERGY,
+                                                                     OtherParameters.INJECTED_ENERGY],
+                                         DataKind.TIME.value: array.time})
+        logger.info("Battery management finished...")
         return dataset

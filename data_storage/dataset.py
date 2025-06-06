@@ -1,9 +1,16 @@
 from typing import Iterable
+
 from xarray import DataArray
+
+from data_storage.data_array_extensions import OmnesAccessor
 
 
 class OmnesDataArray(DataArray):
     __slots__ = []
+
+    @property
+    def omnes(self):
+        return OmnesAccessor(self)
 
     def update(self, data, coordinates):
         """
@@ -20,10 +27,7 @@ class OmnesDataArray(DataArray):
         """
 
         # Normalize coordinates to lists
-        normalized_coords = {
-            dim: self.normalize(coord)
-            for dim, coord in coordinates.items()
-        }
+        normalized_coords = {dim: self.normalize(coord) for dim, coord in coordinates.items()}
 
         da = self
         # Expand or reindex to include all coords

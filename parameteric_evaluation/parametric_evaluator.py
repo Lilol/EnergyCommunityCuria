@@ -9,6 +9,7 @@ from utility.subclass_registration_base import SubclassRegistrationBase
 
 logger = getLogger(__name__)
 
+
 class EvaluatorMeta(type):
     """Metaclass to initialize _parameter_calculators before registration."""
 

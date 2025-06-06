@@ -3,10 +3,8 @@ import logging
 import xarray as xr
 from pandas import infer_freq, to_timedelta
 
-from data_storage.dataset import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.definitions import OtherParameters, PhysicalMetric
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +35,7 @@ class OmnesAccessor:
         """
         indexers = indexers or {}
         combined = {**indexers, **kwargs}
-        resolved = {
-            dim: self._alias_map.get(sel_val, sel_val)
-            for dim, sel_val in combined.items()
-        }
+        resolved = {dim: self._alias_map.get(sel_val, sel_val) for dim, sel_val in combined.items()}
         return self._obj.sel(resolved)
 
     def resample(self, freq: str, method: str = "mean", dim: str = "time"):
@@ -80,4 +75,4 @@ class OmnesAccessor:
             else:
                 result = rs.interpolate(method=method)
 
-        return OmnesDataArray(result)
+        return result
