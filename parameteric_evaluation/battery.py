@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import xarray as xr
 
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import BatteryPowerFlows, OtherParameters

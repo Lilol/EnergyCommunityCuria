@@ -1,7 +1,7 @@
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.data_store import DataStore
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 
 
 class Store(PipelineStage):

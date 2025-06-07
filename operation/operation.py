@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from operation.definitions import Status
 
 

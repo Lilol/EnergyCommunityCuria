@@ -1,7 +1,7 @@
 import logging
 
 from data_storage.data_store import DataStore
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from io_operation.output.write import Write
 from parameteric_evaluation.battery import Battery

@@ -1,7 +1,7 @@
 from numpy import nan
 from pandas import read_csv, IndexSlice
 
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import ParametersFromFile
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, EconomicMetric

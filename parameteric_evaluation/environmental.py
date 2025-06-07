@@ -1,6 +1,6 @@
 from pandas import read_csv
 
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind, ParametersFromFile
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, EnvironmentalMetric, PhysicalMetric, \
@@ -27,11 +27,8 @@ class EmissionSavingsRatio(Calculator):
                   **kwargs) -> tuple[OmnesDataArray, float | None]:
         # Evaluate emissions savings ratio
         em_base = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS})
-        if em_base == 0:
-            val = 0
-        else:
-            em_tot = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS})
-            val = (em_base - em_tot) / em_base
+        em_tot = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS})
+        val = (em_base - em_tot) / em_base
         return input_da, val
 
 

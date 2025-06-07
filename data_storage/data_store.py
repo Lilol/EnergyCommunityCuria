@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from utility.singleton import Singleton
 
 logger = logging.getLogger(__name__)

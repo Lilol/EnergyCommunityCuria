@@ -3,7 +3,7 @@ import logging
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from io_operation.output.write import Write2DData
 from parameteric_evaluation.calculator import Calculator

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class OmnesAccessor:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
-        self._original_time_resolution = self._infer_time_resolution()
+        self._original_time_resolution = None
         self._alias_map = {DataKind.PRODUCTION: OtherParameters.INJECTED_ENERGY,
                            PhysicalMetric.TOTAL_CONSUMPTION: OtherParameters.WITHDRAWN_ENERGY}
 
@@ -28,7 +28,6 @@ class OmnesAccessor:
             freq = None
         return freq
 
-    @property
     def sel(self, indexers=None, **kwargs):
         """
         Enhanced .sel() that resolves aliases before selecting.

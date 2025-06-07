@@ -4,7 +4,7 @@ from typing import Iterable
 import numpy as np
 from numpy import linalg as lin
 
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from operation import ScaleProfile
 from operation.definitions import ScalingMethod, Status

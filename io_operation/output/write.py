@@ -5,7 +5,7 @@ from os.path import join
 from pandas import DataFrame
 
 from data_processing_pipeline.definitions import Stage
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from io_operation.io_operation_separately_by_attribute import IoOperationSeparately
 from utility import configuration

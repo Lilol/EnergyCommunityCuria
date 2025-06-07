@@ -2,7 +2,7 @@ from typing import Iterable
 
 from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.definitions import Parameter
 from utility.subclass_registration_base import SubclassRegistrationBase
@@ -14,8 +14,8 @@ class Calculator(SubclassRegistrationBase):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray | None = None,
-                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
-                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
+        OmnesDataArray, float | None]:
         raise NotImplementedError("'calculate' method must be implemented individually in each Calculator class")
 
     @classmethod
@@ -31,13 +31,14 @@ class Calculator(SubclassRegistrationBase):
             _, data = result
         else:
             data = result
-        results_of_previous_calculations.update(data, {DataKind.METRIC.value: cls._key, **parameters})
+        results_of_previous_calculations = results_of_previous_calculations.update(data,
+                                                                                   {DataKind.METRIC.value: cls._key,
+                                                                                    **parameters})
         return results_of_previous_calculations
 
     @classmethod
     def call(cls, input_da: OmnesDataArray | None = None,
-             results_of_previous_calculations: OmnesDataArray | None = None,
-             parameters: dict | None = None,
+             results_of_previous_calculations: OmnesDataArray | None = None, parameters: dict | None = None,
              **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
         OmnesDataArray, float | None]:
         input_da, result = cls.calculate(input_da, results_of_previous_calculations, **kwargs)

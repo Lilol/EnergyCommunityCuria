@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 
 from data_storage.data_store import DataStore
-from data_storage.dataset import OmnesDataArray
+from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from operation import ScaleProfile
 from operation.definitions import ScalingMethod, Status
