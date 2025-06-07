@@ -55,7 +55,7 @@ class OmnesDataArray(DataArray):
                 return [coord.item()]
             else:
                 return coord.values
-        elif isinstance(coord, Iterable):
+        elif isinstance(coord, Iterable) and not isinstance(coord, str):
             return coord
         else:
             return [coord]
@@ -67,6 +67,6 @@ class OmnesDataArray(DataArray):
                 return data.item()
             else:
                 return data.values
-        elif isinstance(data, Iterable):
+        elif isinstance(data, Iterable) and not isinstance(data, str):
             return [*data]
         return data

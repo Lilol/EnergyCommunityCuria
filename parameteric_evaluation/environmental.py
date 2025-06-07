@@ -23,11 +23,19 @@ class EmissionSavingsRatio(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray | None = None,
-                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
-                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
+        OmnesDataArray, float | None]:
         # Evaluate emissions savings ratio
-        em_base = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS})
-        em_tot = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS})
+        em_base = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS,
+                                                        DataKind.BATTERY_SIZE.value: kwargs.get("battery_size", 0),
+                                                        DataKind.NUMBER_OF_FAMILIES.value: kwargs.get("number_of_families", 0)})
+        if all(em_base == 0):
+            return input_da, em_base
+        em_tot = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS,
+                                                       DataKind.BATTERY_SIZE.value: kwargs.get("battery_size", 0),
+                                                       DataKind.NUMBER_OF_FAMILIES.value: kwargs.get(
+                                                           "number_of_families", 0)
+                                                       })
         val = (em_base - em_tot) / em_base
         return input_da, val
 
@@ -37,13 +45,18 @@ class TotalEmissions(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray | None = None,
-                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
-                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
+        OmnesDataArray, float | None]:
         """ Evaluate total emissions in REC case"""
         shared = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY}).sum()
-        total_emissions = ((input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}).sum() - shared) * EmissionFactors()["grid"]
-                           + (input_da.omnes.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum() - shared) * EmissionFactors()["inj"]
-                           + input_da.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}).sum() * EmissionFactors()["prod"] * kwargs.get("years") + kwargs.get(DataKind.BATTERY_SIZE.value) * EmissionFactors()["bess"])
+        total_emissions = (
+                    (input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY}).sum() - shared) *
+                    EmissionFactors()["grid"] + (
+                                input_da.omnes.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION}).sum() - shared) *
+                    EmissionFactors()["inj"] + input_da.sel(
+                {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}).sum() * EmissionFactors()[
+                        "prod"] * kwargs.get("years") + kwargs.get(DataKind.BATTERY_SIZE.value) * EmissionFactors()[
+                        "bess"])
         return input_da, total_emissions
 
 
@@ -52,11 +65,11 @@ class BaselineEmissions(Calculator):
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray | None = None,
-                  results_of_previous_calculations: OmnesDataArray | None = None, *args,
-                  **kwargs) -> tuple[OmnesDataArray, float | None]:
+                  results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
+        OmnesDataArray, float | None]:
         """ Evaluate total emissions in base case"""
-        baseline_emissions = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.TOTAL_CONSUMPTION}).sum() * EmissionFactors()[
-            "grid"] * kwargs.get("years")
+        baseline_emissions = input_da.sel({DataKind.CALCULATED.value: PhysicalMetric.TOTAL_CONSUMPTION}).sum() * \
+                             EmissionFactors()["grid"] * kwargs.get("years")
         return input_da, baseline_emissions
 
 
