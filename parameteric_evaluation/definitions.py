@@ -75,17 +75,20 @@ class LoadMatchingMetric(Parameter):
     def _get_abbrev_mapping(cls):
         return {cls.SELF_CONSUMPTION: "sc", cls.SELF_SUFFICIENCY: "ss", }
 
+
 class TimeAggregation(Parameter):
     HOUR = "Hour"
     YEAR = "Year"
     ARBITRARY = 'Arbitrary'
     SEASON = 'Season'
+    MONTH = 'Month'
     THEORETICAL_LIMIT = "Theoretical limit"
     INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {cls.HOUR: "hour", cls.YEAR: "year", cls.ARBITRARY: "arb", cls.THEORETICAL_LIMIT: "th_lim", }
+        return {cls.HOUR: "hour", cls.MONTH: "month", cls.YEAR: "year", cls.ARBITRARY: "arb",
+                cls.THEORETICAL_LIMIT: "th_lim", }
 
 
 class ParametricEvaluationType(OrderedEnum):
@@ -98,5 +101,3 @@ class ParametricEvaluationType(OrderedEnum):
     LOAD_MATCHING_METRICS = "load_matching"
     ALL = "all"
     INVALID = "invalid"
-
-

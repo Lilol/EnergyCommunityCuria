@@ -23,37 +23,47 @@ class Battery(Calculator):
         return Battery(kwargs.pop('size'), t_min=kwargs.pop('t_min')).manage_bess(
             input_da), results_of_previous_calculations
 
-    def manage_bess(self, dataset):
-        """Manage BESS power flows to increase shared energy."""
-        # Initialize BESS power and dataarray of power flows of all users in the system
-        bess_power = OmnesDataArray(0, dims=dataset.dims, coords={**dataset.coords,
-                                                                  DataKind.CALCULATED.value: [bess_metr for bess_metr in
-                                                                                              BatteryPowerFlows if
-                                                                                              bess_metr.value != "invalid"]})
-        dataset = xr.concat([dataset, bess_power], dim=DataKind.CALCULATED.value)
+    def manage_bess(self, dataset: OmnesDataArray) -> OmnesDataArray:
+        calc_dim = DataKind.CALCULATED.value
+        time_dim = DataKind.TIME.value
+
+        bess_coords = {**dataset.coords, calc_dim: [m for m in BatteryPowerFlows if m.value != "invalid"]}
+        bess_power = OmnesDataArray(
+            0.0,
+            dims=dataset.dims,
+            coords=bess_coords
+        )
+        dataset = xr.concat([dataset, bess_power], dim=calc_dim)
 
         if self._size == 0:
             return dataset
 
-        # Manage flows in all time steps
-        logger.info("Battery management starting...")
-        for array in dataset.transpose(DataKind.TIME.value, ...):
-            # Power to charge the BESS (discharge if negative)
-            charging_power = array.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - array.sel(
-                {DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY})
-            # Correct according to technical/physical limits
-            e_stored = array.sel({DataKind.CALCULATED.value: BatteryPowerFlows.STORED_ENERGY})
-            if charging_power < 0:
-                charging_power = max(charging_power, -e_stored, -self.p_max)
-            else:
-                charging_power = min(charging_power, self._size - e_stored, self.p_max)
+        # Get slices
+        inj = dataset.sel({calc_dim: OtherParameters.INJECTED_ENERGY})
+        withdrawn = dataset.sel({calc_dim: OtherParameters.WITHDRAWN_ENERGY})
+        stored = np.zeros_like(inj)
 
-            # Update BESS power array and stored energy
-            dataset = dataset.update((charging_power, e_stored + charging_power, array.sel(
-                {DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY}) - charging_power), {
-                                         DataKind.CALCULATED.value: [BatteryPowerFlows.POWER_CHARGE,
-                                                                     BatteryPowerFlows.STORED_ENERGY,
-                                                                     OtherParameters.INJECTED_ENERGY],
-                                         DataKind.TIME.value: array.time})
-        logger.info("Battery management finished...")
+        charge = inj - withdrawn
+        new_inj = inj.copy()
+        bess_charge = np.zeros_like(inj)
+
+        for t in range(len(inj[time_dim])):
+            power = charge.isel({time_dim: t})
+            e = stored[t - 1] if t > 0 else 0
+
+            # Apply BESS constraints
+            limited = xr.where(
+                power < 0,
+                xr.ufuncs.maximum(power, xr.ufuncs.maximum(-e, -self.p_max)),
+                xr.ufuncs.minimum(power, xr.ufuncs.minimum(self._size - e, self.p_max))
+            )
+            bess_charge[t] = limited
+            stored[t] = e + limited
+            new_inj[t] = inj.isel({time_dim: t}) - limited
+
+        dataset.loc[{calc_dim: BatteryPowerFlows.POWER_CHARGE}] = bess_charge
+        dataset.loc[{calc_dim: BatteryPowerFlows.STORED_ENERGY}] = stored
+        dataset.loc[{calc_dim: OtherParameters.INJECTED_ENERGY}] = new_inj
+
         return dataset
+

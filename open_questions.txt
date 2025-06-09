@@ -4,5 +4,4 @@ How to handle unit systems, power vs. energy? Use an elaborate unit system toolb
 How to handle time resolution: there is a given resolution and a desired one. How to differentiate? When do we convert between them?
 
 TODO:
-AggregateOnTimeResolution: process weird time resolutions, like season
 MultiStepCalculation into a Calculator, because now it is a pipeline stage

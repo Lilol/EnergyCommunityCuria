@@ -122,5 +122,4 @@ class TargetSelfConsumptionEvaluator(ParametricEvaluator):
         logger.info(f"To provide battery sizes for evaluation in the configuration file use:\n[parametric_evaluation]"
                     f"\nevaluation_parameters={{'bess_sizes': [...], 'number_of_families': [{f','.join(f'{nf}' for nf in df.number_of_families)}]}}\nor\n"
                     f"evaluation_parameters = {{'number_of_families': {f','.join(f'{nf}: [...]' for nf in df.number_of_families)}}}")
-        logger.info(f"For battery evaluation please set \n[parametric_evaluation]\nuse_bess=True")
         return df

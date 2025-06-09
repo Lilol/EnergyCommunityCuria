@@ -3,7 +3,7 @@ from logging import getLogger
 from data_storage.omnes_data_array import OmnesDataArray
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric, \
-    EconomicMetric, EnvironmentalMetric
+    EconomicMetric, EnvironmentalMetric, TimeAggregation
 from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
 
@@ -18,7 +18,8 @@ class EvaluatorMeta(type):
         return {key: Calculator.get_subclass(key) for key in {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
                                                               ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
                                                               ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
-                                                              ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric, }.get(
+                                                              ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric,
+                                                              ParametricEvaluationType.TIME_AGGREGATION: TimeAggregation, }.get(
             evaluation_type, [])}
 
     def __init__(cls, name, bases, dct):

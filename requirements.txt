@@ -7,5 +7,5 @@ cvxopt
 holidays
 openpyxl
 netCDF4
-
 pytest
+hypothesis

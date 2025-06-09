@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from pandas import to_datetime
+from pandas import to_datetime, date_range
 
 from data_processing_pipeline.data_processing_pipeline import DataProcessingPipeline
 from data_storage.data_store import DataStore
@@ -14,6 +14,7 @@ from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from transform.combine.combine import ArrayConcat
 from transform.transform import TransformCoordinateIntoDimension, Aggregate, Apply, Rename, TransformPvPlantData
 from utility import configuration
+from utility.time_utils import n_periods_in_interval
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +57,11 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
         """
         if configuration.config.getboolean("parametric_evaluation", "read_from_cached"):
             logger.info(f"Reading data from cache...")
-            DataProcessingPipeline("read_cached",
-                                   workers=(
-                                       ReadDataArray("read_energy_year", filename="energy_year"),
-                                       Store("energy_year"),
-                                       ReadDataArray("read_plant_data", filename="data_plants"),
-                                       Store("data_plants"),
-                                       ReadDataArray("read_tou_months", do_not_separate=True, filename="tou_months"),
-                                       Store("tou_months"))).execute()
+            DataProcessingPipeline("read_cached", workers=(
+                ReadDataArray("read_energy_year", filename="energy_year"), Store("energy_year"),
+                ReadDataArray("read_plant_data", filename="data_plants"), Store("data_plants"),
+                ReadDataArray("read_tou_months", do_not_separate=True, filename="tou_months"),
+                Store("tou_months"))).execute()
 
             if DataStore()["energy_year"].shape and DataStore()["data_plants"].shape and DataStore()[
                 "tou_months"].shape:
@@ -92,18 +90,21 @@ class DatasetCreatorForParametricEvaluation(ParametricEvaluator):
             cls.create_and_run_timeseries_processing_pipeline(user.profile_type, user.profile_filename)
 
         # Create a single dataframe for both production and consumption
+        year = configuration.config.getint("time", "year")
+        freq = configuration.config.get("time", "resolution")
+        periods = n_periods_in_interval("1Y", freq)
         ut = [ut.user_type for ut in user_types]
         profile_types = [ut.profile_type for ut in user_types]
         DataProcessingPipeline("concatenate", workers=(
             ArrayConcat(dim=DataKind.USER.value, arrays_to_merge=ut, coords={DataKind.USER.value: ut}),
             Store("tou_months"), WriteDataArray("tou_months", do_not_separate=True),
             ArrayConcat(name="merge_profiles", dim=DataKind.USER.value, arrays_to_merge=profile_types,
-                        coords={DataKind.USER.value: [u.power_type for u in user_types]}), Rename(name="rename",
-                                                                                                  coords={
-                                                                                                      "dim_1": DataKind.TIME.value,
-                                                                                                      DataKind.USER.value: DataKind.CALCULATED.value}),
+                        coords={DataKind.USER.value: [u.power_type for u in user_types]}),
+            Rename(name="rename_dimensions",
+                   dims={"dim_1": DataKind.TIME.value, DataKind.USER.value: DataKind.CALCULATED.value}, ),
+            Apply(name=f"assign_coords", operation=lambda x: x.assign_coords(
+                {DataKind.TIME.value: date_range(start=f'{year}-01-01 00:00', freq=freq, periods=periods)})),
             Store("energy_year"), WriteDataArray("energy_year"))).execute()
 
-        DataProcessingPipeline("pv_plants",
-                               workers=(ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"),
-                                        WriteDataArray("data_plants"))).execute()
+        DataProcessingPipeline("pv_plants", workers=(
+            ReadPvPlantData(), TransformPvPlantData(), Store("data_plants"), WriteDataArray("data_plants"))).execute()
