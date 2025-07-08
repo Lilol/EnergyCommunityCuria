@@ -28,42 +28,54 @@ class Battery(Calculator):
         time_dim = DataKind.TIME.value
 
         bess_coords = {**dataset.coords, calc_dim: [m for m in BatteryPowerFlows if m.value != "invalid"]}
-        bess_power = OmnesDataArray(
-            0.0,
-            dims=dataset.dims,
-            coords=bess_coords
-        )
+        bess_power = OmnesDataArray(0.0, dims=dataset.dims, coords=bess_coords)
         dataset = xr.concat([dataset, bess_power], dim=calc_dim)
 
         if self._size == 0:
             return dataset
 
-        # Get slices
         inj = dataset.sel({calc_dim: OtherParameters.INJECTED_ENERGY})
         withdrawn = dataset.sel({calc_dim: OtherParameters.WITHDRAWN_ENERGY})
-        stored = np.zeros_like(inj)
 
         charge = inj - withdrawn
-        new_inj = inj.copy()
-        bess_charge = np.zeros_like(inj)
+        time_vals = inj[time_dim].values
 
-        for t in range(len(inj[time_dim])):
-            power = charge.isel({time_dim: t})
-            e = stored[t - 1] if t > 0 else 0
+        new_inj_list = []
+        bess_charge_list = []
+        stored_list = []
 
-            # Apply BESS constraints
-            limited = xr.where(
+        e = xr.zeros_like(charge.isel({time_dim: 0}))
+
+        for t, time_val in enumerate(time_vals):
+            power = charge.sel({time_dim: time_val})
+
+            charge_max = xr.where(
                 power < 0,
                 xr.ufuncs.maximum(power, xr.ufuncs.maximum(-e, -self.p_max)),
                 xr.ufuncs.minimum(power, xr.ufuncs.minimum(self._size - e, self.p_max))
             )
-            bess_charge[t] = limited
-            stored[t] = e + limited
-            new_inj[t] = inj.isel({time_dim: t}) - limited
+
+            new_e = e + charge_max
+            new_inj_t = inj.sel({time_dim: time_val}) - charge_max
+
+            # Assign time coordinate to each slice explicitly
+            for arr, name in [(charge_max, "charge"), (new_e, "stored"), (new_inj_t, "inj")]:
+                arr.coords[time_dim] = time_val  # Assign scalar coordinate
+
+            # Append
+            bess_charge_list.append(charge_max.expand_dims(time_dim))
+            stored_list.append(new_e.expand_dims(time_dim))
+            new_inj_list.append(new_inj_t.expand_dims(time_dim))
+
+            e = new_e  # update energy for next step
+
+        # Concatenate over time
+        bess_charge = xr.concat(bess_charge_list, dim=time_dim)
+        stored = xr.concat(stored_list, dim=time_dim)
+        new_inj = xr.concat(new_inj_list, dim=time_dim)
 
         dataset.loc[{calc_dim: BatteryPowerFlows.POWER_CHARGE}] = bess_charge
         dataset.loc[{calc_dim: BatteryPowerFlows.STORED_ENERGY}] = stored
         dataset.loc[{calc_dim: OtherParameters.INJECTED_ENERGY}] = new_inj
 
         return dataset
-

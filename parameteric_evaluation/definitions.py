@@ -77,11 +77,11 @@ class LoadMatchingMetric(Parameter):
 
 
 class TimeAggregation(Parameter):
-    HOUR = "Hour"
-    YEAR = "Year"
-    ARBITRARY = 'Arbitrary'
-    SEASON = 'Season'
-    MONTH = 'Month'
+    HOUR = "hour"
+    YEAR = "year"
+    ARBITRARY = 'arbitrary'
+    SEASON = 'season'
+    MONTH = 'month'
     THEORETICAL_LIMIT = "Theoretical limit"
     INVALID = "invalid"
 

@@ -23,7 +23,7 @@ class TimeAggregationParameterCalculator(Calculator):
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
         """Evaluate self consumption with given temporal aggregation and number of families."""
-        SharedEnergy.calculate(input_da.groupby(cls._key).sum())
+        SharedEnergy.calculate(input_da.sum(dim=cls._key.value))
         return input_da, SelfConsumption.calculate(input_da)[1]
 
 aggregation_dimensions = {TimeAggregation.HOUR: f"time.{DataKind.HOUR.value}", TimeAggregation.MONTH: f"time.{DataKind.MONTH.value}",
