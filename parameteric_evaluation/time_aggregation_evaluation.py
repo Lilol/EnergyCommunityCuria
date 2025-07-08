@@ -23,8 +23,9 @@ class TimeAggregationParameterCalculator(Calculator):
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
         """Evaluate self consumption with given temporal aggregation and number of families."""
-        SharedEnergy.calculate(input_da.sum(dim=cls._key.value))
-        return input_da, SelfConsumption.calculate(input_da)[1]
+        aggregated = input_da.groupby(f"time.{cls._key.value}") if cls._key else input_da
+        aggregated, _ = SharedEnergy.calculate(aggregated)
+        return input_da, SelfConsumption.calculate(aggregated)[1]
 
 aggregation_dimensions = {TimeAggregation.HOUR: f"time.{DataKind.HOUR.value}", TimeAggregation.MONTH: f"time.{DataKind.MONTH.value}",
     TimeAggregation.SEASON: f"time.{DataKind.SEASON.value}", TimeAggregation.YEAR: f"time.{DataKind.YEAR.value}", }
@@ -36,7 +37,6 @@ for ta_key, dims in aggregation_dimensions.items():
 
     class_name = f"{ta_key.name.capitalize()}Calculator"
 
-
     def make_calculator(dim, ta_key):
         class _Calc(TimeAggregationParameterCalculator):
             _key = ta_key
@@ -45,12 +45,9 @@ for ta_key, dims in aggregation_dimensions.items():
             def calculate(cls, input_da: OmnesDataArray | None = None,
                           results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
                 OmnesDataArray, float | None]:
-                aggregated = input_da.groupby(dim).sum() if dim else input_da
-                return super().calculate(aggregated, results_of_previous_calculations, *args, **kwargs)
-
+                return super().calculate(input_da, results_of_previous_calculations, *args, **kwargs)
         _Calc.__name__ = class_name
         return _Calc
-
 
     globals()[class_name] = make_calculator(dims, ta_key)
 

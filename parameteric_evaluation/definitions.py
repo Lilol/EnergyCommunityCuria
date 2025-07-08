@@ -82,7 +82,7 @@ class TimeAggregation(Parameter):
     ARBITRARY = 'arbitrary'
     SEASON = 'season'
     MONTH = 'month'
-    THEORETICAL_LIMIT = "Theoretical limit"
+    THEORETICAL_LIMIT = "15min"
     INVALID = "invalid"
 
     @classmethod
