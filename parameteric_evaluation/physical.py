@@ -35,7 +35,10 @@ class SharedEnergy(PhysicalParameterCalculator):
         dx = input_da.sel(
             {DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}).min(
             dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
-        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        if cls._key not in input_da[DataKind.CALCULATED.value]:
+            input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        else:
+            input_da.update(dx, {DataKind.CALCULATED.value: cls._key})
         return input_da, results_of_previous_calculations
 
 

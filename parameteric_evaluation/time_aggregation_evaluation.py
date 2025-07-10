@@ -23,7 +23,7 @@ class TimeAggregationParameterCalculator(Calculator):
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
         """Evaluate self consumption with given temporal aggregation and number of families."""
-        aggregated = input_da.groupby(f"time.{cls._key.value}") if cls._key else input_da
+        aggregated = input_da.groupby(f"time.{cls._key.value}").sum() if cls._key else input_da
         aggregated, _ = SharedEnergy.calculate(aggregated)
         return input_da, SelfConsumption.calculate(aggregated)[1]
 

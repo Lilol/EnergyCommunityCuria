@@ -69,6 +69,8 @@ class EconomicMetric(Parameter):
 class LoadMatchingMetric(Parameter):
     SELF_CONSUMPTION = "Self consumption"
     SELF_SUFFICIENCY = "Self sufficiency"
+    SELF_PRODUCTION = "Self production"
+    GRID_LIABILITY = "Grid liability"
     INVALID = "invalid"
 
     @classmethod

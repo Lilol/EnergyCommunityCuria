@@ -4,7 +4,7 @@ from os.path import join, exists
 
 import numpy as np
 import xarray as xr
-from pandas import read_csv, read_excel
+from pandas import read_csv, read_excel, to_datetime
 
 from data_processing_pipeline.definitions import Stage
 from data_storage.data_store import DataStore
@@ -54,10 +54,10 @@ class Read(IoOperationSeparately):
                                directories=municipalities, *args, **kwargs)
 
     def read_data(self, filename, attribute, attribute_value):
-        data= read_csv(filename, sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
+        data = read_csv(filename, sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
 
         return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(attribute).assign_coords(
-        {attribute: [attribute_value]})
+            {attribute: [attribute_value]})
 
 
 class ReadDataArray(Read):
@@ -71,6 +71,8 @@ class ReadDataArray(Read):
         dataset = xr.open_dataarray(filename, engine="netcdf4")
         dataset = dataset.assign_coords(
             {dim: [convert_value_to_enum(coord) for coord in dataset[dim].values] for dim in dataset.dims})
+        if DataKind.TIME.value in dataset.coords:
+            dataset = dataset.assign_coords(time=to_datetime(dataset.time.values))
         return dataset
 
 
