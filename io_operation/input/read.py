@@ -4,12 +4,15 @@ from os.path import join, exists
 
 import numpy as np
 import xarray as xr
-from pandas import read_csv, read_excel, to_datetime
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from pandas import read_csv, read_excel, to_datetime, DataFrame, isna, api, notna
 
 from data_processing_pipeline.definitions import Stage
 from data_storage.data_store import DataStore
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind, PvDataSource
+from io_operation.input.file_checker import red_fill, yellow_fill, orange_fill
 from io_operation.io_operation_separately_by_attribute import IoOperationSeparately
 from utility import configuration
 from utility.definitions import append_extension
@@ -55,9 +58,12 @@ class Read(IoOperationSeparately):
 
     def read_data(self, filename, attribute, attribute_value):
         data = read_csv(filename, sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
-
+        self.validate(filename, data, attribute, attribute_value)
         return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(attribute).assign_coords(
             {attribute: [attribute_value]})
+
+    def validate(self, filename, data, attribute, attribute_value):
+        pass
 
 
 class ReadDataArray(Read):
@@ -184,6 +190,23 @@ class ReadUserData(Read):
     def __init__(self, name=_name, *args, **kwargs):
         super().__init__(name, *args, **kwargs)
 
+    def _validate_and_export_excel(self, df: DataFrame, filename: str):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "POD Check"
+
+        for r in dataframe_to_rows(df, index=False, header=True):
+            ws.append(r)
+
+        if 'pod' in df.columns:
+            duplicate_pods = df['pod'].duplicated(keep=False)
+            for row_idx, is_dup in enumerate(duplicate_pods, start=2):
+                if is_dup:
+                    ws.cell(row=row_idx, column=df.columns.get_loc('pod') + 1).fill = red_fill
+
+        output_path = os.path.splitext(filename)[0] + "_check.xlsx"
+        wb.save(output_path)
+
 
 class ReadBills(Read):
     _name = "bill_reader"
@@ -215,6 +238,47 @@ class ReadBills(Read):
             self._data["dim_1"].isin(list(self._time_of_use_energy_column_names.values()))].values,
                                            setter=configuration.config.setarray, check=False)
         return self._data
+
+    def _validate_and_export_excel(self, df: DataFrame, filename: str):
+        # Load valid PODs for check (e.g., from lista_pod.csv or internal cache)
+        pod_path = os.path.join(self._input_root, "DatiComuni", "lista_pod.csv")
+        if os.path.exists(pod_path):
+            pod_df = read_csv(pod_path, sep=';')
+            pod_df.columns = [col.strip().lower() for col in pod_df.columns]
+            valid_pods = set(pod_df['pod'].dropna().unique())
+        else:
+            valid_pods = set()
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Bill Check"
+
+        for r in dataframe_to_rows(df, index=False, header=True):
+            ws.append(r)
+
+        for idx, row in df.iterrows():
+            excel_row = idx + 2
+
+            if isna(row.get('f0')):
+                for f in ['f1', 'f2', 'f3']:
+                    if isna(row.get(f)):
+                        ws.cell(row=excel_row, column=df.columns.get_loc('f0') + 1).fill = red_fill
+                        ws.cell(row=excel_row, column=df.columns.get_loc(f) + 1).fill = red_fill
+
+            for col_idx, col in enumerate(df.columns, start=1):
+                val = row[col]
+                if col not in ("f0", "f1", "f2", "f3") and (isna(val) or (isinstance(val, str) and val.strip() == '')):
+                    ws.cell(row=excel_row, column=col_idx).fill = red_fill
+                if col == 'pod':
+                    if val not in valid_pods:
+                        ws.cell(row=excel_row, column=col_idx).fill = red_fill
+                    if df[['pod', 'mese']].duplicated(keep=False)[idx]:
+                        ws.cell(row=excel_row, column=col_idx).fill = orange_fill
+                if api.types.is_numeric_dtype(df[col]) and notna(val) and val < 0:
+                    ws.cell(row=excel_row, column=col_idx).fill = yellow_fill
+
+        output_path = os.path.splitext(filename)[0] + "_check.xlsx"
+        wb.save(output_path)
 
 
 class ReadCommonData(Read):
