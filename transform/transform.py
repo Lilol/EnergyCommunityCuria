@@ -283,7 +283,7 @@ class TransformBillsToLoadProfiles(Transform):
         scaler = cls._profile_scaler[bill_type]
         scaled_profile = scaler(bill.sel(user_data=cls.get_time_of_use_labels(bill_type)), *args, **kwargs)
         if scaler.status not in (Status.OPTIMAL, Status.OK):
-            logger.warning(f"Load profile scaler returned with error status: '{scaler.status}'")
+            logger.warning(f"Load profile scaler returned with error status: '{scaler.status.value}'")
         return scaled_profile
 
 

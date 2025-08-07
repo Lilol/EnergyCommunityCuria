@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class MetricEvaluator:
-    _parametric_evaluator = ParametricEvaluator.create()
+    _parametric_evaluators = ParametricEvaluator.create_evaluators_based_on_configuration()
 
     @classmethod
     def calculate_metrics(cls, parameters):
@@ -50,7 +50,7 @@ class MetricEvaluator:
             # Manage BESS, if present
             energy_year = Battery(bess_size).manage_bess(energy_year)
 
-            for name, evaluator in cls._parametric_evaluator.items():
+            for name, evaluator in cls._parametric_evaluators.items():
                 if name.value == "invalid":
                     continue
                 energy_year, results = evaluator.invoke(energy_year, results, parameters, pv_sizes=pv_sizes,

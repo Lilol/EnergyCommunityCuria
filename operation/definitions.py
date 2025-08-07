@@ -19,4 +19,4 @@ class ScalingMethod(OrderedEnum):
     TIME_OF_USE = "time_of_use"
     LINEAR_EQUATION = "linear"
     QUADRATIC_OPTIMIZATION = "quadratic_optimization"
-    INVALID = auto()
+    INVALID = "invalid"

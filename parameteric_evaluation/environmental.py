@@ -79,7 +79,7 @@ class EnvironmentalEvaluator(ParametricEvaluator):
     _years = config.getint("parametric_evaluation", "economic_evaluation_number_of_years")
 
     @classmethod
-    def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
+    def invoke(cls, *args, **kwargs):
         """
         Calculates the CO2 emissions based on the shared energy, consumed energy,
         produced energy, and emission factors.

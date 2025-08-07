@@ -14,6 +14,9 @@ class Parameter(OrderedEnum):
     def get_all(cls):
         return cls.__members__.values()
 
+    def valid(self):
+        return self.value != "invalid"
+
 
 class PhysicalMetric(Parameter):
     SHARED_ENERGY = "Shared energy"
@@ -81,7 +84,6 @@ class LoadMatchingMetric(Parameter):
 class TimeAggregation(Parameter):
     HOUR = "hour"
     YEAR = "year"
-    ARBITRARY = 'arbitrary'
     SEASON = 'season'
     MONTH = 'month'
     THEORETICAL_LIMIT = "15min"
@@ -89,8 +91,7 @@ class TimeAggregation(Parameter):
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {cls.HOUR: "hour", cls.MONTH: "month", cls.YEAR: "year", cls.ARBITRARY: "arb",
-                cls.THEORETICAL_LIMIT: "th_lim", }
+        return {cls.HOUR: "hour", cls.MONTH: "month", cls.YEAR: "year", cls.THEORETICAL_LIMIT: "th_lim", }
 
 
 class ParametricEvaluationType(OrderedEnum):

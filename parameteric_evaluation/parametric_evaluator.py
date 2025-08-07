@@ -1,9 +1,8 @@
 from logging import getLogger
 
-from data_storage.omnes_data_array import OmnesDataArray
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, LoadMatchingMetric, \
-    EconomicMetric, EnvironmentalMetric, TimeAggregation
+    EconomicMetric, EnvironmentalMetric
 from utility import configuration
 from utility.subclass_registration_base import SubclassRegistrationBase
 
@@ -18,9 +17,8 @@ class EvaluatorMeta(type):
         return {key: Calculator.get_subclass(key) for key in {ParametricEvaluationType.PHYSICAL_METRICS: PhysicalMetric,
                                                               ParametricEvaluationType.LOAD_MATCHING_METRICS: LoadMatchingMetric,
                                                               ParametricEvaluationType.ECONOMIC_METRICS: EconomicMetric,
-                                                              ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric,
-                                                              ParametricEvaluationType.TIME_AGGREGATION: TimeAggregation, }.get(
-            evaluation_type, [])}
+                                                              ParametricEvaluationType.ENVIRONMENTAL_METRICS: EnvironmentalMetric}.get(
+            evaluation_type, []) if key.value != "invalid"}
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
@@ -36,20 +34,18 @@ class ParametricEvaluator(SubclassRegistrationBase, metaclass=EvaluatorMeta):
     _parameter_calculators = {}
 
     @classmethod
-    def invoke(cls, *args, **kwargs) -> OmnesDataArray | float | None:
+    def invoke(cls, *args, **kwargs):
         logger.info(f"Invoking parametric evaluator '{cls._name}'...")
         dataset = kwargs.pop('dataset', args[0])
         results = kwargs.pop("results", args[1])
         parameters = kwargs.pop("parameters", args[2])
         for metric, calculator in cls._parameter_calculators.items():
-            if metric.value == "invalid":
-                continue
             dataset, results = calculator.call(dataset, results, parameters, **kwargs)
         logger.info(f"Parametric evaluation finished.")
         return dataset, results
 
     @classmethod
-    def create(cls, *args, **kwargs):
+    def create_evaluators_based_on_configuration(cls, *args, **kwargs):
         evaluation_types = configuration.config.get("parametric_evaluation", "to_evaluate")
         return {kind: cls._subclasses[kind](*args, **kwargs) for kind, evaluator_initialization_function in
                 cls._subclasses.items() if kind in evaluation_types}

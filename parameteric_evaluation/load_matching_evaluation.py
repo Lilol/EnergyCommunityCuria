@@ -46,7 +46,7 @@ class GridLiability(LoadMatchingParameterCalculator):
 
     @classmethod
     def _postprocess_result(cls, input_da: OmnesDataArray | None, value):
-        return input_da, value-1
+        return input_da, value - 1
 
 
 class LoadMatchingMetricEvaluator(ParametricEvaluator):

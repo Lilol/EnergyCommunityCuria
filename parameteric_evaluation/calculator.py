@@ -1,3 +1,4 @@
+import logging
 from typing import Iterable
 
 from data_processing_pipeline.definitions import Stage
@@ -7,10 +8,35 @@ from io_operation.input.definitions import DataKind
 from parameteric_evaluation.definitions import Parameter
 from utility.subclass_registration_base import SubclassRegistrationBase
 
+logger = logging.getLogger(__name__)
+
+
+def auto_hook_classmethod(method):
+    @classmethod
+    def wrapper(cls, *args, **kwargs):
+        cls._print_name()  # hook: run before actual method
+        return method.__func__(cls, *args, **kwargs)  # unwrap classmethod
+
+    return wrapper
+
 
 class Calculator(SubclassRegistrationBase):
     _key = Parameter
     _name = "calculator"
+
+    @classmethod
+    def _print_name(cls):
+        logger.info(
+            f"Invoke calculator for '{cls._key.value if not isinstance(cls._key, tuple) else (cls._key[0].value, cls._key[1].value)}'")
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        # Hook only if 'calculate' is defined in the subclass
+        if 'calculate' in cls.__dict__:
+            orig = cls.__dict__['calculate']
+            if isinstance(orig, classmethod):
+                wrapped = auto_hook_classmethod(orig)
+                setattr(cls, 'calculate', wrapped)
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray | None = None,
