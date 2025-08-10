@@ -58,8 +58,12 @@ class WriteDataArray(Write):
             dataset.to_netcdf(filename)
         except ValueError:
             logger.warning(
-                f"Writing file '{filename}' failed due to dataarray containing mixed types, retrying with values converted to string")
-            dataset.astype(str).to_netcdf(filename)
+                f"Writing file '{filename}' failed due to dataarray containing mixed types,"
+                f"retrying with values converted to string")
+            ds = dataset.copy()
+            for dim in dataset.dims:
+                ds[dim] = dataset[dim].astype(str)
+            ds.astype(str).to_netcdf(filename)
             logger.info(f"Writing file '{filename}' was written successfully")
 
 

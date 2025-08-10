@@ -1,29 +1,40 @@
 import numpy as np
+import seaborn as sns
 from matplotlib import pyplot as plt
+from pandas import DataFrame
+
+from parameteric_evaluation.definitions import CombinedMetric
 
 
 def plot_shared_energy(sh1, sh2, n_fam):
     plt.figure()
     plt.plot(np.diff(sorted(sh2 - sh1)), label=f"{n_fam}", color='lightgrey')
     plt.yticks([])
-    plt.xlabel('Numero giorni dell\' anno')
+    plt.xlabel('Number of day of year')
     plt.twinx().plot(sorted(sh2 - sh1), label=f"{n_fam}")
-    plt.ylabel('Gap tra energia condivisa oraria e giornaliera (kWh)')
+    plt.ylabel('Gap between hourly and daily shared energy (kWh)')
     plt.gca().yaxis.set_label_position("left")
     plt.gca().yaxis.tick_left()
-    plt.title(f"Numero famiglie: {int(n_fam)}")
+    plt.title(f"Number of families: {int(n_fam)}")
+    plt.tight_layout()
+    plt.savefig("shared_energy.png")
     plt.show()
     plt.close()
 
 
-def plot_sci(time_resolution, n_fams, results):
+def plot_results(results, n_fam, bess_size):
     plt.figure()
-    for label in time_resolution:
-        plt.plot(n_fams, results[label], label=label)
-    plt.plot(n_fams, results['sc_tou'], label='sc_tou', color='lightgrey', ls='--')
-    # plt.scatter(n_fams, scs, label='evaluated')
-    plt.xlabel(f'Numero famiglie: {n_fams}')
-    plt.ylabel('SCI')
+    df = DataFrame(columns=["time_resolution", "metric", "value"], index=[])
+    for label in results.metric:
+        label = label.values.item()
+        if not isinstance(label, CombinedMetric):
+            continue
+        df.loc[len(df), :] = label.first, label.second, \
+        results.sel(metric=label, battery_size=bess_size, number_of_families=n_fam).values[0]
+    sns.scatterplot(data=df, x="time_resolution", y="metric")
+    plt.xlabel('Time resolution')
+    plt.ylabel('Metric type')
+    plt.title(f'Number of families={n_fam}, bess_size={bess_size}')
     plt.legend()
     plt.show()
     plt.close()

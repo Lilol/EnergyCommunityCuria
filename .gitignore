@@ -166,3 +166,4 @@ cython_debug/
 config/config.ini
 logs/
 other/
+*.png

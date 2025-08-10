@@ -1,48 +1,16 @@
 import logging
 from typing import override
 
-from data_storage.data_store import DataStore
 from data_storage.omnes_data_array import OmnesDataArray
-from io_operation.input.definitions import DataKind
-from io_operation.output.write import Write2DData
+from io_operation.output.write import WriteDataArray
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, TimeAggregation, \
-    LoadMatchingMetric
+    LoadMatchingMetric, OtherParameters, CombinedMetric
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import SharedEnergy, PhysicalParameterCalculator
-from visualization.processing_visualization import plot_shared_energy, plot_sci
+from visualization.processing_visualization import plot_shared_energy
 
 logger = logging.getLogger(__name__)
-
-
-class CombinedMetric:
-    def __init__(self, first, second):
-        assert hasattr(first, "value") and hasattr(second, "value") and hasattr(first, "name") and hasattr(second,
-                                                                                                           "name")
-        self.first = first
-        self.second = second
-
-    @property
-    def value(self):
-        return self.first.value, self.second.value
-
-    @property
-    def name(self):
-        return f"{self.first.name}, {self.second.name}"
-
-    def valid(self):
-        return self.first.valid() and self.second.valid()
-
-    def __eq__(self, other):
-        if not isinstance(other, CombinedMetric):
-            return False
-        return (self.first, self.second) == (other.first, other.second)
-
-    def __hash__(self):
-        return hash((self.first, self.second))
-
-    def __repr__(self):
-        return f"(first={self.first.value!r}, second={self.second.value!r})"
 
 
 class TimeAggregationParameterCalculator(Calculator):
@@ -83,8 +51,7 @@ for ta_key in TimeAggregation:
                     OmnesDataArray, float | None]:
                     """Evaluate load matching metric with given temporal aggregation."""
                     aggregated = input_da.groupby(
-                        f"time.{cls._aggregation.value}").sum() if cls._aggregation != TimeAggregation.THEORETICAL_LIMIT else \
-                        DataStore()["tou_months"]
+                        f"time.{cls._aggregation.value}").sum() if cls._aggregation != TimeAggregation.THEORETICAL_LIMIT else input_da
                     aggregated, _ = SharedEnergy.calculate(aggregated)
                     return input_da, PhysicalParameterCalculator.create(cls._metric).calculate(aggregated)[1]
 
@@ -112,14 +79,11 @@ class TimeAggregationEvaluator(ParametricEvaluator):
     @classmethod
     @override
     def invoke(cls, *args, **kwargs):
-        time_resolution = dict(sc_year=DataKind.YEAR, sc_season=DataKind.SEASON, sc_month=DataKind.MONTH,
-                               sc_week=DataKind.WEEK, sc_day=[DataKind.MONTH, DataKind.DAY_OF_MONTH],
-                               sc_hour=[DataKind.MONTH, DataKind.DAY_OF_MONTH, DataKind.HOUR])
         input_da, results = super().invoke(*args, **kwargs)
-        energy_by_day = DataStore()["energy_by_year"].sum("day")
-        plot_shared_energy(energy_by_day.sum()[PhysicalMetric.SHARED_ENERGY],
-                           energy_by_day[[DataKind.CONSUMPTION, DataKind.PRODUCTION]].sum().min(axis="rows"),
-                           args[2].number_of_families)
-        Write2DData().write(results, attribute="time_aggregation")
-        plot_sci(time_resolution, args[2].number_of_families, results)
+        energy_by_day = input_da.groupby(f"time.dayofyear").sum()
+        energy_by_day, _ = SharedEnergy.calculate(energy_by_day)
+        plot_shared_energy(energy_by_day.sel(calculated=PhysicalMetric.SHARED_ENERGY).data, energy_by_day.sel(
+            calculated=[OtherParameters.WITHDRAWN_ENERGY, OtherParameters.INJECTED_ENERGY]).min(axis=0).data,
+                           args[2]["number_of_families"])
+        WriteDataArray().execute(results, attribute="time_aggregation")
         return input_da, results

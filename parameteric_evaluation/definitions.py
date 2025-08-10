@@ -82,16 +82,18 @@ class LoadMatchingMetric(Parameter):
 
 
 class TimeAggregation(Parameter):
-    HOUR = "hour"
-    YEAR = "year"
-    SEASON = 'season'
-    MONTH = 'month'
     THEORETICAL_LIMIT = "15min"
+    HOUR = "hour"
+    DAY = "dayofyear"
+    MONTH = 'month'
+    SEASON = 'season'
+    YEAR = "year"
     INVALID = "invalid"
 
     @classmethod
     def _get_abbrev_mapping(cls):
-        return {cls.HOUR: "hour", cls.MONTH: "month", cls.YEAR: "year", cls.THEORETICAL_LIMIT: "th_lim", }
+        return {cls.HOUR: "hour", cls.MONTH: "month", cls.DAY: "month", cls.YEAR: "year",
+                cls.THEORETICAL_LIMIT: "th_lim", }
 
 
 class ParametricEvaluationType(OrderedEnum):
@@ -104,3 +106,36 @@ class ParametricEvaluationType(OrderedEnum):
     LOAD_MATCHING_METRICS = "load_matching"
     ALL = "all"
     INVALID = "invalid"
+
+
+class CombinedMetric:
+    def __init__(self, first, second):
+        assert hasattr(first, "value") and hasattr(second, "value") and hasattr(first, "name") and hasattr(second,
+                                                                                                           "name")
+        self.first = first
+        self.second = second
+
+    @property
+    def value(self):
+        return self.first.value, self.second.value
+
+    @property
+    def name(self):
+        return f"{self.first.name}, {self.second.name}"
+
+    def valid(self):
+        return self.first.valid() and self.second.valid()
+
+    def __eq__(self, other):
+        if not isinstance(other, CombinedMetric):
+            return False
+        return (self.first, self.second) == (other.first, other.second)
+
+    def __hash__(self):
+        return hash((self.first, self.second))
+
+    def __repr__(self):
+        return f"(first={self.first.value!r}, second={self.second.value!r})"
+
+    def __str__(self):
+        return f"{self.first.value.replace(' ', '')},{self.second.value.replace(' ', '')})"

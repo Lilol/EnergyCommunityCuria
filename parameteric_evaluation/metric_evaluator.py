@@ -3,12 +3,13 @@ import logging
 from data_storage.data_store import DataStore
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
-from io_operation.output.write import Write
+from io_operation.output.write import WriteDataArray
 from parameteric_evaluation.battery import Battery
 from parameteric_evaluation.definitions import PhysicalMetric
 from parameteric_evaluation.other_calculators import WithdrawnEnergy, InjectedEnergy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import TotalConsumption
+from visualization.processing_visualization import plot_results
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +28,16 @@ class MetricEvaluator:
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 
         # Initialize results dataarray
-        energy_year = ds["energy_year"]
         results = OmnesDataArray(
             dims=[DataKind.NUMBER_OF_FAMILIES.value, DataKind.BATTERY_SIZE.value, DataKind.METRIC.value,
                   DataKind.MUNICIPALITY.value],
             coords={DataKind.NUMBER_OF_FAMILIES.value: parameters.number_of_families,
                     DataKind.BATTERY_SIZE.value: parameters.bess_sizes, DataKind.METRIC.value: [],
-                    DataKind.MUNICIPALITY.value: energy_year[DataKind.MUNICIPALITY.value].coords}, )
+                    DataKind.MUNICIPALITY.value: ds["energy_year"][DataKind.MUNICIPALITY.value].coords}, )
 
         # Evaluate each scenario
         for i, parameters in enumerate(parameters, 1):
+            energy_year = ds["energy_year"].copy()
             n_fam = parameters[DataKind.NUMBER_OF_FAMILIES.value]
             bess_size = parameters[DataKind.BATTERY_SIZE.value]
             logger.info(
@@ -54,7 +55,8 @@ class MetricEvaluator:
                 if name.value == "invalid":
                     continue
                 energy_year, results = evaluator.invoke(energy_year, results, parameters, pv_sizes=pv_sizes,
-                                                        battery_size=bess_size,
-                                                        number_of_families=n_fam, number_of_users=n_users)
+                                                        battery_size=bess_size, number_of_families=n_fam,
+                                                        number_of_users=n_users)
 
-        Write().execute(results, filename="results")
+            plot_results(results, n_fam=n_fam, bess_size=bess_size)
+            WriteDataArray().execute(results, filename=f"results_n_fam_{n_fam}_bess_size_{bess_size}.csv")

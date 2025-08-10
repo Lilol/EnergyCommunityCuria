@@ -13,6 +13,8 @@ class Equality(Calculator):
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
         new_coords = input_da.coords[DataKind.CALCULATED.value].data
+        if cls._equate_to not in new_coords or cls._key in new_coords:
+            return input_da, results_of_previous_calculations
         new_coords[new_coords == cls._equate_to] = cls._key
         input_da = input_da.assign_coords({DataKind.CALCULATED.value: (DataKind.CALCULATED.value, new_coords)})
         return input_da, results_of_previous_calculations

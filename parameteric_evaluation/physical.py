@@ -32,9 +32,17 @@ class SharedEnergy(PhysicalParameterCalculator):
     def calculate(cls, input_da: OmnesDataArray | None = None,
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
-        dx = input_da.sel(
-            {DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}).min(
-            dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
+        if OtherParameters.INJECTED_ENERGY in input_da.calculated and OtherParameters.WITHDRAWN_ENERGY in input_da.calculated:
+            dx = input_da.sel(
+                {DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}).min(
+                dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
+        elif DataKind.PRODUCTION in input_da.calculated and DataKind.CONSUMPTION in input_da.calculated:
+            dx = input_da.sel({DataKind.CALCULATED.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION]}).min(
+                dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
+        else:
+            raise IndexError(
+                f"Necessary indices {DataKind.PRODUCTION}, {DataKind.CONSUMPTION} or {OtherParameters.INJECTED_ENERGY},"
+                f" {OtherParameters.WITHDRAWN_ENERGY} are missing from input dataarray")
         if cls._key not in input_da[DataKind.CALCULATED.value]:
             input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
         else:
