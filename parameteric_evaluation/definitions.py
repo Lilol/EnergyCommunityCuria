@@ -132,10 +132,16 @@ class CombinedMetric:
         return (self.first, self.second) == (other.first, other.second)
 
     def __hash__(self):
-        return hash((self.first, self.second))
+        return hash((self.first.value, self.second.value))
+
+    def to_str(self):
+        return f"{self.first.value}_{self.second.value}"
 
     def __repr__(self):
-        return f"(first={self.first.value!r}, second={self.second.value!r})"
+        return self.to_str()
 
     def __str__(self):
-        return f"{self.first.value.replace(' ', '')},{self.second.value.replace(' ', '')})"
+        return self.to_str()
+
+    def to_tuple(self):
+        return (self.first.value, self.second.value)
