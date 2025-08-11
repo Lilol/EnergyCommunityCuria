@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 
 import xarray as xr
@@ -7,6 +8,8 @@ from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, OtherParameters
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
+
+logger = logging.getLogger(__name__)
 
 
 class PhysicalParameterCalculator(Calculator):
@@ -33,22 +36,23 @@ class SharedEnergy(PhysicalParameterCalculator):
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
         if cls._key in input_da.calculated:
-            return input_da, results_of_previous_calculations
+            logger.info(f"Recalculating shared energy")
         if OtherParameters.INJECTED_ENERGY in input_da.calculated and OtherParameters.WITHDRAWN_ENERGY in input_da.calculated:
-            dx = input_da.sel(
-                {DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}).min(
-                dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
+            injected = input_da.sel({DataKind.CALCULATED.value: OtherParameters.INJECTED_ENERGY})
+            withdrawn = input_da.sel({DataKind.CALCULATED.value: OtherParameters.WITHDRAWN_ENERGY})
         elif DataKind.PRODUCTION in input_da.calculated and DataKind.CONSUMPTION in input_da.calculated:
-            dx = input_da.sel({DataKind.CALCULATED.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION]}).min(
-                dim=DataKind.CALCULATED.value).assign_coords({DataKind.CALCULATED.value: cls._key})
+            injected = input_da.sel({DataKind.CALCULATED.value: DataKind.PRODUCTION})
+            withdrawn = input_da.sel({DataKind.CALCULATED.value: DataKind.CONSUMPTION})
         else:
             raise IndexError(
                 f"Necessary indices {DataKind.PRODUCTION}, {DataKind.CONSUMPTION} or {OtherParameters.INJECTED_ENERGY},"
                 f" {OtherParameters.WITHDRAWN_ENERGY} are missing from input dataarray")
+        shared_e = xr.where(injected < withdrawn, injected, withdrawn).assign_coords(
+            {DataKind.CALCULATED.value: cls._key})
         if cls._key not in input_da[DataKind.CALCULATED.value]:
-            input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+            input_da = xr.concat([input_da, shared_e], dim=DataKind.CALCULATED.value)
         else:
-            input_da.update(dx, {DataKind.CALCULATED.value: cls._key})
+            input_da = input_da.update(shared_e, {DataKind.CALCULATED.value: cls._key})
         return input_da, results_of_previous_calculations
 
 

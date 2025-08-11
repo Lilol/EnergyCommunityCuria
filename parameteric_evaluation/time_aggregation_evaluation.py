@@ -50,8 +50,12 @@ for ta_key in TimeAggregation:
                               results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
                     OmnesDataArray, float | None]:
                     """Evaluate load matching metric with given temporal aggregation."""
-                    aggregated = input_da.groupby(
-                        f"time.{cls._aggregation.value}").sum() if cls._aggregation != TimeAggregation.THEORETICAL_LIMIT else input_da
+                    if cls._aggregation == TimeAggregation.HOUR:
+                        aggregated = input_da.groupby(
+                            ((input_da.time.dt.dayofyear - 1) * 24 + input_da.time.dt.hour)).mean()
+                    else:
+                        aggregated = input_da.groupby(
+                            f"time.{cls._aggregation.value}").sum() if cls._aggregation != TimeAggregation.THEORETICAL_LIMIT else input_da
                     aggregated, _ = SharedEnergy.calculate(aggregated)
                     return input_da, PhysicalParameterCalculator.create(cls._metric).calculate(aggregated)[1]
 
@@ -72,9 +76,9 @@ class TimeAggregationEvaluator(ParametricEvaluator):
 
     @staticmethod
     def get_eval_metrics(evaluation_type):
-        return {CombinedMetricEnum.from_parts(key, m): TimeAggregationParameterCalculator.get_subclass(CombinedMetricEnum.from_parts(key, m)) for key
-                in TimeAggregation for m in LoadMatchingMetric if
-                m != LoadMatchingMetric.INVALID and key != TimeAggregation.INVALID}
+        return {CombinedMetricEnum.from_parts(key, m): TimeAggregationParameterCalculator.get_subclass(
+            CombinedMetricEnum.from_parts(key, m)) for key in TimeAggregation for m in LoadMatchingMetric if
+            m != LoadMatchingMetric.INVALID and key != TimeAggregation.INVALID}
 
     @classmethod
     @override
