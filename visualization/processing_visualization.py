@@ -3,7 +3,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 from pandas import DataFrame
 
-from parameteric_evaluation.definitions import CombinedMetric
+from parameteric_evaluation.definitions import CombinedMetricEnum
 from utility.enum_definitions import convert_enum_to_value
 
 
@@ -28,7 +28,7 @@ def plot_results(results, n_fam, bess_size):
     df = DataFrame(columns=["time_resolution", "metric", "value"], index=[])
     for label in results.metric:
         label = label.values.item()
-        if not isinstance(label, CombinedMetric):
+        if not isinstance(label, CombinedMetricEnum):
             continue
         df.loc[len(df), :] = label.first, label.second, \
             results.sel(metric=label, battery_size=bess_size, number_of_families=n_fam).values[0]

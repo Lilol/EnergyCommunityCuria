@@ -44,7 +44,7 @@ class OmnesDataArray(DataArray):
         da = da.copy()
 
         # Assign the new data value, normalize the data to a list
-        indexer = {dim: coord for dim, coord in coordinates.items()}
+        indexer = {dim: coord for dim, coord in normalized_coords.items()}
         da.loc[indexer] = OmnesDataArray.normalize_data(data)
         return da
 

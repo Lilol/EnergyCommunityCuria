@@ -5,7 +5,7 @@ from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.output.write import WriteDataArray
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, TimeAggregation, \
-    LoadMatchingMetric, OtherParameters, CombinedMetric
+    LoadMatchingMetric, OtherParameters, CombinedMetricEnum
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import SharedEnergy, PhysicalParameterCalculator
 from visualization.processing_visualization import plot_shared_energy
@@ -40,7 +40,7 @@ for ta_key in TimeAggregation:
 
         def make_calculator(k, m):
             class _Calc(TimeAggregationParameterCalculator):
-                _key = CombinedMetric(k, m)
+                _key = CombinedMetricEnum.from_parts(k, m)
                 _metric = m
                 _param_calculator = PhysicalParameterCalculator.create(_metric)
                 _aggregation = k
@@ -72,7 +72,7 @@ class TimeAggregationEvaluator(ParametricEvaluator):
 
     @staticmethod
     def get_eval_metrics(evaluation_type):
-        return {CombinedMetric(key, m): TimeAggregationParameterCalculator.get_subclass(CombinedMetric(key, m)) for key
+        return {CombinedMetricEnum.from_parts(key, m): TimeAggregationParameterCalculator.get_subclass(CombinedMetricEnum.from_parts(key, m)) for key
                 in TimeAggregation for m in LoadMatchingMetric if
                 m != LoadMatchingMetric.INVALID and key != TimeAggregation.INVALID}
 

@@ -28,7 +28,7 @@ class MetricEvaluator:
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 
         # Initialize results dataarray
-        results = OmnesDataArray(
+        results = OmnesDataArray(0.0,
             dims=[DataKind.NUMBER_OF_FAMILIES.value, DataKind.BATTERY_SIZE.value, DataKind.METRIC.value,
                   DataKind.MUNICIPALITY.value],
             coords={DataKind.NUMBER_OF_FAMILIES.value: parameters.number_of_families,

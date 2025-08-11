@@ -127,7 +127,7 @@ A framework for evaluating energy communities using household consumption, PV ge
    - `physical`: self-consumption, self-sufficiency
    - `economic`: capex, opex
    - `environmental`: baseline emissions, emissions in case of REC establishment, savings
-   - `self_consumption_targets`, `time_aggregation`, `all`
+   - `metric_targets`, `time_aggregation`, `all`
 
 6. Define cost/emissions in:
    ```

@@ -24,7 +24,7 @@ class Battery(Calculator):
             input_da), results_of_previous_calculations
 
     def manage_bess(self, dataset: OmnesDataArray) -> OmnesDataArray:
-        logger.info(f"Calculating Battery production/consumption for BESS size: {self._size}")
+        logger.info(f"Calculating Battery operation for BESS size: {self._size}")
         calc_dim = DataKind.CALCULATED.value
         time_dim = DataKind.TIME.value
 

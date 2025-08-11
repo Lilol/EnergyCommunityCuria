@@ -1,3 +1,5 @@
+from enum import Enum
+
 from utility.definitions import OrderedEnum
 
 
@@ -98,7 +100,7 @@ class TimeAggregation(Parameter):
 
 class ParametricEvaluationType(OrderedEnum):
     DATASET_CREATION = "dataset_creation"
-    SELF_CONSUMPTION_TARGETS = "self_consumption_targets"
+    METRIC_TARGETS = "metric_targets"
     TIME_AGGREGATION = "time_aggregation"
     PHYSICAL_METRICS = "physical"
     ECONOMIC_METRICS = "economic"
@@ -108,40 +110,58 @@ class ParametricEvaluationType(OrderedEnum):
     INVALID = "invalid"
 
 
-class CombinedMetric:
-    def __init__(self, first, second):
-        assert hasattr(first, "value") and hasattr(second, "value") and hasattr(first, "name") and hasattr(second,
-                                                                                                           "name")
-        self.first = first
-        self.second = second
+def make_combined_enum(name, first_enum, second_enum, base_cls=Parameter):
+    members = {}
+    abbrev_map = {}
 
-    @property
-    def value(self):
-        return self.first.value, self.second.value
+    for f in first_enum:
+        if not f.valid():
+            continue
+        for s in second_enum:
+            if not s.valid():
+                continue
+            enum_name = f"{f.name}_{s.name}"
+            members[enum_name] = (f, s)
+            abbrev_map[(f, s)] = f"{f.to_abbrev_str()}_{s.to_abbrev_str()}"
 
-    @property
-    def name(self):
-        return f"{self.first.name}, {self.second.name}"
+    # Custom metaclass to override value
+    class _CombinedEnum(base_cls, Enum):
+        def __new__(cls, first, second):
+            obj = object.__new__(cls)
+            obj._pair = (first, second)  # store tuple internally
+            # The "real" value of the Enum will be a string
+            obj._value_ = f"{first.value}_{second.value}"
+            return obj
 
-    def valid(self):
-        return self.first.valid() and self.second.valid()
+        @property
+        def first(self):
+            return self._pair[0]
 
-    def __eq__(self, other):
-        if not isinstance(other, CombinedMetric):
-            return False
-        return (self.first, self.second) == (other.first, other.second)
+        @property
+        def second(self):
+            return self._pair[1]
 
-    def __hash__(self):
-        return hash((self.first.value, self.second.value))
+        @classmethod
+        def _get_abbrev_mapping(cls):
+            return abbrev_map
 
-    def to_str(self):
-        return f"{self.first.value}_{self.second.value}"
+        @classmethod
+        def from_parts(cls, first, second):
+            name = f"{first.name}_{second.name}"
+            return cls[name]
 
-    def __repr__(self):
-        return self.to_str()
+    # Actually build the enum using the custom class
+    return _CombinedEnum(name, members)
 
-    def __str__(self):
-        return self.to_str()
+# --- Usage ---
+CombinedMetricEnum = make_combined_enum(
+    "CombinedMetricEnum",
+    TimeAggregation,
+    LoadMatchingMetric
+)
 
-    def to_tuple(self):
-        return (self.first.value, self.second.value)
+cm = CombinedMetricEnum.HOUR_SELF_CONSUMPTION
+print(cm.value)       # "hour_Self consumption"
+print(cm.first)       # TimeAggregation.HOUR
+print(cm.second)      # LoadMatchingMetric.SELF_CONSUMPTION
+print(cm.to_abbrev_str())  # "hour_sc"

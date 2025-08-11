@@ -4,7 +4,7 @@ import numpy as np
 from pandas import DataFrame
 
 from data_storage.data_store import DataStore
-from parameteric_evaluation.definitions import ParametricEvaluationType
+from parameteric_evaluation.definitions import ParametricEvaluationType, LoadMatchingMetric
 from parameteric_evaluation.load_matching_evaluation import SelfConsumption
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import SharedEnergy
@@ -49,7 +49,7 @@ def find_best_value(df, n_fam_high, n_fam_low, step, sc):
         return find_best_value(df, n_fam_mid, n_fam_low, step, sc)
 
 
-def find_the_optimal_number_of_families_for_sc_ratio(df, sc, n_fam_max, step=25):
+def find_the_optimal_number_of_families_for_value(df, val, n_fam_max, step=25):
     """
     Finds the optimal number of families to satisfy a given self-consumption
     ratio.
@@ -70,55 +70,56 @@ def find_the_optimal_number_of_families_for_sc_ratio(df, sc, n_fam_max, step=25)
     # Evaluate starting point
     n_fam_low = 0
     sc_low = eval_sc(df, n_fam_low)
-    if sc_low >= sc:  # Check if requirement is already satisfied
+    if sc_low >= val:  # Check if requirement is already satisfied
         print("Requirement already satisfied!")
         return n_fam_low, sc_low
 
     # Evaluate point that can be reached
     n_fam_high = n_fam_max
     sc_high = eval_sc(df, n_fam_high)
-    if sc_high <= sc:  # Check if requirement is satisfied
+    if sc_high <= val:  # Check if requirement is satisfied
         print("Requirement cannot be satisfied!")
         return n_fam_high, sc_high
 
     # Loop to find best value
-    return find_best_value(df, n_fam_high, n_fam_low, step, sc)
+    return find_best_value(df, n_fam_high, n_fam_low, step, val)
 
 
 class TargetSelfConsumptionEvaluator(ParametricEvaluator):
-    _key = ParametricEvaluationType.SELF_CONSUMPTION_TARGETS
-    _name = "Target self consumption evaluator"
+    _key = ParametricEvaluationType.METRIC_TARGETS
+    _name = "Target evaluator"
+    _metric = LoadMatchingMetric.SELF_CONSUMPTION
 
     @classmethod
-    def evaluate_self_consumption_targets(cls):
-        self_consumption_targets = configuration.config.getarray("parametric_evaluation", "self_consumption_targets")
+    def evaluate_targets(cls):
+        metric_targets = configuration.config.getarray("parametric_evaluation",
+                                                                 f"{cls._metric.value.lower().replace(' ', '_')}_targets")
         max_number_of_households = configuration.config.getint("parametric_evaluation", "max_number_of_households")
-        df = DataFrame(np.nan, index=self_consumption_targets,
-                       columns=["number_of_families", "self_consumption_realized"])
+        df = DataFrame(np.nan, index=metric_targets, columns=["number_of_families", "metric_realized"])
         # Evaluate number of families for each target
-        sc, nf = 0, 0
-        for sc_target in self_consumption_targets:
+        val, nf = 0, 0
+        for target in metric_targets:
             # # Skip if previous target was already higher than this
-            if sc >= sc_target:
-                df.loc[sc_target, ["number_of_families", "self_consumption_realized"]] = nf, sc
+            if val >= target:
+                df.loc[target, ["number_of_families", "metric_realized"]] = nf, val
                 continue
 
             # # Find number of families to reach target
-            nf, sc = find_the_optimal_number_of_families_for_sc_ratio(DataStore()["energy_year"], sc_target,
-                                                                      max_number_of_households)
+            nf, val = find_the_optimal_number_of_families_for_value(DataStore()["energy_year"], target,
+                                                                    max_number_of_households)
 
             # Update
-            df.loc[sc_target, ["number_of_families", "self_consumption_realized"]] = nf, sc
+            df.loc[target, ["number_of_families", "metric_realized"]] = nf, val
 
             # # Exit if targets cannot be reached
-            if sc < sc_target:
+            if val < target:
                 logger.warning("Exiting loop because requirement cannot be reached.")
                 break
             if nf >= max_number_of_households:
                 logger.warning("Exiting loop because max families was reached.")
                 break
         logger.info(
-            f"Self consumption targets reached; number of families:\n{','.join(f'{row.number_of_families}; {row.self_consumption_realized}' for _, row in df.iterrows())}")
+            f"Targets reached; number of families:\n{','.join(f'{row.number_of_families}; {row.self_consumption_realized}' for _, row in df.iterrows())}")
         logger.info(f"To provide battery sizes for evaluation in the configuration file use:\n[parametric_evaluation]"
                     f"\nevaluation_parameters={{'bess_sizes': [...], 'number_of_families': [{f','.join(f'{nf}' for nf in df.number_of_families)}]}}\nor\n"
                     f"evaluation_parameters = {{'number_of_families': {f','.join(f'{nf}: [...]' for nf in df.number_of_families)}}}")

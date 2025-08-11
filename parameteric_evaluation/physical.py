@@ -32,6 +32,8 @@ class SharedEnergy(PhysicalParameterCalculator):
     def calculate(cls, input_da: OmnesDataArray | None = None,
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
+        if cls._key in input_da.calculated:
+            return input_da, results_of_previous_calculations
         if OtherParameters.INJECTED_ENERGY in input_da.calculated and OtherParameters.WITHDRAWN_ENERGY in input_da.calculated:
             dx = input_da.sel(
                 {DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}).min(
