@@ -1,5 +1,6 @@
 from typing import Iterable
 
+import numpy as np
 from xarray import DataArray
 
 from data_storage.data_array_extensions import OmnesAccessor
@@ -12,7 +13,7 @@ class OmnesDataArray(DataArray):
     def omnes(self):
         return OmnesAccessor(self)
 
-    def update(self, data, coordinates):
+    def update(self, data, coordinates, dtype=float):
         """
         Does not change the DataArray, please call dataarray = dataarray.update(), if you want to modify it.
         Update a cell in the OmnesDataArray using coordinate values.
@@ -38,14 +39,14 @@ class OmnesDataArray(DataArray):
                 current_vals = set(da.coords[dim].values.tolist())
                 new_vals = list(current_vals.union(coords))
                 if len(new_vals) > len(current_vals):
-                    da = da.reindex({dim: new_vals}, fill_value=0)
+                    da = da.reindex({dim: new_vals}, fill_value=dtype(0.0))
 
         # Ensure the DataArray is writable
         da = da.copy()
 
         # Assign the new data value, normalize the data to a list
         indexer = {dim: coord for dim, coord in normalized_coords.items()}
-        da.loc[indexer] = OmnesDataArray.normalize_data(data)
+        da.loc[indexer] = OmnesDataArray.normalize_data(data, dtype=dtype)
         return da
 
     @staticmethod
@@ -61,12 +62,12 @@ class OmnesDataArray(DataArray):
             return [coord]
 
     @staticmethod
-    def normalize_data(data):
+    def normalize_data(data, dtype):
         if isinstance(data, DataArray):
             if data.ndim == 0:
-                return data.item()
+                return dtype(data.item())
             else:
-                return data.values
+                return np.asarray(data.values, dtype=dtype)
         elif isinstance(data, Iterable) and not isinstance(data, str):
-            return [*data]
-        return data
+            return np.asarray(list(data), dtype=dtype)
+        return dtype(data)

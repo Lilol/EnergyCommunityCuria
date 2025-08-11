@@ -57,10 +57,7 @@ class Calculator(SubclassRegistrationBase):
             _, data = result
         else:
             data = result
-        results_of_previous_calculations = results_of_previous_calculations.update(data,
-                                                                                   {DataKind.METRIC.value: cls._key,
-                                                                                    **parameters})
-        return results_of_previous_calculations
+        return results_of_previous_calculations.update(data, {DataKind.METRIC.value: cls._key, **parameters})
 
     @classmethod
     def call(cls, input_da: OmnesDataArray | None = None,
