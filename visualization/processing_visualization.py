@@ -17,61 +17,62 @@ def plot_shared_energy(input_da, n_fam, bess_size):
     sns.set_style("whitegrid")
     palette = sns.color_palette("Set2")
 
-    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(20, 17), sharey=True)
+    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(20, 15))
 
     # Daily base
     daily = input_da.groupby("time.dayofyear").sum()
     daily, _ = SharedEnergy.calculate(daily)
     daily = daily.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
 
-    agg_levels = ["15min", "hour", "season", "year"]
+    agg_levels = ["15min", "hour", "month", "season"]
+    df = DataFrame(columns=agg_levels + ["day"], index=range(365))
+    df.loc[:, "day"] = daily.data
     for i, (agg_level, ax) in enumerate(zip(agg_levels, axes.flat)):
         logger.info(f"Plotting shared energy for: {agg_level}")
         if agg_level == "hour":
             aggregated = input_da.resample(time='1h').mean()
+        elif agg_level == "4 hours":
+            aggregated = input_da.resample(time='4h').mean()
         elif agg_level == "15min":
             aggregated = input_da
         elif agg_level == "season":
-            aggregated = input_da.resample(time="QE", closed="left", label="right").mean()
+            aggregated = input_da.resample(time="QE", closed="left", label="right").sum()
+        elif agg_level == "month":
+            aggregated = input_da.resample(time="ME", closed="left", label="right").sum()
         else:
-            aggregated = input_da.resample(time="YE", closed="left", label="right").mean()
+            aggregated = input_da.resample(time="YE", closed="left", label="right").sum()
 
         aggregated, _ = SharedEnergy.calculate(aggregated)
+        aggregated = aggregated.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
 
-        if agg_level in ["season", "year"]:
-
+        if agg_level in ["season", "year", "month"]:
             # Create a daily time index covering the same span as aggregated
             daily_time = date_range(start=aggregated.time.min().values, end=aggregated.time.max().values, freq="D")
-
             # Reindex and interpolate
             aggregated_daily = aggregated.reindex(time=daily_time)
             aggregated = aggregated_daily.interpolate_na(dim="time", method="zero")
         else:
-            aggregated = aggregated.resample(time="1d")
-            aggregated = aggregated.mean()
-        aggregated = aggregated.sel({DataKind.CALCULATED.value: PhysicalMetric.SHARED_ENERGY})
+            aggregated = aggregated.resample(time="1d").sum()
 
+        df.loc[:, agg_level] = aggregated.data[:365]
         diff_vals = aggregated.data[:365] - daily.data
         sorted_vals = sorted(diff_vals)
 
         axt = ax.twinx()
         ax.plot(np.diff(sorted_vals), label=f"{agg_level}-daily", color="grey", linestyle="-", linewidth=2.5)
-        axt.plot(sorted_vals, label=f"{agg_level}", color=palette[i], linestyle="-", linewidth=2.5)
+        axt.plot(sorted_vals, label=f"{agg_level}-daily summed", color=palette[i], linestyle="-", linewidth=2.5)
 
         # Labels & titles
-        ax.set_ylabel('Difference between aggregates (kWh)', fontsize=12)
-        axt.set_ylabel('Sorted difference values (kWh)', fontsize=12)
-        ax.set_xlabel('Day of Year', fontsize=12)
-        ax.set_title(f"Shared energy for: {agg_level}-daily", fontsize=12)
+        ax.set_ylabel('Difference between aggregates (kWh)')
+        axt.set_ylabel('Sorted difference values (kWh)')
+        ax.set_xlabel('Day of Year')
+        ax.set_title(f"Shared energy for: {agg_level}-daily")
         # Combine legends from both axes
         lines, labels = ax.get_legend_handles_labels()
         lines2, labels2 = axt.get_legend_handles_labels()
         ax.legend(lines + lines2, labels + labels2, loc="upper right", frameon=True)
 
-    fig.suptitle(f"Shared Energy Gap\nFamilies = {int(n_fam)}, Battery Size = {bess_size} kWh", fontsize=14,
-                 weight="bold")
-
-
+    fig.suptitle(f"Shared Energy Gap\nFamilies = {int(n_fam)}, Battery Size = {bess_size} kWh", weight="bold")
 
     plt.tight_layout()
     plt.savefig("shared_energy.png", dpi=300)

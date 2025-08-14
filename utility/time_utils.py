@@ -20,3 +20,7 @@ def conventionalize_time_period(interval_length):
     else:
         interval = Timedelta(interval_length)
     return interval
+
+
+def to_hours(time_str):
+    return conventionalize_time_period(time_str) / Timedelta(hours=1)

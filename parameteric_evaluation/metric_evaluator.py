@@ -9,6 +9,8 @@ from parameteric_evaluation.definitions import PhysicalMetric
 from parameteric_evaluation.other_calculators import WithdrawnEnergy, InjectedEnergy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import TotalConsumption
+from utility.configuration import config
+from utility.time_utils import to_hours
 from visualization.processing_visualization import plot_results
 
 logger = logging.getLogger(__name__)
@@ -28,12 +30,12 @@ class MetricEvaluator:
             raise Warning("Some plants are not PV, add CAPEX manually and comment this Warning.")
 
         # Initialize results dataarray
-        results = OmnesDataArray(0.0,
-            dims=[DataKind.NUMBER_OF_FAMILIES.value, DataKind.BATTERY_SIZE.value, DataKind.METRIC.value,
-                  DataKind.MUNICIPALITY.value],
-            coords={DataKind.NUMBER_OF_FAMILIES.value: parameters.number_of_families,
-                    DataKind.BATTERY_SIZE.value: parameters.bess_sizes, DataKind.METRIC.value: [],
-                    DataKind.MUNICIPALITY.value: ds["energy_year"][DataKind.MUNICIPALITY.value].coords}, )
+        results = OmnesDataArray(0.0, dims=[DataKind.NUMBER_OF_FAMILIES.value, DataKind.BATTERY_SIZE.value,
+                                            DataKind.METRIC.value, DataKind.MUNICIPALITY.value],
+                                 coords={DataKind.NUMBER_OF_FAMILIES.value: parameters.number_of_families,
+                                         DataKind.BATTERY_SIZE.value: parameters.bess_sizes, DataKind.METRIC.value: [],
+                                         DataKind.MUNICIPALITY.value: ds["energy_year"][
+                                             DataKind.MUNICIPALITY.value].coords}, )
 
         # Evaluate each scenario
         for i, parameters in enumerate(parameters, 1):
@@ -49,7 +51,8 @@ class MetricEvaluator:
             energy_year, _ = WithdrawnEnergy.calculate(energy_year)
             energy_year, _ = InjectedEnergy.calculate(energy_year)
             # Manage BESS, if present
-            energy_year = Battery(bess_size).manage_bess(energy_year)
+            energy_year = Battery(bess_size, t_hours=to_hours(config.get("time", "resolution"))).manage_bess(
+                energy_year)
 
             for name, evaluator in cls._parametric_evaluators.items():
                 if name.value == "invalid":

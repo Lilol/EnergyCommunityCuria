@@ -1,0 +1,114 @@
+from data_processing_pipeline.definitions import Stage
+from data_processing_pipeline.pipeline_stage import PipelineStage
+from data_storage.omnes_data_array import OmnesDataArray
+from utility.definitions import get_value
+
+
+class IoOperationSeparately(PipelineStage):
+    _name = "io_operation_separately"
+    stage = Stage.IO
+
+    def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value=None, *args,
+                     **kwargs) -> OmnesDataArray | None:
+        raise NotImplementedError("Function '_io_operation()' must be implemented in all child classes.")
+
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
+        attribute = get_value(self.get_arg("separate_to_directories_by", **kwargs))
+        do_not_separate = self.get_arg("do_not_separate", fallback=False, **kwargs)
+        if do_not_separate or "directories" not in kwargs and (dataset is None or attribute not in dataset.dims):
+            return self._io_operation(dataset)
+
+        attribute_values = self.get_arg("directories", **kwargs, fallback=None)
+        if attribute_values is None:
+            attribute_values = dataset[attribute].values
+        for attribute_value in attribute_values:
+            dataset = self._io_operation(dataset, attribute=attribute, attribute_value=attribute_value)
+        return dataset
+
+class Read(IoOperationSeparately):
+    stage = Stage.READ
+    _column_names = convert_value_to_enum
+    _name = "reader"
+    _input_root = configuration.config.get("path", "input")
+    _directory = ""
+    _filename = ""
+    _ext = ".csv"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+        self._filename = kwargs.pop("filename", self.__class__._filename)
+        self._directory = kwargs.pop("directory", self.__class__._directory)
+        self._input_root = kwargs.pop("input_root", self.__class__._input_root)
+        self._path = join(self._input_root, self._directory)
+        self._data = None
+
+    def _io_operation(self, dataset: OmnesDataArray | None, attribute=None, attribute_value="", *args,
+                      **kwargs) -> OmnesDataArray | None:
+        filename = os.path.join(self._path, attribute_value, append_extension(self._filename, self._ext))
+        if not exists(filename):
+            logger.warning(f"File {filename} does not exist, skipping file reading.")
+            return dataset
+        data = self.read_data(filename, attribute, attribute_value)
+        if self._data is None:
+            self._data = data
+        else:
+            self._data = xr.concat([self._data, data], dim=attribute)
+        return self._data
+
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
+        municipalities = kwargs.pop("municipality", configuration.config.get("rec", "municipalities"))
+        return super().execute(dataset, separate_to_directories_by=DataKind.MUNICIPALITY.value,
+                               directories=municipalities, *args, **kwargs)
+
+    def read_data(self, filename, attribute, attribute_value):
+        data = read_csv(filename, sep=';', parse_dates=True).rename(columns=self.__class__._column_names)
+
+        return OmnesDataArray(data=data.reset_index(drop=True)).expand_dims(attribute).assign_coords(
+            {attribute: [attribute_value]})
+
+class ReadUserData(Read):
+    _name = "users_reader"
+    _column_names = {'pod': DataKind.USER,  # code or name of the end user
+                     'descrizione': DataKind.DESCRIPTION,  # description of the end user
+                     'indirizzo': DataKind.USER_ADDRESS,  # address of the end user
+                     'tipo': DataKind.USER_TYPE,  # type of end user
+                     'potenza': DataKind.POWER,  # maximum available power of the end-user (kW)
+                     }
+
+    _directory = "DatiComuni"
+    _filename = "lista_pod.csv"  # list of end-users
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+
+class ReadBills(Read):
+    _name = "bill_reader"
+    _time_of_use_energy_column_names = {f'f{i}': tou_energy_name for i, tou_energy_name in
+                                        enumerate(configuration.config.get("tariff", "time_of_use_labels"), 1)}
+
+    _column_names = {'pod': DataKind.USER,  # code or name of the end user
+                     'anno': DataKind.YEAR,  # year
+                     'mese': DataKind.MONTH,  # number of the month
+                     'totale': DataKind.ANNUAL_ENERGY,  # Annual consumption
+                     'f0': DataKind.MONO_TARIFF, **_time_of_use_energy_column_names}
+
+    _directory = "DatiComuni"
+    _filename = "dati_bollette.csv"
+
+    def __init__(self, name=_name, *args, **kwargs):
+        super().__init__(name, *args, **kwargs)
+
+    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
+        super().execute(dataset, *args, **kwargs)
+        # Check that each user has exactly 12 rows in the bills dataframe
+        users = self._data.sel({"dim_1": DataKind.USER})
+        if not (np.all(users.groupby(users).count() == 12)).all():
+            logger.warning(
+                "All end users in 'data_users_bills' must have exactly 12 rows, but a user is found with more or less"
+                " rows.")
+        # Time of use labels
+        configuration.config.set_and_check("tariff", "time_of_use_labels", self._data["dim_1"][
+            self._data["dim_1"].isin(list(self._time_of_use_energy_column_names.values()))].values,
+                                           setter=configuration.config.setarray, check=False)
+        return self._data

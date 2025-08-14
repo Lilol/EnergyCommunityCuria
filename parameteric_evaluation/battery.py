@@ -12,15 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class Battery(Calculator):
-    def __init__(self, size, t_min=None):
+    def __init__(self, size, t_hours=1):
         self._size = size
-        self.p_max = np.inf if t_min is None else self._size / t_min
+        self.p_max = self._size / t_hours
 
     @classmethod
     def calculate(cls, input_da: OmnesDataArray | None = None,
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
-        return Battery(kwargs.pop('size'), t_min=kwargs.pop('t_min')).manage_bess(
+        return Battery(kwargs.pop('size'), t_hours=kwargs.pop('t_min')).manage_bess(
             input_da), results_of_previous_calculations
 
     def manage_bess(self, dataset: OmnesDataArray) -> OmnesDataArray:
@@ -44,13 +44,13 @@ class Battery(Calculator):
         stored = xr.zeros_like(inj)
         bess_charge = xr.zeros_like(inj)
         new_inj = xr.zeros_like(inj)
+        new_with = xr.zeros_like(inj)
 
         e = xr.zeros_like(charge.isel({time_dim: 0}))
 
         for t, time_val in enumerate(time_vals):
             power = charge.isel({time_dim: t})
 
-            # Perform the charge limitation using vectorized xarray operations
             charge_max = xr.where(
                 power < 0,
                 xr.ufuncs.maximum(power, xr.ufuncs.maximum(-e, -self.p_max)),
@@ -62,9 +62,11 @@ class Battery(Calculator):
             stored.loc[{time_dim: time_val}] = e
             bess_charge.loc[{time_dim: time_val}] = charge_max
             new_inj.loc[{time_dim: time_val}] = inj.isel({time_dim: t}) - charge_max
+            new_with.loc[{time_dim: time_val}] = withdrawn.isel({time_dim: t}) + charge_max
 
         dataset.loc[{calc_dim: BatteryPowerFlows.POWER_CHARGE}] = bess_charge
         dataset.loc[{calc_dim: BatteryPowerFlows.STORED_ENERGY}] = stored
         dataset.loc[{calc_dim: OtherParameters.INJECTED_ENERGY}] = new_inj
+        dataset.loc[{calc_dim: OtherParameters.WITHDRAWN_ENERGY}] = new_with
 
         return dataset
