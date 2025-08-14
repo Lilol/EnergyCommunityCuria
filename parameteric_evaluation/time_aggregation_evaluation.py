@@ -4,8 +4,8 @@ from typing import override
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.output.write import WriteDataArray
 from parameteric_evaluation.calculator import Calculator
-from parameteric_evaluation.definitions import ParametricEvaluationType, PhysicalMetric, TimeAggregation, \
-    LoadMatchingMetric, OtherParameters, CombinedMetricEnum
+from parameteric_evaluation.definitions import ParametricEvaluationType, TimeAggregation, LoadMatchingMetric, \
+    CombinedMetricEnum
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import SharedEnergy, PhysicalParameterCalculator
 from visualization.processing_visualization import plot_shared_energy
@@ -84,10 +84,6 @@ class TimeAggregationEvaluator(ParametricEvaluator):
     @override
     def invoke(cls, *args, **kwargs):
         input_da, results = super().invoke(*args, **kwargs)
-        energy_by_day = input_da.groupby(f"time.dayofyear").sum()
-        energy_by_day, _ = SharedEnergy.calculate(energy_by_day)
-        plot_shared_energy(energy_by_day.sel(calculated=PhysicalMetric.SHARED_ENERGY).data, energy_by_day.sel(
-            calculated=[OtherParameters.WITHDRAWN_ENERGY, OtherParameters.INJECTED_ENERGY]).min(axis=0).data,
-                           args[2]["number_of_families"])
+        plot_shared_energy(input_da, args[2]["number_of_families"], args[2]["battery_size"])
         WriteDataArray().execute(results, attribute="time_aggregation")
         return input_da, results

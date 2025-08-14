@@ -130,7 +130,7 @@ def make_combined_enum(name, first_enum, second_enum, base_cls=Parameter):
             obj = object.__new__(cls)
             obj._pair = (first, second)  # store tuple internally
             # The "real" value of the Enum will be a string
-            obj._value_ = f"{first.value}_{second.value}"
+            obj._value_ = f"{first.value} {second.value}"
             return obj
 
         @property
@@ -160,8 +160,3 @@ CombinedMetricEnum = make_combined_enum(
     LoadMatchingMetric
 )
 
-cm = CombinedMetricEnum.HOUR_SELF_CONSUMPTION
-print(cm.value)       # "hour_Self consumption"
-print(cm.first)       # TimeAggregation.HOUR
-print(cm.second)      # LoadMatchingMetric.SELF_CONSUMPTION
-print(cm.to_abbrev_str())  # "hour_sc"
