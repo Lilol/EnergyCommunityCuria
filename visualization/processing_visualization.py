@@ -17,7 +17,7 @@ def plot_shared_energy(input_da, n_fam, bess_size):
     sns.set_style("whitegrid")
     palette = sns.color_palette("Set2")
 
-    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(17, 20))
+    fig, axes = plt.subplots(ncols=2, nrows=2, figsize=(20, 17), sharey=True)
 
     # Daily base
     daily = input_da.groupby("time.dayofyear").sum()
@@ -55,22 +55,23 @@ def plot_shared_energy(input_da, n_fam, bess_size):
         sorted_vals = sorted(diff_vals)
 
         axt = ax.twinx()
-        ax.plot(np.diff(sorted(diff_vals)), label=f"{agg_level}-daily", color="grey", linestyle="-", linewidth=1.8)
-        axt.plot(sorted_vals, label=f"{agg_level}", color=palette[i], linestyle="-", linewidth=1.8)
+        ax.plot(np.diff(sorted_vals), label=f"{agg_level}-daily", color="grey", linestyle="-", linewidth=2.5)
+        axt.plot(sorted_vals, label=f"{agg_level}", color=palette[i], linestyle="-", linewidth=2.5)
 
         # Labels & titles
         ax.set_ylabel('Difference between aggregates (kWh)', fontsize=12)
         axt.set_ylabel('Sorted difference values (kWh)', fontsize=12)
         ax.set_xlabel('Day of Year', fontsize=12)
         ax.set_title(f"Shared energy for: {agg_level}-daily", fontsize=12)
+        # Combine legends from both axes
+        lines, labels = ax.get_legend_handles_labels()
+        lines2, labels2 = axt.get_legend_handles_labels()
+        ax.legend(lines + lines2, labels + labels2, loc="upper right", frameon=True)
 
     fig.suptitle(f"Shared Energy Gap\nFamilies = {int(n_fam)}, Battery Size = {bess_size} kWh", fontsize=14,
                  weight="bold")
 
-    # Combine legends from both axes
-    # lines, labels = ax.get_legend_handles_labels()
-    # lines2, labels2 = axt.get_legend_handles_labels()
-    # ax.legend(lines + lines2, labels + labels2, loc="upper right", frameon=True)
+
 
     plt.tight_layout()
     plt.savefig("shared_energy.png", dpi=300)
