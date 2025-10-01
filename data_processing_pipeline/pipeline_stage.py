@@ -1,3 +1,5 @@
+from typing import Optional
+
 from data_processing_pipeline.definitions import Stage
 from data_storage.omnes_data_array import OmnesDataArray
 
@@ -17,7 +19,7 @@ class PipelineStage:
         self.name = name
         return self
 
-    def execute(self, dataset: OmnesDataArray | None, *args, **kwargs) -> OmnesDataArray | None:
+    def execute(self, dataset: Optional[OmnesDataArray], *args, **kwargs) -> Optional[OmnesDataArray]:
         raise NotImplementedError(
             "'execute' is not implemented in base class 'PipelineStage', 'execute"
             "' must be implemented in every child class.")
