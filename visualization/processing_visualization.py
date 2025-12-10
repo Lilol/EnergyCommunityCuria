@@ -1,4 +1,6 @@
 import logging
+from os import makedirs
+from os.path import join
 
 import numpy as np
 import seaborn as sns
@@ -8,6 +10,7 @@ from pandas import DataFrame, Categorical, date_range
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.definitions import CombinedMetricEnum, PhysicalMetric
 from parameteric_evaluation.physical import SharedEnergy
+from utility.configuration import config
 from utility.enum_definitions import convert_enum_to_value
 
 logger = logging.getLogger(__name__)
@@ -54,13 +57,19 @@ def plot_shared_energy(input_da, n_fam, bess_size):
         else:
             aggregated = aggregated.resample(time="1d").sum()
 
-        df.loc[:, agg_level] = aggregated.data[:365]
-        diff_vals = aggregated.data[:365] - daily.data
+        df.loc[:, agg_level] = aggregated.data.flatten()[:len(df)]
+        diff_vals = df.loc[:, agg_level].values - daily.data
         sorted_vals = sorted(diff_vals)
+        diff_sorted = np.diff(sorted_vals).flat
 
         axt = ax.twinx()
-        ax.plot(np.diff(sorted_vals), label=f"{agg_level}-daily", color="grey", linestyle="-", linewidth=2.5)
-        axt.plot(sorted_vals, label=f"{agg_level}-daily summed", color=palette[i], linestyle="-", linewidth=2.5)
+        ax.plot(diff_vals[:], label=f"{agg_level}-daily", color=palette[i], linestyle="-", linewidth=3)
+        ax.plot(diff_sorted, label=f"{agg_level}-daily sorted", color="grey", linestyle="-", linewidth=2.5)
+        cumsum = np.cumsum(diff_sorted).astype(float)
+        x = np.arange(len(cumsum))
+        y1 = np.zeros(len(diff_sorted))
+        axt.plot(cumsum, label=f"{agg_level}-daily cumulative", color="darkgrey", linestyle="-", linewidth=2.5)
+        axt.fill_between(x, y1=y1, y2=cumsum, color="grey", alpha=0.3)
 
         # Labels & titles
         ax.set_ylabel('Difference between aggregates (kWh)')
@@ -75,12 +84,14 @@ def plot_shared_energy(input_da, n_fam, bess_size):
     fig.suptitle(f"Shared Energy Gap\nFamilies = {int(n_fam)}, Battery Size = {bess_size} kWh", weight="bold")
 
     plt.tight_layout()
-    plt.savefig("shared_energy.png", dpi=300)
+    figures_path = config.get("path", "figures")
+    makedirs(figures_path, exist_ok=True)
+    plt.savefig(join(figures_path, "shared_energy_aggregations.png"), dpi=300)
     plt.show()
     plt.close()
 
 
-def plot_results(results, n_fam, bess_size):
+def plot_metrics(results, n_fam, bess_size):
     df = DataFrame(columns=["time_resolution", "metric", "value"])
     for label in results.metric:
         label = label.values.item()

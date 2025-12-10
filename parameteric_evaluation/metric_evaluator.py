@@ -11,7 +11,7 @@ from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import TotalConsumption
 from utility.configuration import config
 from utility.time_utils import to_hours
-from visualization.processing_visualization import plot_results
+from visualization.processing_visualization import plot_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -61,5 +61,5 @@ class MetricEvaluator:
                                                         battery_size=bess_size, number_of_families=n_fam,
                                                         number_of_users=n_users)
 
-            plot_results(results, n_fam=n_fam, bess_size=bess_size)
+            plot_metrics(results, n_fam=n_fam, bess_size=bess_size)
             WriteDataArray().execute(results, filename=f"results_n_fam_{n_fam}_bess_size_{bess_size}.csv")
