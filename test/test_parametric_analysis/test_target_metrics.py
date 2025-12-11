@@ -7,7 +7,7 @@ import pandas as pd
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.target_metrics import (
-    find_closer, TargetSelfConsumptionEvaluator
+    find_closer, TargetMetricEvaluator
 )
 
 
@@ -57,12 +57,12 @@ class TestTargetMetrics(unittest.TestCase):
         """Test TargetSelfConsumptionEvaluator key"""
         from parameteric_evaluation.definitions import ParametricEvaluationType, LoadMatchingMetric
 
-        self.assertEqual(TargetSelfConsumptionEvaluator._key, ParametricEvaluationType.METRIC_TARGETS)
-        self.assertEqual(TargetSelfConsumptionEvaluator._metric, LoadMatchingMetric.SELF_CONSUMPTION)
+        self.assertEqual(TargetMetricEvaluator._key, ParametricEvaluationType.METRIC_TARGETS)
+        self.assertEqual(TargetMetricEvaluator._metric, LoadMatchingMetric.SELF_CONSUMPTION)
 
     def test_target_self_consumption_evaluator_name(self):
         """Test TargetSelfConsumptionEvaluator name"""
-        self.assertEqual(TargetSelfConsumptionEvaluator._name, "Target evaluator")
+        self.assertEqual(TargetMetricEvaluator._name, "Target evaluator")
 
     @patch('parameteric_evaluation.target_metrics.configuration')
     @patch('parameteric_evaluation.target_metrics.DataFrame')

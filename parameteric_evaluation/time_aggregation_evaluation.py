@@ -22,7 +22,7 @@ class TimeAggregationParameterCalculator(Calculator):
     def calculate(cls, input_da: OmnesDataArray | None = None,
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
-        """Evaluate self consumption with given temporal aggregation and number of families."""
+        """Evaluate one of the load matching metrics (e.g., self-consumption) with given temporal aggregation and number of families."""
         aggregated = input_da.groupby(
             f"time.{cls._aggregation.value}").sum() if cls._aggregation != TimeAggregation.THEORETICAL_LIMIT else input_da
         aggregated, _ = SharedEnergy.calculate(aggregated)
@@ -57,7 +57,7 @@ for ta_key in TimeAggregation:
                         aggregated = input_da.groupby(
                             f"time.{cls._aggregation.value}").sum() if cls._aggregation != TimeAggregation.THEORETICAL_LIMIT else input_da
                     aggregated, _ = SharedEnergy.calculate(aggregated)
-                    return input_da, PhysicalParameterCalculator.create(cls._metric).calculate(aggregated)[1]
+                    return input_da, cls._param_calculator.calculate(aggregated)[1]
 
             _Calc.__name__ = class_name
             return _Calc
