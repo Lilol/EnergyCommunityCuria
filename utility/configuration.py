@@ -9,7 +9,6 @@ from typing import Iterable
 from io_operation.input.definitions import PvDataSource, DataKind
 from operation.definitions import ScalingMethod
 from parameteric_evaluation.definitions import ParametricEvaluationType
-from parameteric_evaluation.parameter_pack import EvaluationParameterPack
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +34,9 @@ class ConfigurationManager:
         return parameters
 
     def _get_parameter_pack(self):
+        # Lazy import to avoid circular dependency
+        from parameteric_evaluation.parameter_pack import EvaluationParameterPack
+
         parameters = self.__config.get("parametric_evaluation", "evaluation_parameters")
         try:
             return EvaluationParameterPack(parameters)
@@ -149,5 +151,9 @@ class ConfigurationManager:
 
 
 # def do_configuration():
-config_file = argv[2] if len(argv) >= 3 else join(dirname(__file__), '..', 'config', 'config.ini')
+# Only use argv[2] if it's actually a file path, not a pytest flag
+import os.path
+config_file = join(dirname(__file__), '..', 'config', 'config.ini')
+if len(argv) >= 3 and not argv[2].startswith('-') and os.path.exists(argv[2]):
+    config_file = argv[2]
 config = ConfigurationManager(config_filename=config_file)

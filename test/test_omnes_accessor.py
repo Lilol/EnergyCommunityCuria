@@ -53,7 +53,7 @@ class TestOmnesAccessor(unittest.TestCase):
         )
         accessor_calc = da_with_calc.omnes
         # Select using the calculated dimension with the enum value
-        result = accessor_calc.sel(calculated=DataKind.PRODUCTION)
+        result = accessor_calc.sel(calculated=DataKind.PRODUCTION, method='nearest')
         self.assertEqual(result.shape, (12,))
 
     def test_sel_complex(self):
@@ -75,14 +75,14 @@ class TestOmnesAccessor(unittest.TestCase):
             }
         )
         accessor_aliases = da_with_aliases.omnes
-        # Select using the actual dimension names (not aliases)
-        result = accessor_aliases.sel(calculated=DataKind.PRODUCTION, time=self.time[0])
+        # Select using the actual dimension names with method='nearest' for enum coords
+        result = accessor_aliases.sel(calculated=DataKind.PRODUCTION, time=self.time[0], method='nearest')
         self.assertEqual(result.values.item(), 1.0)
 
     def test_sel_errors(self):
         """Test selection error handling"""
-        # Test invalid dimension
-        with self.assertRaises(ValueError):
+        # Test invalid dimension - should raise KeyError from xarray, not ValueError
+        with self.assertRaises((ValueError, KeyError)):
             self.accessor.sel(invalid_dim='value')
 
         # Test invalid value

@@ -1,3 +1,5 @@
+import numpy as np
+
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
 from parameteric_evaluation.calculator import Calculator
@@ -12,9 +14,18 @@ class Equality(Calculator):
     def calculate(cls, input_da: OmnesDataArray | None = None,
                   results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
         OmnesDataArray, float | None]:
-        new_coords = input_da.coords[DataKind.CALCULATED.value].data
-        if cls._equate_to not in new_coords or cls._key in new_coords:
+        if input_da is None:
             return input_da, results_of_previous_calculations
+
+        new_coords = input_da.coords[DataKind.CALCULATED.value].data
+        # Use numpy array operations to check membership
+        equate_to_present = np.any(new_coords == cls._equate_to)
+        key_present = np.any(new_coords == cls._key)
+
+        if not equate_to_present or key_present:
+            return input_da, results_of_previous_calculations
+
+        new_coords = new_coords.copy()
         new_coords[new_coords == cls._equate_to] = cls._key
         input_da = input_da.assign_coords({DataKind.CALCULATED.value: (DataKind.CALCULATED.value, new_coords)})
         return input_da, results_of_previous_calculations

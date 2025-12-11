@@ -21,13 +21,18 @@ def auto_hook_classmethod(method):
 
 
 class Calculator(SubclassRegistrationBase):
-    _key = Parameter
+    _key = PhysicalMetric
     _name = "calculator"
 
     @classmethod
     def _print_name(cls):
-        logger.info(
-            f"Invoke calculator for '{cls._key.value if not isinstance(cls._key, tuple) else (cls._key[0].value, cls._key[1].value)}'")
+        # Handle None case for _key
+        if cls._key is None:
+            logger.info(f"Invoke calculator '{cls._name}'")
+        elif isinstance(cls._key, tuple):
+            logger.info(f"Invoke calculator for '{(cls._key[0].value, cls._key[1].value)}'")
+        else:
+            logger.info(f"Invoke calculator for '{cls._key.value}'")
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)

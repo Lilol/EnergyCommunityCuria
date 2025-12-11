@@ -38,57 +38,43 @@ class TestCalculator(unittest.TestCase):
         # Create mock data
         coords = {
             DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [PhysicalMetric.SHARED_ENERGY]
+            DataKind.METRIC.value: [PhysicalMetric.SHARED_ENERGY]
         }
-        mock_result = OmnesDataArray(
-            data=np.random.rand(1, 24),
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        mock_result = 5.0  # Simple scalar result
 
         mock_previous = OmnesDataArray(
             data=np.random.rand(1, 24),
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
+            dims=[DataKind.METRIC.value, DataKind.TIME.value],
             coords=coords
         )
 
-        # Mock update method
-        mock_previous.update = MagicMock(return_value=mock_previous)
-
-        parameters = {"test_param": "value"}
+        parameters = {DataKind.BATTERY_SIZE.value: 10}
         result = Calculator.postprocess(mock_result, mock_previous, parameters)
 
-        # Verify update was called
-        mock_previous.update.assert_called_once()
+        # Result should be an OmnesDataArray with updated data
+        self.assertIsInstance(result, OmnesDataArray)
 
     def test_calculator_postprocess_with_tuple(self):
         """Test postprocess with tuple result"""
         coords = {
             DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [PhysicalMetric.SHARED_ENERGY]
+            DataKind.METRIC.value: [PhysicalMetric.SHARED_ENERGY]
         }
-        mock_data = OmnesDataArray(
-            data=np.random.rand(1, 24),
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        mock_data = 10.0
 
         mock_previous = OmnesDataArray(
             data=np.random.rand(1, 24),
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
+            dims=[DataKind.METRIC.value, DataKind.TIME.value],
             coords=coords
         )
 
-        # Mock update method
-        mock_previous.update = MagicMock(return_value=mock_previous)
-
         result_tuple = (None, mock_data)
-        parameters = {"test_param": "value"}
+        parameters = {DataKind.BATTERY_SIZE.value: 10}
 
         result = Calculator.postprocess(result_tuple, mock_previous, parameters)
 
-        # Verify update was called
-        mock_previous.update.assert_called_once()
+        # Result should be an OmnesDataArray with updated data
+        self.assertIsInstance(result, OmnesDataArray)
 
     def test_calculator_call_method(self):
         """Test Calculator.call method"""
@@ -154,4 +140,3 @@ class TestCalculator(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

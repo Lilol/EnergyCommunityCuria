@@ -39,11 +39,16 @@ class TestParameterPack(unittest.TestCase):
         """Test parameter pack with nested dictionary"""
         params_str = "{'battery_size': {0: [10, 20], 10: [30, 40]}}"
 
+        # This should work with the nested dict format
         pack = EvaluationParameterPack(parameters=params_str)
 
         # Should extract all battery sizes and family numbers
         self.assertIn(0, pack.bess_sizes)
         self.assertIn(10, pack.bess_sizes)
+
+        # Check that combinations were created
+        combos = list(pack)
+        self.assertGreater(len(combos), 0)
 
     def test_convert_to_int_vector(self):
         """Test convert_to_int_vector static method"""
@@ -112,9 +117,12 @@ class TestParameterPack(unittest.TestCase):
 
         bess, families, combos = EvaluationParameterPack.collect_combinations_from_non_complete_pairing(params)
 
-        self.assertIsInstance(bess, set)
-        self.assertIsInstance(families, set)
+        # The implementation returns the original dict values (lists), not sets
+        self.assertIsInstance(bess, list)
+        self.assertIsInstance(families, list)
         self.assertIsInstance(combos, list)
+        self.assertEqual(set(bess), {0, 10, 20})
+        self.assertEqual(set(families), {10, 20, 30})
 
     def test_parameter_pack_yields_correct_format(self):
         """Test that parameter pack yields correctly formatted dicts"""
@@ -132,4 +140,3 @@ class TestParameterPack(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

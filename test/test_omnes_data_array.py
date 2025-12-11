@@ -41,14 +41,14 @@ def test_normalize_array():
 
 
 def test_normalize_data_scalar():
-    assert OmnesDataArray.normalize_data(5) == 5
+    assert OmnesDataArray.normalize_data(5, dtype=float) == 5.0
 
 
 def test_normalize_data_array():
     da = xr.DataArray([10, 20])
-    result = OmnesDataArray.normalize_data(da)
+    result = OmnesDataArray.normalize_data(da, dtype=float)
     assert isinstance(result, np.ndarray)
-    assert np.array_equal(result, [10, 20])
+    assert np.array_equal(result, [10.0, 20.0])
 
 
 def test_accessor_attached(base_oda):
