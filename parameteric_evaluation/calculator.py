@@ -5,7 +5,7 @@ from data_processing_pipeline.definitions import Stage
 from data_processing_pipeline.pipeline_stage import PipelineStage
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
-from parameteric_evaluation.definitions import Parameter
+from parameteric_evaluation.definitions import Parameter, PhysicalMetric
 from utility.subclass_registration_base import SubclassRegistrationBase
 
 logger = logging.getLogger(__name__)
@@ -50,8 +50,11 @@ class Calculator(SubclassRegistrationBase):
         Unified output updater called after every calculation.
         Subclasses don't need to override this unless necessary.
         """
-        if results_of_previous_calculations is None or result is None:
-            return result
+        if results_of_previous_calculations is None:
+            return None
+
+        if result is None:
+            return results_of_previous_calculations
 
         if isinstance(result, tuple):
             _, data = result

@@ -29,7 +29,9 @@ class EmissionSavingsRatio(Calculator):
         em_base = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.BASELINE_EMISSIONS,
                                                         DataKind.BATTERY_SIZE.value: kwargs.get("battery_size", 0),
                                                         DataKind.NUMBER_OF_FAMILIES.value: kwargs.get("number_of_families", 0)})
-        if all(em_base == 0):
+        # Check if em_base is zero (handle scalar case)
+        is_zero = (em_base == 0).all() if em_base.ndim > 0 else (em_base == 0).item()
+        if is_zero:
             return input_da, em_base
         em_tot = results_of_previous_calculations.sel({DataKind.METRIC.value: EnvironmentalMetric.TOTAL_EMISSIONS,
                                                        DataKind.BATTERY_SIZE.value: kwargs.get("battery_size", 0),

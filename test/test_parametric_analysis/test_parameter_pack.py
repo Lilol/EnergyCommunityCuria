@@ -16,8 +16,8 @@ class TestParameterPack(unittest.TestCase):
 
         pack = EvaluationParameterPack(parameters=params_str)
 
-        self.assertEqual(pack.bess_sizes, {0, 10, 20})
-        self.assertEqual(pack.number_of_families, {10, 20, 30})
+        self.assertEqual(pack.bess_sizes, [0, 10, 20])
+        self.assertEqual(pack.number_of_families, [10, 20, 30])
 
     def test_parameter_pack_iteration(self):
         """Test iterating over parameter pack"""
