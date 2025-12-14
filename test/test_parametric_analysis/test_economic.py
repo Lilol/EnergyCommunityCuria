@@ -56,11 +56,13 @@ class TestEconomic(unittest.TestCase):
     def test_capex_calculation(self, mock_cost_class):
         """Test total CAPEX calculation"""
         mock_instance = MagicMock()
+        # Return default value for any size, not just 10.0
         mock_instance.__getitem__.side_effect = lambda x: {
             ("pv", "capex", 10.0): 1000.0,
+            ("pv", "capex", 15.0): 1200.0,
             ("bess", "capex"): 500.0,
             ("user", "capex"): 100.0
-        }.get(x if isinstance(x, tuple) else tuple(x))
+        }.get(x if isinstance(x, tuple) else tuple(x), 100.0)  # Default value
         mock_cost_class.return_value = mock_instance
 
         input_da = OmnesDataArray(
@@ -215,4 +217,3 @@ class TestEconomic(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

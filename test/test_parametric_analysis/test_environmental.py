@@ -99,7 +99,12 @@ class TestEnvironmental(unittest.TestCase):
             battery_size=battery_size
         )
 
-        self.assertIsInstance(emissions, (int, float, np.ndarray))
+        # emissions can be an OmnesDataArray, extract the value
+        if hasattr(emissions, 'values'):
+            emissions_value = float(emissions.values)
+        else:
+            emissions_value = emissions
+        self.assertIsInstance(emissions_value, (int, float))
 
     @patch('parameteric_evaluation.environmental.EmissionFactors')
     def test_emission_savings_ratio_calculation(self, mock_emission_class):
@@ -227,4 +232,3 @@ class TestEnvironmental(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

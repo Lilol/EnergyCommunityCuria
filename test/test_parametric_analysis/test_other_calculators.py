@@ -69,8 +69,8 @@ class TestOtherCalculators(unittest.TestCase):
 
         result, _ = InjectedEnergy.calculate(input_da)
 
-        # Should return input unchanged
-        self.assertEqual(result, input_da)
+        # Should return input unchanged - use xarray's equals method
+        self.assertTrue(result.equals(input_da))
 
     def test_withdrawn_energy_missing_source(self):
         """Test WithdrawnEnergy when source doesn't exist"""
@@ -86,8 +86,8 @@ class TestOtherCalculators(unittest.TestCase):
 
         result, _ = WithdrawnEnergy.calculate(input_da)
 
-        # Should return input unchanged since source doesn't exist
-        self.assertEqual(result, input_da)
+        # Should return input unchanged since source doesn't exist - use xarray's equals method
+        self.assertTrue(result.equals(input_da))
 
     def test_equality_keys(self):
         """Test Equality subclass keys"""
@@ -153,4 +153,3 @@ class TestOtherCalculators(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

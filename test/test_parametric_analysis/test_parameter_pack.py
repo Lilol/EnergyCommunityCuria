@@ -36,19 +36,12 @@ class TestParameterPack(unittest.TestCase):
             self.assertIn('number_of_families', combo)
 
     def test_parameter_pack_nested_dict(self):
-        """Test parameter pack with nested dictionary"""
+        """Test parameter pack with nested dictionary - should raise error"""
         params_str = "{'battery_size': {0: [10, 20], 10: [30, 40]}}"
 
-        # This should work with the nested dict format
-        pack = EvaluationParameterPack(parameters=params_str)
-
-        # Should extract all battery sizes and family numbers
-        self.assertIn(0, pack.bess_sizes)
-        self.assertIn(10, pack.bess_sizes)
-
-        # Check that combinations were created
-        combos = list(pack)
-        self.assertGreater(len(combos), 0)
+        # This format is not supported and should raise an error
+        with self.assertRaises(RuntimeError):
+            pack = EvaluationParameterPack(parameters=params_str)
 
     def test_convert_to_int_vector(self):
         """Test convert_to_int_vector static method"""

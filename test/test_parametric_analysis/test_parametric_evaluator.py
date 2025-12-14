@@ -86,20 +86,22 @@ class TestParametricEvaluator(unittest.TestCase):
         mock_results = MagicMock()
         mock_parameters = {}
 
-        # Create mock calculators
+        # Create mock calculators that return the expected tuple when called
         mock_calc1 = MagicMock()
-        mock_calc1.call = MagicMock(return_value=(mock_dataset, mock_results))
+        mock_calc1.call.return_value = (mock_dataset, mock_results)
 
         mock_calc2 = MagicMock()
-        mock_calc2.call = MagicMock(return_value=(mock_dataset, mock_results))
+        mock_calc2.call.return_value = (mock_dataset, mock_results)
 
         class TestEvaluator(ParametricEvaluator):
-            _key = ParametricEvaluationType.PHYSICAL_METRICS
+            _key = ParametricEvaluationType.INVALID  # Use INVALID to prevent metaclass from populating
             _name = "Test evaluator"
-            _parameter_calculators = {
-                PhysicalMetric.SHARED_ENERGY: mock_calc1,
-                PhysicalMetric.TOTAL_CONSUMPTION: mock_calc2
-            }
+
+        # Set calculators after class creation to override metaclass behavior
+        TestEvaluator._parameter_calculators = {
+            PhysicalMetric.SHARED_ENERGY: mock_calc1,
+            PhysicalMetric.TOTAL_CONSUMPTION: mock_calc2
+        }
 
         result_dataset, result_results = TestEvaluator.invoke(
             mock_dataset, mock_results, mock_parameters
@@ -109,6 +111,10 @@ class TestParametricEvaluator(unittest.TestCase):
         mock_calc1.call.assert_called_once()
         mock_calc2.call.assert_called_once()
 
+        # Verify correct arguments were passed
+        mock_calc1.call.assert_called_with(mock_dataset, mock_results, mock_parameters)
+        mock_calc2.call.assert_called_with(mock_dataset, mock_results, mock_parameters)
+
     def test_invoke_with_kwargs(self):
         """Test invoke with keyword arguments"""
         mock_dataset = MagicMock()
@@ -116,12 +122,14 @@ class TestParametricEvaluator(unittest.TestCase):
         mock_parameters = {}
 
         mock_calc = MagicMock()
-        mock_calc.call = MagicMock(return_value=(mock_dataset, mock_results))
+        mock_calc.call.return_value = (mock_dataset, mock_results)
 
         class TestEvaluator(ParametricEvaluator):
-            _key = ParametricEvaluationType.PHYSICAL_METRICS
+            _key = ParametricEvaluationType.INVALID  # Use INVALID to prevent metaclass from populating
             _name = "Test evaluator"
-            _parameter_calculators = {PhysicalMetric.SHARED_ENERGY: mock_calc}
+
+        # Set calculators after class creation
+        TestEvaluator._parameter_calculators = {PhysicalMetric.SHARED_ENERGY: mock_calc}
 
         TestEvaluator.invoke(
             mock_dataset,
@@ -131,8 +139,10 @@ class TestParametricEvaluator(unittest.TestCase):
         )
 
         # Verify calculator was called with kwargs
+        mock_calc.call.assert_called_once()
         call_kwargs = mock_calc.call.call_args[1]
         self.assertIn('extra_param', call_kwargs)
+        self.assertEqual(call_kwargs['extra_param'], 'value')
 
     @patch('parameteric_evaluation.parametric_evaluator.configuration')
     def test_create_evaluators_based_on_configuration(self, mock_config):
@@ -170,4 +180,3 @@ class TestParametricEvaluator(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
