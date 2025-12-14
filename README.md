@@ -1,14 +1,56 @@
-# 🌞 Energy Community Curia
+# Energy Community Evaluation
 
 A framework for evaluating energy communities using household consumption, PV generation, tariffs, and batteries.
 
 ---
 
-## ⚙️ Setup Guide
+## 📚 How to Cite
+
+If you use this framework in your research, please cite it as:
+
+```bibtex
+@software{energy_community_evaluation,
+  author = {Barancsuk, Lilla},
+  title = {Energy Community Evaluation Framework},
+  year = {2025},
+  url = {https://github.com/Lilol/EnergyCommunityEvaluation},
+  note = {A framework for evaluating renewable energy communities with parametric analysis capabilities}
+}
+```
+
+Alternatively, you can cite it in text as:
+> Barancsuk, L. (2025). Energy Community Evaluation Framework. https://github.com/Lilol/EnergyCommunityEvaluation
+
+---
+
+## 📋 Table of Contents
+
+- [How to Cite](#-how-to-cite)
+- [Features](#-features)
+- [Setup Guide](#setup-guide)
+  - [Preprocessing](#-preprocessing)
+  - [Parametric Evaluation](#-parametric-evaluation)
+  - [Renewable Energy Community Evaluation](#-renewable-energy-community-evaluation)
+- [Contact](#-contact)
+
+---
+
+## ✨ Features
+
+- **Data Preprocessing**: Automated processing of household consumption, PV generation, and billing data
+- **Parametric Analysis**: Comprehensive evaluation of energy communities with varying parameters
+- **Battery Simulation**: Battery Energy Storage System (BESS) modeling and optimization
+- **Multiple Metrics**: Physical, economic, and environmental impact assessments
+- **Visualization**: Built-in plotting and analysis tools
+- **Flexible Configuration**: Easy-to-use configuration file system
+
+---
+
+## Setup Guide
 
 ### 🔍 Preprocessing
 
-#### 📜 What `preprocessing.py` Does:
+#### What `preprocessing.py` Does:
 
 1. **Reads and processes input data** — household data, PV generation, tariffs, bills.
 2. **Validates and transforms** the data — cleaning and converting to `xarray.DataArray` structures.
@@ -16,9 +58,9 @@ A framework for evaluating energy communities using household consumption, PV ge
 4. **Generates visualizations** for load and generation.
 5. **Writes outputs** — including cleaned load/generation/user data as `.csv` and `.nc` files.
 
-> 📌 This script automates preprocessing for multiple families and users.
+> This script automates preprocessing for multiple families and users.
 
-#### ▶️ How to Run `preprocessing.py`
+####  How to Run `preprocessing.py`
 
 1. Clone the repo to your project root: `<root>`
 2. Copy the default config:
@@ -73,9 +115,9 @@ A framework for evaluating energy communities using household consumption, PV ge
 
 ---
 
-### 📊 Parametric Evaluation
+### ⚙️ Parametric Evaluation
 
-#### 📜 What `run_parametric_evaluation.py` Does:
+#### What `run_parametric_evaluation.py` Does:
 
 1. **Creates datasets** in `xarray` format:
    - Aggregates monthly and ToU (time-of-use) data
@@ -147,7 +189,18 @@ A framework for evaluating energy communities using household consumption, PV ge
 
 ### 🌱 Renewable Energy Community Evaluation
 
+*Coming soon: Detailed evaluation of renewable energy community configurations and performance metrics.*
+
 ---
 
-🛠 Maintained by: Lilla Barancsuk
-📬 Contact: https://github.com/Lilol
+## 📬 Contact
+
+🛠 **Maintained by**: Lilla Barancsuk  
+🔗 **GitHub**: https://github.com/Lilol  
+📧 **Issues**: Please report bugs and feature requests via [GitHub Issues](https://github.com/Lilol/EnergyCommunityEvaluation/issues)
+
+---
+
+## 📄 License
+
+See [LICENSE](LICENSE) file for details.

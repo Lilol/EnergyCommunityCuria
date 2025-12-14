@@ -1,6 +1,6 @@
 import logging
-from typing import Iterable
 import sys
+from typing import Iterable
 
 import numpy as np
 from pandas import DataFrame, concat
@@ -42,7 +42,7 @@ class TargetMetricParameterCalculator(Calculator):
     def eval(cls, da: OmnesDataArray, n_fam):
         if cls._param_calculator is None:
             cls._param_calculator = PhysicalParameterCalculator.create(cls._metric)
-        return cls._param_calculator.calculate(da, num_families=n_fam)[1]
+        return cls._param_calculator.calculate(da, num_families=n_fam)[1].item
 
     @staticmethod
     def find_closer(n_fam, step):
@@ -130,7 +130,7 @@ for metric in LoadMatchingMetric:
         class _Calc(TargetMetricParameterCalculator):
             _key = m
             _metric = m
-            # Don't initialize _param_calculator here - let it be lazy loaded in eval()
+            _param_calculator = PhysicalParameterCalculator.create(m)
 
         _Calc.__name__ = class_name
         return _Calc
@@ -165,7 +165,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
     @classmethod
     def get_targets(cls, metric):
         return configuration.config.getarray("parametric_evaluation",
-                                             f"{metric.value.lower().replace(' ', '_')}_targets", float)
+                                             f"{metric.value.lower().replace(' ', '_')}_targets", float, fallback=[])
 
     @classmethod
     def evaluate_targets(cls, dataset, calculator, **kwargs):

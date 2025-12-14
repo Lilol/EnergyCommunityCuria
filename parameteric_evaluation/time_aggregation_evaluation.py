@@ -42,7 +42,7 @@ for ta_key in TimeAggregation:
             class _Calc(TimeAggregationParameterCalculator):
                 _key = CombinedMetricEnum.from_parts(k, m)
                 _metric = m
-                _param_calculator = None  # Will be lazy loaded
+                _param_calculator = PhysicalParameterCalculator.create(m)
                 _aggregation = k
 
                 @classmethod
