@@ -42,7 +42,7 @@ for ta_key in TimeAggregation:
             class _Calc(TimeAggregationParameterCalculator):
                 _key = CombinedMetricEnum.from_parts(k, m)
                 _metric = m
-                _param_calculator = PhysicalParameterCalculator.create(_metric)
+                _param_calculator = None  # Will be lazy loaded
                 _aggregation = k
 
                 @classmethod
@@ -50,6 +50,10 @@ for ta_key in TimeAggregation:
                               results_of_previous_calculations: OmnesDataArray | None = None, *args, **kwargs) -> tuple[
                     OmnesDataArray, float | None]:
                     """Evaluate load matching metric with given temporal aggregation."""
+                    # Lazy load param_calculator if needed
+                    if cls._param_calculator is None:
+                        cls._param_calculator = PhysicalParameterCalculator.create(cls._metric)
+
                     if cls._aggregation == TimeAggregation.HOUR:
                         aggregated = input_da.groupby(
                             ((input_da.time.dt.dayofyear - 1) * 24 + input_da.time.dt.hour)).mean()

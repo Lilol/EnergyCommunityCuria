@@ -27,22 +27,18 @@ class TestTargetMetrics(unittest.TestCase):
     def test_find_closer_round_up(self):
         """Test find_closer rounds up when above half"""
         result = TargetMetricParameterCalculator.find_closer(57, 10)
-        # Actual implementation returns: (57 // 10) + 1 = 5 + 1 = 6
-        self.assertEqual(result, 6)
+        self.assertEqual(result, 60)  # Rounds up to nearest multiple of 10
 
         result = TargetMetricParameterCalculator.find_closer(18, 5)
-        # Actual implementation returns: (18 // 5) + 1 = 3 + 1 = 4
-        self.assertEqual(result, 4)
+        self.assertEqual(result, 20)  # Rounds up to nearest multiple of 5
 
     def test_find_closer_round_down(self):
         """Test find_closer rounds down when below half"""
         result = TargetMetricParameterCalculator.find_closer(53, 10)
-        # Actual implementation returns: 53 // 10 = 5
-        self.assertEqual(result, 5)
+        self.assertEqual(result, 50)  # Rounds down to nearest multiple of 10
 
         result = TargetMetricParameterCalculator.find_closer(12, 5)
-        # Actual implementation returns: 12 // 5 = 2
-        self.assertEqual(result, 2)
+        self.assertEqual(result, 10)  # Rounds down to nearest multiple of 5
 
     def test_find_closer_with_step_one(self):
         """Test find_closer with step of 1"""
@@ -55,8 +51,7 @@ class TestTargetMetrics(unittest.TestCase):
         self.assertEqual(result, 150)
 
         result = TargetMetricParameterCalculator.find_closer(175, 50)
-        # Actual implementation: 175 + (175 // 50) + 1 = 175 + 3 + 1 = 179
-        self.assertEqual(result, 179)
+        self.assertEqual(result, 200)  # Rounds up to nearest multiple of 50
 
     def test_target_self_consumption_evaluator_key(self):
         """Test TargetSelfConsumptionEvaluator key"""
@@ -86,12 +81,10 @@ class TestTargetMetrics(unittest.TestCase):
         """Test find_closer with boundary cases"""
         # Exactly at half
         result = TargetMetricParameterCalculator.find_closer(55, 10)
-        # Actual implementation: 55 + (55 // 10) + 1 = 55 + 5 + 1 = 61
-        self.assertEqual(result, 61)
+        self.assertEqual(result, 60)  # Rounds up to nearest multiple of 10
 
         result = TargetMetricParameterCalculator.find_closer(25, 10)
-        # Actual implementation: 25 + (25 // 10) + 1 = 25 + 2 + 1 = 28
-        self.assertEqual(result, 28)
+        self.assertEqual(result, 30)  # Rounds up to nearest multiple of 10
 
     def test_find_closer_zero_remainder(self):
         """Test find_closer with zero remainder"""
