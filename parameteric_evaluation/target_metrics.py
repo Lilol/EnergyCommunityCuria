@@ -42,7 +42,7 @@ class TargetMetricParameterCalculator(Calculator):
     def eval(cls, da: OmnesDataArray, n_fam):
         if cls._param_calculator is None:
             cls._param_calculator = PhysicalParameterCalculator.create(cls._metric)
-        return cls._param_calculator.calculate(da, num_families=n_fam)[1].item
+        return cls._param_calculator.calculate(da, num_families=n_fam)[1].item()
 
     @staticmethod
     def find_closer(n_fam, step):
@@ -66,8 +66,8 @@ class TargetMetricParameterCalculator(Calculator):
         mid = cls.eval(da, n_fam_mid)
 
         # Evaluate and update
-        if mid - current_value == 0:  # Check if exact match is found
-            logger.info("Found exact match.")
+        if np.isclose(mid, current_value, 0.05):  # Check if close match is found
+            logger.info(f"Found close match: {mid},{current_value}.")
             return n_fam_mid, mid
 
         elif mid < current_value:
@@ -100,7 +100,7 @@ class TargetMetricParameterCalculator(Calculator):
         # Evaluate starting point
         n_fam_max = kwargs.get("maximum_number_of_families")
         val = kwargs.get("target_value")
-        step = kwargs.get("maximum_number_of_steps", 25)
+        step = kwargs.get("step_size", 5)
         n_fam_low = 0
         low = cls.eval(input_da, n_fam_low)
         if low >= val:  # Check if requirement is already satisfied
@@ -154,7 +154,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
         for metric, calculator in cls._parameter_calculators.items():
             dfs.append(cls.evaluate_targets(dataset, calculator, **kwargs))
         logger.info(f"Parametric evaluation finished.")
-        Write2DData().execute(concat(dfs), attribute="time_aggregation")
+        Write2DData().execute(concat(dfs), attribute="time_aggregation", filename=f"target_metrics_evaluation.csv",)
         return dataset, results
 
     @staticmethod
@@ -173,6 +173,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
         targets = cls.get_targets(calculator._metric)
 
         results = DataFrame(np.nan, index=targets, columns=["metric_name", "number_of_families", "metric_realized"])
+        results["metric_name"] = calculator._metric.value
         # Evaluate number of families for each target
         val, nf = 0, 0
         for target in targets:
@@ -184,7 +185,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
             # # Find number of families to reach target
             nf, val = calculator.call(dataset, target_value=target,
                                       maximum_number_of_families=cls._max_number_of_households,
-                                      maximum_number_of_steps=25)
+                                      step_size=5)
 
             # Update
             results.loc[target, ["number_of_families", "metric_realized"]] = nf, val
@@ -197,5 +198,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
                 logger.warning(f"Exiting loop because max families ({cls._max_number_of_households}) was reached.")
                 break
         logger.info(
-            f"Targets reached; number of families:\n{','.join(f'{row.number_of_families}; {row.metric_realized}' for _, row in results.iterrows())}")
+            f"\ntarget set; number of families; targets reached:\n{'\n'.join(f'{t:.2f} {row.number_of_families}; '
+                                                                             f'{row.metric_realized:.2f}' 
+                                                                             for t, row in results.iterrows())}")
         return results
