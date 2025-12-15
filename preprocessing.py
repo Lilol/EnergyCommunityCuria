@@ -64,7 +64,8 @@ DataProcessingPipeline(f"yearly_load_profiles_families_{n_families}",
 DataProcessingPipeline("pv_plants", workers=(
     ReadPvPlantData(), TransformPvPlantData(), Store("pv_plants"), Write2DData("data_plants"))).execute()
 
-DataProcessingPipeline("pv_production", workers=(ReadProduction(), TransformProduction(),  # ExtractTypicalYear(),
+DataProcessingPipeline("pv_production", workers=(ReadProduction(), TransformProduction(),
+                                                 # ExtractTypicalYear(),
                                                  # Store("pv_profiles"),
                                                  # CreateYearlyProfile(),
                                                  # Write("data_plants_year"),

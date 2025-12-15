@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 import pandas as pd
-import xarray as xr
 
 from data_storage.omnes_data_array import OmnesDataArray
 from io_operation.input.definitions import DataKind
@@ -20,16 +19,10 @@ class TestPhysical(unittest.TestCase):
         production = np.array([10.0] * 12 + [5.0] * 12)
         consumption = np.array([5.0] * 12 + [10.0] * 12)
 
-        coords = {
-            DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION]
-        }
+        coords = {DataKind.TIME.value: self.time,
+            DataKind.CALCULATED.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION]}
         data = np.array([production, consumption])
-        input_da = OmnesDataArray(
-            data=data,
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        input_da = OmnesDataArray(data=data, dims=[DataKind.CALCULATED.value, DataKind.TIME.value], coords=coords)
 
         result, _ = SharedEnergy.calculate(input_da)
 
@@ -43,16 +36,10 @@ class TestPhysical(unittest.TestCase):
         injected = np.array([8.0] * 12 + [3.0] * 12)
         withdrawn = np.array([4.0] * 12 + [9.0] * 12)
 
-        coords = {
-            DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]
-        }
+        coords = {DataKind.TIME.value: self.time,
+            DataKind.CALCULATED.value: [OtherParameters.INJECTED_ENERGY, OtherParameters.WITHDRAWN_ENERGY]}
         data = np.array([injected, withdrawn])
-        input_da = OmnesDataArray(
-            data=data,
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        input_da = OmnesDataArray(data=data, dims=[DataKind.CALCULATED.value, DataKind.TIME.value], coords=coords)
 
         result, _ = SharedEnergy.calculate(input_da)
 
@@ -63,15 +50,11 @@ class TestPhysical(unittest.TestCase):
 
     def test_shared_energy_missing_indices(self):
         """Test SharedEnergy raises error with missing indices"""
-        coords = {
-            DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [DataKind.PRODUCTION]  # Missing consumption
+        coords = {DataKind.TIME.value: self.time, DataKind.CALCULATED.value: [DataKind.PRODUCTION]
+            # Missing consumption
         }
-        input_da = OmnesDataArray(
-            data=np.array([np.random.rand(24)]),
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        input_da = OmnesDataArray(data=np.array([np.random.rand(24)]),
+            dims=[DataKind.CALCULATED.value, DataKind.TIME.value], coords=coords)
 
         with self.assertRaises(IndexError):
             SharedEnergy.calculate(input_da)
@@ -82,16 +65,10 @@ class TestPhysical(unittest.TestCase):
         consumption = np.array([5.0] * 24)
         old_shared = np.array([3.0] * 24)
 
-        coords = {
-            DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION, PhysicalMetric.SHARED_ENERGY]
-        }
+        coords = {DataKind.TIME.value: self.time,
+            DataKind.CALCULATED.value: [DataKind.PRODUCTION, DataKind.CONSUMPTION, PhysicalMetric.SHARED_ENERGY]}
         data = np.array([production, consumption, old_shared])
-        input_da = OmnesDataArray(
-            data=data,
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        input_da = OmnesDataArray(data=data, dims=[DataKind.CALCULATED.value, DataKind.TIME.value], coords=coords)
 
         result, _ = SharedEnergy.calculate(input_da)
 
@@ -105,16 +82,10 @@ class TestPhysical(unittest.TestCase):
         users_consumption = np.array([3.0] * 24)
         number_of_families = 10
 
-        coords = {
-            DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [DataKind.CONSUMPTION_OF_FAMILIES, DataKind.CONSUMPTION_OF_USERS]
-        }
+        coords = {DataKind.TIME.value: self.time,
+            DataKind.CALCULATED.value: [DataKind.CONSUMPTION_OF_FAMILIES, DataKind.CONSUMPTION_OF_USERS]}
         data = np.array([families_consumption, users_consumption])
-        input_da = OmnesDataArray(
-            data=data,
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        input_da = OmnesDataArray(data=data, dims=[DataKind.CALCULATED.value, DataKind.TIME.value], coords=coords)
 
         result, _ = TotalConsumption.calculate(input_da, number_of_families=number_of_families)
 
@@ -129,16 +100,10 @@ class TestPhysical(unittest.TestCase):
         users_consumption = np.array([3.0] * 24)
         number_of_families = 0
 
-        coords = {
-            DataKind.TIME.value: self.time,
-            DataKind.CALCULATED.value: [DataKind.CONSUMPTION_OF_FAMILIES, DataKind.CONSUMPTION_OF_USERS]
-        }
+        coords = {DataKind.TIME.value: self.time,
+            DataKind.CALCULATED.value: [DataKind.CONSUMPTION_OF_FAMILIES, DataKind.CONSUMPTION_OF_USERS]}
         data = np.array([families_consumption, users_consumption])
-        input_da = OmnesDataArray(
-            data=data,
-            dims=[DataKind.CALCULATED.value, DataKind.TIME.value],
-            coords=coords
-        )
+        input_da = OmnesDataArray(data=data, dims=[DataKind.CALCULATED.value, DataKind.TIME.value], coords=coords)
 
         result, _ = TotalConsumption.calculate(input_da, number_of_families=number_of_families)
 
@@ -162,4 +127,3 @@ class TestPhysical(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

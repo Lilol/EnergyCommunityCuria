@@ -159,4 +159,3 @@ CombinedMetricEnum = make_combined_enum(
     TimeAggregation,
     LoadMatchingMetric
 )
-

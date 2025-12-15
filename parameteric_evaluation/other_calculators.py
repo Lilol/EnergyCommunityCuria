@@ -18,12 +18,18 @@ class Equality(Calculator):
             return input_da, results_of_previous_calculations
 
         new_coords = input_da.coords[DataKind.CALCULATED.value].data
+
+        update_existing = kwargs.pop("update_existing", False)
         # Use numpy array operations to check membership
         equate_to_present = np.any(new_coords == cls._equate_to)
         key_present = np.any(new_coords == cls._key)
 
-        if not equate_to_present or key_present:
+        if not equate_to_present or key_present and not update_existing:
             return input_da, results_of_previous_calculations
+
+        if key_present and update_existing:
+            return input_da.update(input_da.sel({DataKind.CALCULATED.value: cls._equate_to}).data,
+                                   {DataKind.CALCULATED.value: cls._key}), results_of_previous_calculations
 
         new_coords = new_coords.copy()
         new_coords[new_coords == cls._equate_to] = cls._key

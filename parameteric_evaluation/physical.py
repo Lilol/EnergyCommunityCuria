@@ -49,10 +49,10 @@ class SharedEnergy(PhysicalParameterCalculator):
                 f" {OtherParameters.WITHDRAWN_ENERGY} are missing from input dataarray")
         shared_e = xr.where(injected < withdrawn, injected, withdrawn).assign_coords(
             {DataKind.CALCULATED.value: cls._key})
-        if cls._key not in input_da[DataKind.CALCULATED.value]:
-            input_da = xr.concat([input_da, shared_e], dim=DataKind.CALCULATED.value)
-        else:
-            input_da = input_da.update(shared_e, {DataKind.CALCULATED.value: cls._key})
+        # if cls._key not in input_da[DataKind.CALCULATED.value]:
+        #     input_da = xr.concat([input_da, shared_e], dim=DataKind.CALCULATED.value)
+        # else:
+        input_da = input_da.update(shared_e, {DataKind.CALCULATED.value: cls._key})
         return input_da, results_of_previous_calculations
 
 
@@ -68,7 +68,8 @@ class TotalConsumption(PhysicalParameterCalculator):
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_FAMILIES}) * number_of_families + input_da.sel(
             {DataKind.CALCULATED.value: DataKind.CONSUMPTION_OF_USERS})).assign_coords(
             {DataKind.CALCULATED.value: cls._key})
-        input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        # input_da = xr.concat([input_da, dx], dim=DataKind.CALCULATED.value)
+        input_da = input_da.update(dx, {DataKind.CALCULATED.value: cls._key})
         return input_da, results_of_previous_calculations
 
 

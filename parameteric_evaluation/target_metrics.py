@@ -3,14 +3,14 @@ import sys
 from typing import Iterable
 
 import numpy as np
-from pandas import DataFrame, concat
+from pandas import DataFrame
 
 from data_storage.omnes_data_array import OmnesDataArray
-from io_operation.output.write import Write2DData
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, LoadMatchingMetric
+from parameteric_evaluation.other_calculators import WithdrawnEnergy, InjectedEnergy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
-from parameteric_evaluation.physical import PhysicalParameterCalculator
+from parameteric_evaluation.physical import PhysicalParameterCalculator, TotalConsumption, SharedEnergy
 from utility import configuration
 
 # Handle override decorator for Python < 3.12
@@ -39,10 +39,15 @@ class TargetMetricParameterCalculator(Calculator):
         ...
 
     @classmethod
-    def eval(cls, da: OmnesDataArray, n_fam):
+    def eval(cls, da: OmnesDataArray, n_fam) -> float:
+        """Evaluate the metric for a given number of families."""
         if cls._param_calculator is None:
             cls._param_calculator = PhysicalParameterCalculator.create(cls._metric)
-        return cls._param_calculator.calculate(da, num_families=n_fam)[1].item()
+        da, _ = TotalConsumption.calculate(da, number_of_families=n_fam)
+        da, _ = WithdrawnEnergy.calculate(da, update_existing=True)
+        da, _ = InjectedEnergy.calculate(da, update_existing=True)
+        da, _ = SharedEnergy.calculate(da)
+        return cls._param_calculator.calculate(da, number_of_families=n_fam)[1].item()
 
     @staticmethod
     def find_closer(n_fam, step):
@@ -79,7 +84,7 @@ class TargetMetricParameterCalculator(Calculator):
     def call(cls, input_da: OmnesDataArray | None = None,
              results_of_previous_calculations: OmnesDataArray | None = None, parameters: dict | None = None,
              **kwargs) -> None | OmnesDataArray | float | Iterable[OmnesDataArray] | tuple[
-        OmnesDataArray, float | None]:
+        OmnesDataArray, float | float]:
         """
         Finds the optimal number of families to satisfy a given self-consumption
         ratio.
@@ -104,14 +109,14 @@ class TargetMetricParameterCalculator(Calculator):
         n_fam_low = 0
         low = cls.eval(input_da, n_fam_low)
         if low >= val:  # Check if requirement is already satisfied
-            logger.info(f"Requirement ({val}) already satisfied with lower value={low}!")
+            logger.info(f"Requirement ({val}) already satisfied with lower value={low:.3f}!")
             return n_fam_low, low
 
         # Evaluate point that can be reached
         n_fam_high = n_fam_max
         high = cls.eval(input_da, n_fam_high)
         if high <= val:  # Check if requirement is satisfied
-            logger.info(f"Requirement ({val}) cannot be satisfied, as max. value={high}!")
+            logger.info(f"Requirement ({val}) cannot be satisfied, as max. value={high:.3f}!")
             return n_fam_high, high
 
         # Loop to find best value
@@ -128,7 +133,7 @@ for metric in LoadMatchingMetric:
 
     def make_calculator(m):
         class _Calc(TargetMetricParameterCalculator):
-            _key = m
+            _key = f"{metric.value.replace(' ', '')}TargetCalculator"
             _metric = m
             _param_calculator = PhysicalParameterCalculator.create(m)
 
@@ -154,13 +159,13 @@ class TargetMetricEvaluator(ParametricEvaluator):
         for metric, calculator in cls._parameter_calculators.items():
             dfs.append(cls.evaluate_targets(dataset, calculator, **kwargs))
         logger.info(f"Parametric evaluation finished.")
-        Write2DData().execute(concat(dfs), attribute="time_aggregation", filename=f"target_metrics_evaluation.csv",)
+        # Write2DData().execute(concat(dfs), attribute="time_aggregation", filename=f"target_metrics_evaluation.csv",)
         return dataset, results
 
     @staticmethod
     def get_eval_metrics(evaluation_type):
-        return {m: TargetMetricParameterCalculator.get_subclass(m) for m in LoadMatchingMetric if
-                m != LoadMatchingMetric.INVALID}
+        return {f"{m.value.replace(' ', '')}TargetCalculator": TargetMetricParameterCalculator.get_subclass(f"{m.value.replace(' ', '')}TargetCalculator") for m in
+                LoadMatchingMetric if m.valid()}
 
     @classmethod
     def get_targets(cls, metric):
@@ -184,8 +189,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
 
             # # Find number of families to reach target
             nf, val = calculator.call(dataset, target_value=target,
-                                      maximum_number_of_families=cls._max_number_of_households,
-                                      step_size=5)
+                                      maximum_number_of_families=cls._max_number_of_households, step_size=5)
 
             # Update
             results.loc[target, ["number_of_families", "metric_realized"]] = nf, val
@@ -197,8 +201,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
             if nf >= cls._max_number_of_households:
                 logger.warning(f"Exiting loop because max families ({cls._max_number_of_households}) was reached.")
                 break
-        logger.info(
-            f"\ntarget set; number of families; targets reached:\n{'\n'.join(f'{t:.2f} {row.number_of_families}; '
-                                                                             f'{row.metric_realized:.2f}' 
-                                                                             for t, row in results.iterrows())}")
+        logger.info(f"\ntarget set; targets reached; number of families:\n{'\n'.join(f'{t:.2f}; '
+                                                                                     f'{row.metric_realized:.2f}; '
+                                                                                     f'{row.number_of_families}' for t, row in results.iterrows())}")
         return results
