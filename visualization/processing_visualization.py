@@ -64,7 +64,7 @@ def plot_shared_energy(input_da, n_fam, bess_size):
 
         axt = ax.twinx()
         ax.plot(diff_vals[:], label=f"{agg_level}-daily", color=palette[i], linestyle="-", linewidth=3)
-        ax.plot(diff_sorted, label=f"{agg_level}-daily sorted", color="grey", linestyle="-", linewidth=2.5)
+        axt.plot(diff_sorted, label=f"{agg_level}-daily sorted", color="grey", linestyle="-", linewidth=2.5)
         cumsum = np.cumsum(diff_sorted).astype(float)
         x = np.arange(len(cumsum))
         y1 = np.zeros(len(diff_sorted))
