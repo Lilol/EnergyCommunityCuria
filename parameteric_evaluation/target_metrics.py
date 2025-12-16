@@ -4,14 +4,17 @@ from typing import Iterable
 
 import numpy as np
 from pandas import DataFrame
+from xarray import concat
 
 from data_storage.omnes_data_array import OmnesDataArray
+from io_operation.output.write import Write2DData
 from parameteric_evaluation.calculator import Calculator
 from parameteric_evaluation.definitions import ParametricEvaluationType, LoadMatchingMetric
 from parameteric_evaluation.other_calculators import WithdrawnEnergy, InjectedEnergy
 from parameteric_evaluation.parametric_evaluator import ParametricEvaluator
 from parameteric_evaluation.physical import PhysicalParameterCalculator, TotalConsumption, SharedEnergy
 from utility import configuration
+from visualization.visualize import plot_target_metrics_evaluation, plot_target_metrics_summary
 
 # Handle override decorator for Python < 3.12
 if sys.version_info >= (3, 12):
@@ -156,10 +159,26 @@ class TargetMetricEvaluator(ParametricEvaluator):
         dataset = kwargs.pop('dataset', args[0])
         results = kwargs.pop("results", args[1])
         dfs = []
+        results_da = None
         for metric, calculator in cls._parameter_calculators.items():
-            dfs.append(cls.evaluate_targets(dataset, calculator, **kwargs))
+            df, da = cls.evaluate_targets(dataset, calculator, **kwargs)
+            dfs.append(df)
+            # Combine OmnesDataArrays
+            if results_da is None:
+                results_da = da
+            else:
+                results_da = OmnesDataArray(concat([results_da, da], dim="metric", join="outer"))
+
+        # Write combined results to CSV
+        if results_da is not None:
+            # Write2DData(filename="target_metrics_evaluation").execute(
+            #     results_da, separate_to_directories_by=None
+            # )
+            # Visualize results
+            plot_target_metrics_evaluation(results_da)
+            plot_target_metrics_summary(results_da)
+
         logger.info(f"Parametric evaluation finished.")
-        # Write2DData().execute(concat(dfs), attribute="time_aggregation", filename=f"target_metrics_evaluation.csv",)
         return dataset, results
 
     @staticmethod
@@ -179,12 +198,26 @@ class TargetMetricEvaluator(ParametricEvaluator):
 
         results = DataFrame(np.nan, index=targets, columns=["metric_name", "number_of_families", "metric_realized"])
         results["metric_name"] = calculator._metric.value
+
+        # Initialize OmnesDataArray for results
+        results_da = OmnesDataArray(
+            data=np.full((len(targets), 2), np.nan),
+            dims=["target", "result_type"],
+            coords={
+                "target": targets,
+                "result_type": ["number_of_families", "metric_realized"],
+                "metric": calculator._metric.value
+            },
+            name=f"target_metrics_{calculator._metric.value.replace(' ', '_').lower()}"
+        )
+
         # Evaluate number of families for each target
         val, nf = 0, 0
         for target in targets:
             # # Skip if previous target was already higher than this
             if val >= target:
                 results.loc[target, ["number_of_families", "metric_realized"]] = nf, val
+                results_da.loc[{"target": target}] = [nf, val]
                 continue
 
             # # Find number of families to reach target
@@ -193,6 +226,7 @@ class TargetMetricEvaluator(ParametricEvaluator):
 
             # Update
             results.loc[target, ["number_of_families", "metric_realized"]] = nf, val
+            results_da.loc[{"target": target}] = [nf, val]
 
             # # Exit if targets cannot be reached
             if val < target:
@@ -204,4 +238,8 @@ class TargetMetricEvaluator(ParametricEvaluator):
         logger.info(f"\ntarget set; targets reached; number of families:\n{'\n'.join(f'{t:.2f}; '
                                                                                      f'{row.metric_realized:.2f}; '
                                                                                      f'{row.number_of_families}' for t, row in results.iterrows())}")
-        return results
+
+        # Expand dimensions to include metric name
+        results_da = results_da.expand_dims({"metric": [calculator._metric.value]})
+
+        return results, results_da
